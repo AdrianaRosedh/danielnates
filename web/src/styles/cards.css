@@ -2,7 +2,7 @@
 
 .projectCard{
   border-radius:var(--radius2);
-  border:1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--brand-primary) 22%, rgba(255,255,255,.10));
   background:rgba(255,255,255,.03);
   padding:16px 14px;
   display:flex;
@@ -13,7 +13,7 @@
 @media (min-width:880px){ .projectCard{padding:18px 18px;} }
 
 .projectCard:hover{
-  border-color: var(--brand-glow);
+  border-color: color-mix(in srgb, var(--brand-primary) 55%, rgba(255,255,255,.16));
   box-shadow: 0 18px 60px rgba(0,0,0,.35);
 }
 
@@ -36,7 +36,7 @@
   font-size:11px;
   padding:6px 8px;
   border-radius:999px;
-  border:1px solid var(--border);
+  border:1px solid rgba(255,255,255,.12);
   background:rgba(255,255,255,.02);
   color:rgba(255,255,255,.78);
 }
@@ -47,23 +47,26 @@
   font-size:12px;
   padding:10px 12px;
   border-radius:14px;
-  border:1px solid var(--brand-glow);
-  background: color-mix(in srgb, var(--brand-primary) 18%, transparent);
+  border:1px solid color-mix(in srgb, var(--brand-primary) 55%, rgba(255,255,255,.12));
+  background: color-mix(in srgb, var(--brand-primary) 22%, rgba(255,255,255,.02));
 }
 .cta:hover{
-  background: color-mix(in srgb, var(--brand-primary) 28%, transparent);
+  background: color-mix(in srgb, var(--brand-primary) 32%, rgba(255,255,255,.03));
 }
 
 .noteList{display:grid;gap:10px;}
 .noteRow{
   border-radius:16px;
-  border:1px solid var(--border);
+  border:1px solid rgba(255,255,255,.10);
   background:rgba(255,255,255,.02);
   padding:12px;
   display:flex;
   justify-content:space-between;
   gap:12px;
 }
-.noteRow:hover{ border-color: var(--brand-glow); }
+.noteRow:hover{
+  border-color: color-mix(in srgb, var(--brand-primary) 45%, rgba(255,255,255,.14));
+}
+
 .noteTitle{margin:0;font-size:14px;letter-spacing:-0.01em;}
 .noteMeta{margin:0;font-size:12px;color:var(--muted2);white-space:nowrap;}
