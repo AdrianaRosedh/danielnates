@@ -1,11 +1,20 @@
 # build output
 dist/
+web/dist/
+studio/dist/
 
-# generated types
+# generated types / caches
 .astro/
+web/.astro/
+studio/.astro/
+.cache/
+web/.cache/
+studio/.cache/
 
 # dependencies
 node_modules/
+web/node_modules/
+studio/node_modules/
 
 # logs
 npm-debug.log*
@@ -13,12 +22,20 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# environment variables
+# env
 .env
+.env.*
 .env.production
 
-# macOS-specific files
+# macOS
 .DS_Store
 
-# jetbrains setting folder
+# IDE
 .idea/
+
+# vercel
+.vercel/
+
+# sanity local
+.sanity/
+studio/.sanity/
