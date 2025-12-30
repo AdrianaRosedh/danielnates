@@ -2,15 +2,22 @@
 const { projects = [] } = Astro.props;
 ---
 
-<section id="proyectos" class="section">
-  <p class="kicker">Proyectos</p>
-
+<section class="section">
   {projects.length ? (
-    <div class="grid">
+    <div class="grid reveal-stagger">
       {projects.map((p) => (
-        <article class="projectCard">
+        <article
+          class="projectCard"
+          transition:name={`proj-${p?.slug?.current ?? "x"}`}
+        >
           <div class="projectLeft">
-            <h3 class="projectTitle">{p?.title ?? "Proyecto"}</h3>
+            <h3
+              class="projectTitle"
+              transition:name={`proj-title-${p?.slug?.current ?? "x"}`}
+            >
+              {p?.title ?? "Proyecto"}
+            </h3>
+
             <p class="projectText">{p?.summary?.es ?? ""}</p>
 
             <div class="badges">
@@ -21,6 +28,7 @@ const { projects = [] } = Astro.props;
                   ? "Secundario"
                   : "Pasado"}
               </span>
+
               {p?.slug?.current === "olivea" && <span class="badge">Proyecto central</span>}
               {p?.slug?.current === "fritanguita" && <span class="badge">Ritmo rápido</span>}
               {p?.slug?.current === "maizal" && <span class="badge">Archivo</span>}

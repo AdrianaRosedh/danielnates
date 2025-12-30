@@ -1,0 +1,52 @@
+<script is:inline>
+{`
+(function(){
+  function initMotion(){
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Reveal init (re-run every navigation)
+    const els = Array.from(document.querySelectorAll('.reveal, .reveal-stagger'));
+    if (!els.length) return;
+
+    // reset so transitions can run
+    els.forEach((el) => el.classList.remove('is-in'));
+
+    const io = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-in');
+          io.unobserve(entry.target);
+        }
+      }
+    }, { threshold: 0.16 });
+
+    els.forEach((el) => io.observe(el));
+
+    // Smooth anchor scroll (optional)
+    if (!reduce) {
+      const handler = (e) => {
+        const a = e.target && e.target.closest ? e.target.closest('a[href^="#"]') : null;
+        if (!a) return;
+        const href = a.getAttribute('href');
+        if (!href || href === '#') return;
+        const el = document.querySelector(href);
+        if (!el) return;
+        e.preventDefault();
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        history.pushState(null, '', href);
+      };
+
+      // Prevent multiple bindings across transitions
+      document.removeEventListener('click', window.__dnAnchorHandler, { passive: false });
+      window.__dnAnchorHandler = handler;
+      document.addEventListener('click', handler, { passive: false });
+    }
+  }
+
+  if (document.readyState === 'complete') initMotion();
+  else window.addEventListener('load', initMotion, { once:true });
+
+  document.addEventListener('astro:page-load', initMotion);
+})();
+`}
+</script>

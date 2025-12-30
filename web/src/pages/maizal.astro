@@ -2,6 +2,11 @@
 import BaseLayout from "../components/layout/BaseLayout.astro";
 import TopDock from "../components/layout/TopDock.astro";
 import HeroFilm from "../components/sections/HeroFilm.astro";
+import PortableText from "../components/content/PortableText.astro";
+import ChapterProgress from "../components/motion/ChapterProgress.astro";
+
+import MotionScripts from "../components/motion/MotionScripts.astro";
+import IntroGate from "../components/motion/IntroGate.astro";
 
 import { sanity } from "../lib/sanity";
 import { PROJECT_BY_SLUG } from "../lib/queries";
@@ -13,26 +18,41 @@ const summary = project?.summary?.es ?? "";
 ---
 
 <BaseLayout title={title} description={summary}>
-  <div class="shell" data-brand="maizal">
-    <TopDock items={[
-      { label: "Inicio", href: "/" },
-      { label: "Olivea", href: "/olivea" },
-      { label: "Fritanguita", href: "/fritanguita" },
-    ]} />
+  <IntroGate title="Maizal" subtitle={summary || "Archivo"} brand="maizal" />
 
-    <HeroFilm
-      title={title}
-      sub={summary}
-      pills={[{label:"Pasado"}, {label:"Archivo"}]}
-      videoUrl={null}
-      posterUrl={null}
+  <div class="shell" data-brand="maizal">
+    <TopDock
+      items={[
+        { label: "Inicio", href: "/" },
+        { label: "Olivea", href: "/olivea" },
+        { label: "Fritanguita", href: "/fritanguita" },
+      ]}
     />
 
-    <section class="section">
+    <div class="reveal">
+      <HeroFilm
+        title={title}
+        sub={summary}
+        pills={[{ label: "Pasado" }, { label: "Archivo" }]}
+        videoUrl={null}
+        posterUrl={null}
+        transitionKey="maizal"
+      />
+    </div>
+
+    <section class="section reveal">
       <p class="kicker">Archivo</p>
-      <div class="projectCard" style="flex-direction:column;gap:10px;">
-        <p class="projectText">{project?.body?.es?.[0]?.children?.[0]?.text ?? "Agrega texto en Sanity."}</p>
+
+      <div class="projectCard" style="flex-direction:column;gap:12px;">
+        {project?.body?.es ? (
+          <PortableText value={project.body.es} />
+        ) : (
+          <p class="projectText">Agrega texto en Sanity → Cuerpo (editorial) → ES.</p>
+        )}
       </div>
     </section>
   </div>
+
+  <ChapterProgress />
+  <MotionScripts />
 </BaseLayout>

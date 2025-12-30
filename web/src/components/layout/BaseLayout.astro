@@ -1,9 +1,15 @@
 ---
+import { ViewTransitions } from "astro:transitions";
+import MotionScripts from "../motion/MotionScripts.astro";
+
 import "../../styles/tokens.css";
+import "../../styles/brands.css";
 import "../../styles/film.css";
 import "../../styles/layout.css";
 import "../../styles/hero.css";
 import "../../styles/cards.css";
+import "../../styles/motion.css";
+import "../../styles/transitions.css";
 
 const { title = "Daniel Nates", description = "" } = Astro.props;
 ---
@@ -14,8 +20,64 @@ const { title = "Daniel Nates", description = "" } = Astro.props;
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>{title}</title>
     {description && <meta name="description" content={description} />}
+    <ViewTransitions />
+
+    <!-- Make animations opt-in only when JS is running -->
+    <script is:inline>{`document.documentElement.classList.add('js');`}</script>
+    <script is:inline>
+    {`
+    (function(){
+      function prefersReducedMotion(){
+        try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+        catch { return false; }
+      }
+    
+      function initIntro(){
+        const gate = document.querySelector('[data-intro]');
+        if (!gate) return;
+    
+        // Decide when to show:
+        // - first visit only, unless forced via ?intro=1
+        const url = new URL(window.location.href);
+        const force = url.searchParams.get('intro') === '1';
+        const key = 'dn_intro_seen_v4';
+        const seen = (() => { try { return localStorage.getItem(key) === '1'; } catch { return true; } })();
+    
+        const shouldShow = !prefersReducedMotion() && (force || !seen);
+    
+        // Always keep it non-blocking unless we explicitly show it
+        if (!shouldShow){
+          gate.remove();
+          return;
+        }
+    
+        // Show
+        gate.classList.remove('hidden');
+    
+        const hide = () => {
+          try { localStorage.setItem(key,'1'); } catch {}
+          gate.classList.add('hidden');
+          gate.style.pointerEvents = 'none';
+          setTimeout(() => { try { gate.remove(); } catch {} }, 700);
+        };
+    
+        const skip = gate.querySelector('[data-intro-skip]');
+        if (skip) skip.addEventListener('click', hide, { once:true });
+    
+        // Auto-dismiss + hard failsafe
+        setTimeout(hide, 1600);
+        setTimeout(() => { if (document.querySelector('[data-intro]')) hide(); }, 3500);
+      }
+    
+      // Run on initial load + after every ViewTransitions navigation
+      window.addEventListener('load', initIntro, { once:true });
+      document.addEventListener('astro:page-load', initIntro);
+    })();
+    `}
+    </script>
   </head>
   <body>
     <slot />
+    <MotionScripts />
   </body>
 </html>

@@ -2,6 +2,11 @@
 import BaseLayout from "../components/layout/BaseLayout.astro";
 import TopDock from "../components/layout/TopDock.astro";
 import HeroFilm from "../components/sections/HeroFilm.astro";
+import PortableText from "../components/content/PortableText.astro";
+import ChapterProgress from "../components/motion/ChapterProgress.astro";
+
+import MotionScripts from "../components/motion/MotionScripts.astro";
+import IntroGate from "../components/motion/IntroGate.astro";
 
 import { sanity } from "../lib/sanity";
 import { PROJECT_BY_SLUG } from "../lib/queries";
@@ -10,33 +15,43 @@ const project = await sanity.fetch(PROJECT_BY_SLUG, { slug: "fritanguita" });
 
 const title = project?.title ?? "Fritanguita";
 const summary = project?.summary?.es ?? "";
-const heroVideoUrl = project?.heroMedia?.videoUrl ?? null;
-const heroPosterUrl = project?.heroMedia?.image ? null : null;
 ---
 
 <BaseLayout title={title} description={summary}>
-  <div class="shell" data-brand="fritanguita">
-    <TopDock items={[
-      { label: "Inicio", href: "/" },
-      { label: "Olivea", href: "/olivea" },
-      { label: "Proyectos", href: "/#proyectos" },
-    ]} />
+  <IntroGate title="Fritanguita" subtitle={summary || "Proyecto secundario"} brand="fritanguita" />
 
-    <HeroFilm
-      title={title}
-      sub={summary}
-      pills={[{label:"Secundario"}, {label:"Contemporáneo"}, {label:"Pulso"}]}
-      videoUrl={heroVideoUrl}
-      posterUrl={heroPosterUrl}
+  <div class="shell" data-brand="fritanguita">
+    <TopDock
+      items={[
+        { label: "Inicio", href: "/" },
+        { label: "Olivea", href: "/olivea" },
+        { label: "Proyectos", href: "/#proyectos" },
+      ]}
     />
 
-    <section class="section">
-      <p class="kicker">Fritanguita</p>
-      <div class="projectCard" style="flex-direction:column;gap:10px;">
-        <p class="projectText">{project?.body?.es?.[0]?.children?.[0]?.text ?? "Agrega cuerpo editorial en Sanity."}</p>
+    <div class="reveal">
+      <HeroFilm
+        title={title}
+        sub={summary}
+        pills={[{ label: "Secundario" }, { label: "Contemporáneo" }, { label: "Pulso" }]}
+        videoUrl={project?.heroMedia?.videoUrl ?? null}
+        posterUrl={null}
+        transitionKey="fritanguita"
+      />
+    </div>
+
+    <section class="section reveal">
+      <p class="kicker">Capítulo</p>
+
+      <div class="projectCard" style="flex-direction:column;gap:12px;">
+        {project?.body?.es ? (
+          <PortableText value={project.body.es} />
+        ) : (
+          <p class="projectText">Agrega texto en Sanity → Cuerpo (editorial) → ES.</p>
+        )}
 
         {project?.links?.length ? (
-          <div class="badges">
+          <div class="badges reveal-stagger">
             {project.links.map((l) => (
               <a class="cta" href={l.href} target="_blank" rel="noreferrer">{l.label}</a>
             ))}
@@ -45,4 +60,7 @@ const heroPosterUrl = project?.heroMedia?.image ? null : null;
       </div>
     </section>
   </div>
+
+  <ChapterProgress />
+  <MotionScripts />
 </BaseLayout>

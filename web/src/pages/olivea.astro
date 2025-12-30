@@ -2,6 +2,11 @@
 import BaseLayout from "../components/layout/BaseLayout.astro";
 import TopDock from "../components/layout/TopDock.astro";
 import HeroFilm from "../components/sections/HeroFilm.astro";
+import PortableText from "../components/content/PortableText.astro";
+import ChapterProgress from "../components/motion/ChapterProgress.astro";
+
+import MotionScripts from "../components/motion/MotionScripts.astro";
+import IntroGate from "../components/motion/IntroGate.astro";
 
 import { sanity } from "../lib/sanity";
 import { PROJECT_BY_SLUG } from "../lib/queries";
@@ -10,36 +15,43 @@ const project = await sanity.fetch(PROJECT_BY_SLUG, { slug: "olivea" });
 
 const title = project?.title ?? "Olivea";
 const summary = project?.summary?.es ?? "";
-const heroVideoUrl = project?.heroMedia?.videoUrl ?? null;
-const heroPosterUrl = project?.heroMedia?.image ? null : null; // keep simple for now
 ---
 
 <BaseLayout title={title} description={summary}>
-  <div class="shell" data-brand="olivea">
-    <TopDock items={[
-      { label: "Inicio", href: "/" },
-      { label: "Proyectos", href: "/#proyectos" },
-      { label: "Fritanguita", href: "/fritanguita" },
-    ]} />
+  <IntroGate title="Olivea" subtitle={summary || "Proyecto central"} brand="olivea" />
 
-    <HeroFilm
-      title={title}
-      sub={summary}
-      pills={[{label:"Proyecto central"}, {label:"Territorio"}, {label:"Técnica"}]}
-      videoUrl={heroVideoUrl}
-      posterUrl={heroPosterUrl}
+  <div class="shell" data-brand="olivea">
+    <TopDock
+      items={[
+        { label: "Inicio", href: "/" },
+        { label: "Proyectos", href: "/#proyectos" },
+        { label: "Fritanguita", href: "/fritanguita" },
+      ]}
     />
 
-    <section class="section">
-      <p class="kicker">Olivea</p>
-      <div class="projectCard" style="flex-direction:column;gap:10px;">
-        <p class="projectText">{project?.body?.es?.[0]?.children?.[0]?.text ?? "Agrega cuerpo editorial en Sanity."}</p>
-        <p class="projectText" style="color:var(--muted2);">
-          Tip: en Sanity, llena “Cuerpo (editorial) → ES” con texto largo.
-        </p>
+    <div class="reveal">
+      <HeroFilm
+        title={title}
+        sub={summary}
+        pills={[{ label: "Proyecto central" }, { label: "Territorio" }, { label: "Técnica" }]}
+        videoUrl={project?.heroMedia?.videoUrl ?? null}
+        posterUrl={null}
+        transitionKey="olivea"
+      />
+    </div>
+
+    <section class="section reveal">
+      <p class="kicker">Capítulo</p>
+
+      <div class="projectCard" style="flex-direction:column;gap:12px;">
+        {project?.body?.es ? (
+          <PortableText value={project.body.es} />
+        ) : (
+          <p class="projectText">Agrega texto largo en Sanity → Cuerpo (editorial) → ES.</p>
+        )}
 
         {project?.links?.length ? (
-          <div class="badges">
+          <div class="badges reveal-stagger">
             {project.links.map((l) => (
               <a class="cta" href={l.href} target="_blank" rel="noreferrer">{l.label}</a>
             ))}
@@ -48,4 +60,7 @@ const heroPosterUrl = project?.heroMedia?.image ? null : null; // keep simple fo
       </div>
     </section>
   </div>
+
+  <ChapterProgress />
+  <MotionScripts />
 </BaseLayout>

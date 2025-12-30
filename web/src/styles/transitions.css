@@ -1,0 +1,18 @@
+/* Film-like dissolve for Astro View Transitions */
+::view-transition-old(root),
+::view-transition-new(root){
+  animation-duration: 420ms;
+  animation-timing-function: cubic-bezier(.22,1,.36,1);
+}
+
+@keyframes vt-in { to { opacity: 1; } }
+@keyframes vt-out { to { opacity: 0; } }
+
+::view-transition-new(root){
+  opacity: 0;
+  animation-name: vt-in;
+}
+::view-transition-old(root){
+  opacity: 1;
+  animation-name: vt-out;
+}

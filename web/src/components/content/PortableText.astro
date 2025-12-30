@@ -1,0 +1,58 @@
+---
+const { value = [] } = Astro.props;
+
+const blocks = Array.isArray(value) ? value : [];
+
+function textFromChildren(children = []) {
+  return (children || []).map((c) => c?.text ?? "").join("");
+}
+---
+
+<div class="pt">
+  {blocks.map((b) => {
+    if (b?._type !== "block") return null;
+
+    const style = b.style || "normal";
+    const txt = textFromChildren(b.children);
+
+    if (!txt?.trim()) return null;
+
+    if (style === "h2") return <h2>{txt}</h2>;
+    if (style === "h3") return <h3>{txt}</h3>;
+    if (style === "blockquote") return <blockquote>{txt}</blockquote>;
+
+    return <p>{txt}</p>;
+  })}
+</div>
+
+<style>
+  .pt{
+    max-width: 72ch;
+  }
+  .pt p{
+    margin: 0 0 14px;
+    color: var(--muted);
+    line-height: 1.7;
+    font-size: 15px;
+  }
+  .pt h2{
+    margin: 22px 0 10px;
+    font-size: 20px;
+    letter-spacing: -0.02em;
+  }
+  .pt h3{
+    margin: 18px 0 8px;
+    font-size: 17px;
+    letter-spacing: -0.01em;
+    opacity: .95;
+  }
+  .pt blockquote{
+    margin: 18px 0;
+    padding: 12px 14px;
+    border-left: 2px solid var(--brand-glow);
+    background: rgba(255,255,255,.03);
+    border-radius: 14px;
+    color: rgba(255,255,255,.80);
+    line-height: 1.6;
+  }
+</style>

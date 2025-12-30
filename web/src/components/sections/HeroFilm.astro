@@ -1,9 +1,19 @@
 ---
-const { title, sub, pills = [], videoUrl = null, posterUrl = null } = Astro.props;
+const {
+  title,
+  sub,
+  pills = [],
+  videoUrl = null,
+  posterUrl = null,
+  transitionKey = null
+} = Astro.props;
 ---
 
 <section id="inicio" class="hero">
-  <div class="heroCard">
+  <div
+    class="heroCard"
+    transition:name={transitionKey ? `proj-${transitionKey}` : undefined}
+  >
     <div class="heroMedia" aria-hidden="true">
       {posterUrl ? <img src={posterUrl} alt="" loading="eager" decoding="async" /> : null}
 
@@ -24,11 +34,16 @@ const { title, sub, pills = [], videoUrl = null, posterUrl = null } = Astro.prop
     <div class="heroScrim"></div>
 
     <div class="heroInner">
-      <h1 class="h1">{title}</h1>
+      <h1
+        class="h1"
+        transition:name={transitionKey ? `proj-title-${transitionKey}` : undefined}
+      >
+        {title}
+      </h1>
       {sub ? <p class="sub">{sub}</p> : null}
 
       {pills?.length ? (
-        <div class="heroMeta">
+        <div class="heroMeta reveal-stagger">
           {pills.slice(0, 6).map((p) => (
             <span class="pill">{p?.label ?? "Pilar"}</span>
           ))}
@@ -37,7 +52,7 @@ const { title, sub, pills = [], videoUrl = null, posterUrl = null } = Astro.prop
     </div>
   </div>
 
-  <!-- Astro-native cinematic behavior: vanilla script island (no React) -->
+  {/* Optional: safe autoplay/pause if video exists */}
   {videoUrl ? (
     <script is:inline>
       {`
@@ -50,29 +65,18 @@ const { title, sub, pills = [], videoUrl = null, posterUrl = null } = Astro.prop
             try { return !!(navigator.connection && navigator.connection.saveData); }
             catch { return false; }
           }
-
           function boot() {
-            if (${JSON.stringify(!videoUrl)} ) return;
-
             if (prefersReducedMotion() || saveDataOn()) return;
-
             const v = document.querySelector('[data-hero-video]');
             if (!v) return;
-
-            // Don’t autoplay immediately; only when visible
             const io = new IntersectionObserver((entries) => {
               const e = entries[0];
               if (!e) return;
-              if (e.isIntersecting) {
-                v.play().catch(() => {});
-              } else {
-                v.pause();
-              }
+              if (e.isIntersecting) v.play().catch(() => {});
+              else v.pause();
             }, { threshold: 0.4 });
-
             io.observe(v);
           }
-
           if (document.readyState === 'complete') boot();
           else window.addEventListener('load', boot, { once: true });
         })();

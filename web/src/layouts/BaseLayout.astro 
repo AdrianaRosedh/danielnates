@@ -1,10 +1,15 @@
 ---
+import { ViewTransitions } from "astro:transitions";
+import MotionScripts from "../motion/MotionScripts.astro";
+
 import "../../styles/tokens.css";
 import "../../styles/brands.css";
 import "../../styles/film.css";
 import "../../styles/layout.css";
 import "../../styles/hero.css";
 import "../../styles/cards.css";
+import "../../styles/motion.css";
+import "../../styles/transitions.css";
 
 const { title = "Daniel Nates", description = "" } = Astro.props;
 ---
@@ -15,8 +20,187 @@ const { title = "Daniel Nates", description = "" } = Astro.props;
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>{title}</title>
     {description && <meta name="description" content={description} />}
+    <ViewTransitions />
+
+    <!-- Make animations opt-in only when JS is running -->
+    <script is:inline>{`document.documentElement.classList.add('js');`}</script>
+
+    <style>
+      /* GLOBAL INTRO (single source of truth) */
+      .dnIntro{
+        position: fixed;
+        inset: 0;
+        z-index: 2147483647; /* above EVERYTHING */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(5,6,6,.92);
+        backdrop-filter: blur(14px);
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(-6px);
+        transition: opacity .55s cubic-bezier(.22,1,.36,1),
+                    transform .55s cubic-bezier(.22,1,.36,1);
+      }
+      .dnIntro.on{
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateY(0);
+      }
+      .dnIntroCard{
+        width: min(860px, 92vw);
+        border-radius: 26px;
+        border: 1px solid rgba(255,255,255,.12);
+        background:
+          radial-gradient(900px 420px at 18% 18%, var(--brand-soft), transparent 60%),
+          radial-gradient(900px 480px at 86% 18%, rgba(160,120,220,.22), transparent 62%),
+          rgba(255,255,255,.03);
+        box-shadow: 0 30px 120px rgba(0,0,0,.7);
+        overflow: hidden;
+        padding: 22px 18px;
+      }
+      .dnIntroTop{
+        display:flex;
+        justify-content:space-between;
+        gap:12px;
+        align-items:center;
+      }
+      .dnIntroMark{
+        display:flex;
+        align-items:center;
+        gap:10px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(255,255,255,.12);
+        background: rgba(255,255,255,.03);
+      }
+      .dnDot{
+        width:10px;height:10px;border-radius:999px;
+        background: var(--brand-primary);
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-primary) 20%, transparent);
+      }
+      .dnMarkText{
+        font-size:12px;
+        letter-spacing:.18em;
+        text-transform:uppercase;
+        opacity:.9;
+      }
+      .dnSkip{
+        font-size:12px;
+        padding: 10px 12px;
+        border-radius: 14px;
+        border: 1px solid rgba(255,255,255,.14);
+        background: rgba(255,255,255,.03);
+        cursor:pointer;
+        color: rgba(255,255,255,.86);
+      }
+      .dnSkip:hover{ background: rgba(255,255,255,.06); }
+
+      .dnH{
+        margin: 16px 0 8px;
+        font-weight:650;
+        font-size: clamp(30px, 5vw, 56px);
+        line-height: 1.03;
+        letter-spacing: -.03em;
+      }
+      .dnP{
+        margin:0;
+        color: rgba(255,255,255,.75);
+        font-size: 15px;
+        line-height: 1.45;
+        max-width: 60ch;
+      }
+      .dnBar{
+        margin-top: 18px;
+        height: 2px;
+        background: rgba(255,255,255,.12);
+        border-radius: 999px;
+        overflow:hidden;
+      }
+      .dnBar > i{
+        display:block;
+        height:100%;
+        width: 0%;
+        background: color-mix(in srgb, var(--brand-primary) 70%, rgba(255,255,255,.35));
+      }
+      .dnIntro.on .dnBar > i{
+        animation: dnLoad 1400ms cubic-bezier(.22,1,.36,1) forwards;
+      }
+      @keyframes dnLoad { to { width:100%; } }
+    </style>
   </head>
+
   <body>
+    <!-- GLOBAL INTRO NODE (always present; JS decides if it shows) -->
+    <div class="dnIntro" data-dn-intro>
+      <div class="dnIntroCard">
+        <div class="dnIntroTop">
+          <div class="dnIntroMark">
+            <span class="dnDot"></span>
+            <span class="dnMarkText">Daniel Nates</span>
+          </div>
+          <button class="dnSkip" data-dn-skip>Skip</button>
+        </div>
+
+        <h1 class="dnH">Daniel Nates</h1>
+        <p class="dnP">Trabajo con lo que la tierra permite.</p>
+
+        <div class="dnBar" aria-hidden="true"><i></i></div>
+      </div>
+    </div>
+
     <slot />
+    <MotionScripts />
+
+    <script is:inline>
+      {`
+        (function(){
+          function prefersReducedMotion(){
+            try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+            catch { return false; }
+          }
+
+          function showIntroIfNeeded(){
+            const intro = document.querySelector('[data-dn-intro]');
+            if (!intro) return;
+
+            const url = new URL(window.location.href);
+            const force = url.searchParams.get('intro') === '1';
+
+            // keep it simple: show ONLY when forced OR first visit
+            const key = 'dn_intro_seen_v7';
+            const seen = (() => { try { return localStorage.getItem(key) === '1'; } catch { return true; } })();
+
+            const shouldShow = !prefersReducedMotion() && (force || !seen);
+
+            if (!shouldShow) {
+              intro.classList.remove('on');
+              return;
+            }
+
+            // show
+            intro.classList.add('on');
+
+            const hide = () => {
+              try { localStorage.setItem(key,'1'); } catch {}
+              intro.classList.remove('on');
+            };
+
+            const skip = intro.querySelector('[data-dn-skip]');
+            if (skip) skip.onclick = hide;
+
+            // auto hide always
+            setTimeout(hide, 1600);
+
+            // hard failsafe
+            setTimeout(() => intro.classList.remove('on'), 4500);
+          }
+
+          // initial + view transitions
+          window.addEventListener('load', showIntroIfNeeded, { once:true });
+          document.addEventListener('astro:page-load', showIntroIfNeeded);
+        })();
+      `}
+    </script>
   </body>
 </html>
