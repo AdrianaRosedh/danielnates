@@ -1,0 +1,69 @@
+.grid{display:grid;gap:12px;}
+
+.projectCard{
+  border-radius:var(--radius2);
+  border:1px solid var(--border);
+  background:rgba(255,255,255,.03);
+  padding:16px 14px;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+}
+@media (min-width:880px){ .projectCard{padding:18px 18px;} }
+
+.projectCard:hover{
+  border-color: var(--brand-glow);
+  box-shadow: 0 18px 60px rgba(0,0,0,.35);
+}
+
+.projectLeft{min-width:0;}
+
+.projectTitle{
+  margin:0 0 6px;
+  font-size:18px;
+  letter-spacing:-0.02em;
+}
+.projectText{
+  margin:0;
+  color:var(--muted);
+  line-height:1.45;
+  font-size:14px;
+}
+
+.badges{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;}
+.badge{
+  font-size:11px;
+  padding:6px 8px;
+  border-radius:999px;
+  border:1px solid var(--border);
+  background:rgba(255,255,255,.02);
+  color:rgba(255,255,255,.78);
+}
+
+.cta{
+  align-self:center;
+  flex:0 0 auto;
+  font-size:12px;
+  padding:10px 12px;
+  border-radius:14px;
+  border:1px solid var(--brand-glow);
+  background: color-mix(in srgb, var(--brand-primary) 18%, transparent);
+}
+.cta:hover{
+  background: color-mix(in srgb, var(--brand-primary) 28%, transparent);
+}
+
+.noteList{display:grid;gap:10px;}
+.noteRow{
+  border-radius:16px;
+  border:1px solid var(--border);
+  background:rgba(255,255,255,.02);
+  padding:12px;
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+}
+.noteRow:hover{ border-color: var(--brand-glow); }
+.noteTitle{margin:0;font-size:14px;letter-spacing:-0.01em;}
+.noteMeta{margin:0;font-size:12px;color:var(--muted2);white-space:nowrap;}

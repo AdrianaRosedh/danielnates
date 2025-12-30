@@ -1,0 +1,21 @@
+---
+import "../../styles/tokens.css";
+import "../../styles/film.css";
+import "../../styles/layout.css";
+import "../../styles/hero.css";
+import "../../styles/cards.css";
+
+const { title = "Daniel Nates", description = "" } = Astro.props;
+---
+
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{title}</title>
+    {description && <meta name="description" content={description} />}
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

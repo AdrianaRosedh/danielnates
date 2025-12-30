@@ -1,0 +1,82 @@
+---
+const { title, sub, pills = [], videoUrl = null, posterUrl = null } = Astro.props;
+---
+
+<section id="inicio" class="hero">
+  <div class="heroCard">
+    <div class="heroMedia" aria-hidden="true">
+      {posterUrl ? <img src={posterUrl} alt="" loading="eager" decoding="async" /> : null}
+
+      {videoUrl ? (
+        <video
+          data-hero-video
+          muted
+          playsinline
+          loop
+          preload="metadata"
+          poster={posterUrl ?? undefined}
+        >
+          <source src={videoUrl} />
+        </video>
+      ) : null}
+    </div>
+
+    <div class="heroScrim"></div>
+
+    <div class="heroInner">
+      <h1 class="h1">{title}</h1>
+      {sub ? <p class="sub">{sub}</p> : null}
+
+      {pills?.length ? (
+        <div class="heroMeta">
+          {pills.slice(0, 6).map((p) => (
+            <span class="pill">{p?.label ?? "Pilar"}</span>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  </div>
+
+  <!-- Astro-native cinematic behavior: vanilla script island (no React) -->
+  {videoUrl ? (
+    <script is:inline>
+      {`
+        (function () {
+          function prefersReducedMotion() {
+            try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+            catch { return false; }
+          }
+          function saveDataOn() {
+            try { return !!(navigator.connection && navigator.connection.saveData); }
+            catch { return false; }
+          }
+
+          function boot() {
+            if (${JSON.stringify(!videoUrl)} ) return;
+
+            if (prefersReducedMotion() || saveDataOn()) return;
+
+            const v = document.querySelector('[data-hero-video]');
+            if (!v) return;
+
+            // Don’t autoplay immediately; only when visible
+            const io = new IntersectionObserver((entries) => {
+              const e = entries[0];
+              if (!e) return;
+              if (e.isIntersecting) {
+                v.play().catch(() => {});
+              } else {
+                v.pause();
+              }
+            }, { threshold: 0.4 });
+
+            io.observe(v);
+          }
+
+          if (document.readyState === 'complete') boot();
+          else window.addEventListener('load', boot, { once: true });
+        })();
+      `}
+    </script>
+  ) : null}
+</section>

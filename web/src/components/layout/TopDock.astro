@@ -1,0 +1,15 @@
+---
+const { items = [] } = Astro.props;
+---
+<div class="topDock">
+  <div class="brandPill">
+    <span class="brandDot" aria-hidden="true"></span>
+    <span class="brandName">Daniel Nates</span>
+  </div>
+
+  <nav class="chapterNav" aria-label="Chapters">
+    {items.map((it) => (
+      <a class="chip" href={it.href}>{it.label}</a>
+    ))}
+  </nav>
+</div>

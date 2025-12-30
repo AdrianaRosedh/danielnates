@@ -1,0 +1,31 @@
+/* Default / Daniel (neutral stage) */
+:root {
+  --brand-primary: rgba(255,255,255,.90);
+  --brand-soft: rgba(255,255,255,.06);
+  --brand-glow: rgba(255,255,255,.14);
+  --brand-light: rgba(255,255,255,.88);
+}
+
+/* Olivea */
+[data-brand="olivea"] {
+  --brand-primary: #5e7658;
+  --brand-soft: rgba(94,118,88,.16);
+  --brand-glow: rgba(94,118,88,.34);
+  --brand-light: #e7eae1;
+}
+
+/* Fritanguita */
+[data-brand="fritanguita"] {
+  --brand-primary: #028a59;
+  --brand-soft: rgba(2,138,89,.18);
+  --brand-glow: rgba(2,138,89,.38);
+  --brand-light: #f1f1e8;
+}
+
+/* Optional: Maizal archival tone (neutral stone) */
+[data-brand="maizal"] {
+  --brand-primary: rgba(255,255,255,.75);
+  --brand-soft: rgba(255,255,255,.05);
+  --brand-glow: rgba(255,255,255,.12);
+  --brand-light: rgba(255,255,255,.82);
+}

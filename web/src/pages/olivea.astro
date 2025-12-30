@@ -1,0 +1,51 @@
+---
+import BaseLayout from "../components/layout/BaseLayout.astro";
+import TopDock from "../components/layout/TopDock.astro";
+import HeroFilm from "../components/sections/HeroFilm.astro";
+
+import { sanity } from "../lib/sanity";
+import { PROJECT_BY_SLUG } from "../lib/queries";
+
+const project = await sanity.fetch(PROJECT_BY_SLUG, { slug: "olivea" });
+
+const title = project?.title ?? "Olivea";
+const summary = project?.summary?.es ?? "";
+const heroVideoUrl = project?.heroMedia?.videoUrl ?? null;
+const heroPosterUrl = project?.heroMedia?.image ? null : null; // keep simple for now
+---
+
+<BaseLayout title={title} description={summary}>
+  <div class="shell" data-brand="olivea">
+    <TopDock items={[
+      { label: "Inicio", href: "/" },
+      { label: "Proyectos", href: "/#proyectos" },
+      { label: "Fritanguita", href: "/fritanguita" },
+    ]} />
+
+    <HeroFilm
+      title={title}
+      sub={summary}
+      pills={[{label:"Proyecto central"}, {label:"Territorio"}, {label:"Técnica"}]}
+      videoUrl={heroVideoUrl}
+      posterUrl={heroPosterUrl}
+    />
+
+    <section class="section">
+      <p class="kicker">Olivea</p>
+      <div class="projectCard" style="flex-direction:column;gap:10px;">
+        <p class="projectText">{project?.body?.es?.[0]?.children?.[0]?.text ?? "Agrega cuerpo editorial en Sanity."}</p>
+        <p class="projectText" style="color:var(--muted2);">
+          Tip: en Sanity, llena “Cuerpo (editorial) → ES” con texto largo.
+        </p>
+
+        {project?.links?.length ? (
+          <div class="badges">
+            {project.links.map((l) => (
+              <a class="cta" href={l.href} target="_blank" rel="noreferrer">{l.label}</a>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </section>
+  </div>
+</BaseLayout>

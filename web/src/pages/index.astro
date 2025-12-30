@@ -1,0 +1,69 @@
+---
+import BaseLayout from "../components/layout/BaseLayout.astro";
+import TopDock from "../components/layout/TopDock.astro";
+import HeroFilm from "../components/sections/HeroFilm.astro";
+import ProjectsSection from "../components/sections/ProjectsSection.astro";
+import FieldNotesSection from "../components/sections/FieldNotesSection.astro";
+
+import { sanity } from "../lib/sanity";
+import { DANIEL_QUERY, PROJECTS_QUERY, FIELD_NOTES_QUERY } from "../lib/queries";
+
+const daniel = await sanity.fetch(DANIEL_QUERY);
+const projects = await sanity.fetch(PROJECTS_QUERY);
+const notes = await sanity.fetch(FIELD_NOTES_QUERY);
+
+const safeProjects = Array.isArray(projects) ? projects : [];
+const safeNotes = Array.isArray(notes) ? notes : [];
+
+const heroTitle = daniel?.tagline?.es ?? daniel?.name ?? "Daniel Nates";
+const heroSub = daniel?.subline?.es ?? null;
+const pills = Array.isArray(daniel?.pillars) ? daniel.pillars : [];
+
+const olivea = safeProjects.find((p) => p?.slug?.current === "olivea");
+const frita = safeProjects.find((p) => p?.slug?.current === "fritanguita");
+const maizal = safeProjects.find((p) => p?.slug?.current === "maizal");
+
+const orderedForHome = [olivea, frita, maizal].filter(Boolean);
+---
+
+<BaseLayout
+  title={heroTitle}
+  description="Daniel Nates — técnica global, territorio local. Ingrediente, fermentación, algas y eficiencia."
+>
+  <div class="shell">
+    <TopDock
+      items={[
+        { label: "Inicio", href: "#inicio" },
+        { label: "Olivea", href: "#olivea" },
+        { label: "Fritanguita", href: "#fritanguita" },
+        { label: "Field Notes", href: "#fieldnotes" },
+      ]}
+    />
+
+    <!-- Neutral Daniel stage -->
+    <HeroFilm title={heroTitle} sub={heroSub} pills={pills} videoUrl={null} posterUrl={null} />
+
+    <!-- OLIVEA tinted section -->
+    <section id="olivea" data-brand="olivea" class="section">
+      <p class="kicker">Olivea</p>
+      <ProjectsSection projects={olivea ? [olivea] : []} />
+    </section>
+
+    <!-- FRITANGUITA tinted section -->
+    <section id="fritanguita" data-brand="fritanguita" class="section">
+      <p class="kicker">Fritanguita</p>
+      <ProjectsSection projects={frita ? [frita] : []} />
+    </section>
+
+    <!-- MAIZAL archival -->
+    <section id="maizal" data-brand="maizal" class="section">
+      <p class="kicker">Maizal</p>
+      <ProjectsSection projects={maizal ? [maizal] : []} />
+    </section>
+
+    <!-- Neutral notes (or keep Daniel neutral) -->
+    <section id="fieldnotes" class="section">
+      <FieldNotesSection notes={safeNotes} />
+    </section>
+  </div>
+</BaseLayout>

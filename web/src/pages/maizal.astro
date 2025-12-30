@@ -1,0 +1,38 @@
+---
+import BaseLayout from "../components/layout/BaseLayout.astro";
+import TopDock from "../components/layout/TopDock.astro";
+import HeroFilm from "../components/sections/HeroFilm.astro";
+
+import { sanity } from "../lib/sanity";
+import { PROJECT_BY_SLUG } from "../lib/queries";
+
+const project = await sanity.fetch(PROJECT_BY_SLUG, { slug: "maizal" });
+
+const title = project?.title ?? "Maizal";
+const summary = project?.summary?.es ?? "";
+---
+
+<BaseLayout title={title} description={summary}>
+  <div class="shell" data-brand="maizal">
+    <TopDock items={[
+      { label: "Inicio", href: "/" },
+      { label: "Olivea", href: "/olivea" },
+      { label: "Fritanguita", href: "/fritanguita" },
+    ]} />
+
+    <HeroFilm
+      title={title}
+      sub={summary}
+      pills={[{label:"Pasado"}, {label:"Archivo"}]}
+      videoUrl={null}
+      posterUrl={null}
+    />
+
+    <section class="section">
+      <p class="kicker">Archivo</p>
+      <div class="projectCard" style="flex-direction:column;gap:10px;">
+        <p class="projectText">{project?.body?.es?.[0]?.children?.[0]?.text ?? "Agrega texto en Sanity."}</p>
+      </div>
+    </section>
+  </div>
+</BaseLayout>

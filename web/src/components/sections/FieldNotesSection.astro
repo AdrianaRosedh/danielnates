@@ -1,0 +1,27 @@
+---
+const { notes = [] } = Astro.props;
+---
+
+<section id="fieldnotes" class="section">
+  <p class="kicker">Field Notes</p>
+
+  {notes.length ? (
+    <div class="noteList">
+      {notes.slice(0, 6).map((n) => (
+        <div class="noteRow">
+          <div style="min-width:0;">
+            <p class="noteTitle">{n?.title ?? "Nota"}</p>
+            {n?.externalLink ? (
+              <p class="sub" style="margin-top:6px;font-size:12px;">
+                <a href={n.externalLink} target="_blank" rel="noreferrer">Ver referencia</a>
+              </p>
+            ) : null}
+          </div>
+          <p class="noteMeta">{n?.category ?? "—"}</p>
+        </div>
+      ))}
+    </div>
+  ) : (
+    <p class="sub">Sin Field Notes todavía. Crea y publica notas en Sanity.</p>
+  )}
+</section>

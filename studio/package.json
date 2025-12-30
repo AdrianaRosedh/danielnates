@@ -1,0 +1,16 @@
+{
+  "name": "studio",
+  "private": true,
+  "scripts": {
+    "dev": "sanity dev",
+    "build": "sanity build",
+    "start": "sanity start"
+  },
+  "dependencies": {
+    "@sanity/structure": "^2.36.2",
+    "@sanity/vision": "^5.1.0",
+    "lucide-react": "^0.562.0",
+    "sanity": "^5.1.0",
+    "styled-components": "^6.1.19"
+  }
+}

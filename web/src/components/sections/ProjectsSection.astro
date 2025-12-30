@@ -1,0 +1,39 @@
+---
+const { projects = [] } = Astro.props;
+---
+
+<section id="proyectos" class="section">
+  <p class="kicker">Proyectos</p>
+
+  {projects.length ? (
+    <div class="grid">
+      {projects.map((p) => (
+        <article class="projectCard">
+          <div class="projectLeft">
+            <h3 class="projectTitle">{p?.title ?? "Proyecto"}</h3>
+            <p class="projectText">{p?.summary?.es ?? ""}</p>
+
+            <div class="badges">
+              <span class="badge">
+                {p?.status === "primary"
+                  ? "Primario"
+                  : p?.status === "secondary"
+                  ? "Secundario"
+                  : "Pasado"}
+              </span>
+              {p?.slug?.current === "olivea" && <span class="badge">Proyecto central</span>}
+              {p?.slug?.current === "fritanguita" && <span class="badge">Ritmo rápido</span>}
+              {p?.slug?.current === "maizal" && <span class="badge">Archivo</span>}
+            </div>
+          </div>
+
+          {p?.slug?.current ? (
+            <a class="cta" href={`/${p.slug.current}`}>Explorar</a>
+          ) : null}
+        </article>
+      ))}
+    </div>
+  ) : (
+    <p class="sub">Sin proyectos todavía. Crea y publica proyectos en Sanity.</p>
+  )}
+</section>
