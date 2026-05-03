@@ -1,0 +1,78 @@
+---
+import type { Locale, RecipeBlock } from "../../lib/types";
+import { ui } from "../../lib/i18n";
+import PortableText from "../content/PortableText.astro";
+
+interface Props { block: RecipeBlock; locale?: Locale }
+const { block, locale: propLocale } = Astro.props as Props;
+const locale: Locale = propLocale ?? Astro.locals.locale ?? "es";
+
+const ing = block.ingredients ?? [];
+const steps = block.steps ?? [];
+---
+
+<section class="recipe reveal">
+  <header class="recipe__head">
+    {block.title ? <h2>{block.title}</h2> : null}
+    {block.meta ? (
+      <ul class="recipe__meta">
+        {block.meta.time != null ? <li><strong>{block.meta.time}</strong> {ui("min", locale)}</li> : null}
+        {block.meta.servings != null ? <li><strong>{block.meta.servings}</strong> {ui("servings", locale)}</li> : null}
+        {block.meta.difficulty ? <li>{block.meta.difficulty}</li> : null}
+      </ul>
+    ) : null}
+  </header>
+
+  <div class="recipe__cols">
+    {ing.length ? (
+      <div class="recipe__col">
+        <h3 class="kicker" style="margin-bottom:8px;">{ui("ingredients", locale)}</h3>
+        <ul class="recipe__list">
+          {ing.map((i) => (
+            <li>
+              <span class="amount">{i.amount}</span>
+              <span class="item">{i.item}</span>
+              {i.note ? <span class="note">— {i.note}</span> : null}
+            </li>
+          ))}
+        </ul>
+      </div>
+    ) : null}
+
+    {steps.length ? (
+      <div class="recipe__col recipe__col--wide">
+        <h3 class="kicker" style="margin-bottom:8px;">{ui("steps", locale)}</h3>
+        <ol class="recipe__steps">
+          {steps.map((s) => {
+            const txt = (s.children ?? []).map((c) => (c as any).text ?? "").join("");
+            return txt ? <li><PortableText value={[s]} /></li> : null;
+          })}
+        </ol>
+      </div>
+    ) : null}
+  </div>
+</section>
+
+<style>
+  .recipe{
+    margin: 26px 0;
+    padding: 22px;
+    border-radius: var(--radius);
+    border: 1px solid color-mix(in srgb, var(--brand-primary) 22%, rgba(255,255,255,.08));
+    background: rgba(255,255,255,.03);
+  }
+  .recipe__head h2{ margin: 0 0 12px; font-size: clamp(22px, 3vw, 30px); letter-spacing: -.02em; }
+  .recipe__meta{ list-style: none; padding: 0; margin: 0 0 18px; display: flex; gap: 16px; flex-wrap: wrap; color: var(--muted); font-size: 13px; }
+  .recipe__meta strong{ color: var(--text); margin-right: 4px; font-weight: 650; }
+  .recipe__cols{ display: grid; gap: 24px; grid-template-columns: 1fr; }
+  @media (min-width: 880px){ .recipe__cols{ grid-template-columns: 1fr 1.4fr; } }
+  .recipe__col--wide{ }
+  .recipe__list{ list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+  .recipe__list li{ display: grid; grid-template-columns: 80px 1fr; gap: 8px; align-items: baseline; padding: 6px 0; border-bottom: 1px dashed rgba(255,255,255,.08); font-size: 14px; }
+  .recipe__list .amount{ color: var(--muted); font-variant-numeric: tabular-nums; }
+  .recipe__list .item{ color: var(--text); }
+  .recipe__list .note{ grid-column: 2; color: var(--muted2); font-size: 12px; }
+  .recipe__steps{ padding-left: 18px; margin: 0; display: grid; gap: 6px; }
+  .recipe__steps li{ padding: 6px 0; }
+  .recipe__steps li::marker{ color: var(--muted2); font-variant-numeric: tabular-nums; }
+</style>

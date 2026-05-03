@@ -1,0 +1,144 @@
+---
+export const prerender = true;
+
+import BaseLayout from "../components/layout/BaseLayout.astro";
+import TopDock from "../components/layout/TopDock.astro";
+import { getDailyBriefs } from "../lib/queries";
+import { dateFormat, t } from "../lib/i18n";
+import { img, imgSrcset } from "../lib/image";
+import type { Locale } from "../lib/types";
+
+interface PageProps { lang?: Locale }
+const { lang } = Astro.props as PageProps;
+const locale: Locale = lang ?? Astro.locals.locale ?? "es";
+
+const briefs = (await getDailyBriefs()) ?? [];
+
+const headline = locale === "es" ? "Un día, una nota." : "One day, one note.";
+const lede = locale === "es"
+  ? "Una imagen y una línea, casi cada día. Lo que la cocina, el huerto o el cuaderno me dejaron."
+  : "One image and one line, almost every day. What the kitchen, the garden, or the sketchbook left me.";
+---
+
+<BaseLayout
+  title={`${locale === "es" ? "Día" : "Day"} — Daniel Nates`}
+  description={lede}
+  locale={locale}
+  og={{
+    title: locale === "es" ? "Día" : "Day",
+    kicker: locale === "es" ? "Brief diario" : "Daily brief",
+    sig: lede,
+    brand: "daniel",
+    meta: locale === "es" ? `${briefs.length} entradas` : `${briefs.length} entries`,
+  }}
+>
+  <div class="shell">
+    <TopDock locale={locale} />
+
+    <section class="section reveal">
+      <p class="kicker">{locale === "es" ? "Brief diario" : "Daily brief"}</p>
+      <h1 class="h1" style="margin-bottom: 18px;">{headline}</h1>
+      <p class="lede" style="max-width: 60ch;">{lede}</p>
+    </section>
+
+    {briefs.length ? (
+      <section class="section">
+        <ol class="dia__grid reveal-stagger">
+          {briefs.map((b) => {
+            const cover = img(b.image, { width: 900 });
+            const srcset = imgSrcset(b.image);
+            const line = t(b.line, locale);
+            return (
+              <li class="dia__cell">
+                <article class="dia__card">
+                  {cover ? (
+                    <img
+                      src={cover}
+                      srcset={srcset ?? undefined}
+                      sizes="(min-width: 1100px) 360px, (min-width: 720px) 50vw, 100vw"
+                      alt={line || b.date}
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div class="dia__noimg" aria-hidden="true"></div>
+                  )}
+                  <div class="dia__body">
+                    <p class="dia__date">{dateFormat(b.date, locale)}</p>
+                    {line ? <p class="dia__line">{line}</p> : null}
+                    {b.place ? <p class="dia__place">{b.place}</p> : null}
+                  </div>
+                </article>
+              </li>
+            );
+          })}
+        </ol>
+      </section>
+    ) : (
+      <section class="section reveal">
+        <p class="lede" style="max-width: 60ch;">
+          {locale === "es"
+            ? "Aún no hay entradas. Crea la primera en Sanity → Brief diario."
+            : "No entries yet. Create the first in Sanity → Brief diario."}
+        </p>
+      </section>
+    )}
+  </div>
+</BaseLayout>
+
+<style>
+  .dia__grid{
+    list-style: none; margin: 0; padding: 0;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: clamp(16px, 2vw, 24px);
+  }
+  @media (min-width: 720px){ .dia__grid{ grid-template-columns: 1fr 1fr; } }
+  @media (min-width: 1100px){ .dia__grid{ grid-template-columns: repeat(3, 1fr); } }
+
+  .dia__cell{ min-width: 0; }
+  .dia__card{
+    display: flex; flex-direction: column;
+    border: 1px solid var(--line);
+    border-radius: var(--r-2);
+    overflow: hidden;
+    background: color-mix(in srgb, var(--text) 2%, transparent);
+    transition: border-color .25s, transform .35s;
+  }
+  .dia__card:hover{
+    border-color: color-mix(in srgb, var(--text) 18%, transparent);
+    transform: translateY(-2px);
+  }
+  .dia__card img,
+  .dia__noimg{
+    width: 100%;
+    aspect-ratio: 4/5;
+    object-fit: cover;
+    display: block;
+    background: rgba(244,239,230,.04);
+  }
+  .dia__body{ padding: 14px 16px 18px; }
+  .dia__date{
+    margin: 0 0 6px;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  .dia__line{
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(18px, 1.6vw, 22px);
+    line-height: 1.35;
+    color: var(--text);
+    max-width: 36ch;
+  }
+  .dia__place{
+    margin: 8px 0 0;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+</style>

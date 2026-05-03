@@ -1,0 +1,45 @@
+---
+import type { Locale, TimelineBlock } from "../../lib/types";
+import { t } from "../../lib/i18n";
+
+interface Props { block: TimelineBlock; locale?: Locale }
+const { block, locale: propLocale } = Astro.props as Props;
+const locale: Locale = propLocale ?? Astro.locals.locale ?? "es";
+
+const entries = block.entries ?? [];
+---
+
+<section class="timeline reveal">
+  {block.title ? <h2 class="timeline__title">{block.title}</h2> : null}
+  {entries.length ? (
+    <ol class="timeline__list reveal-stagger">
+      {entries.map((e) => (
+        <li class="timeline__entry">
+          <span class="timeline__dot" aria-hidden="true"></span>
+          <p class="timeline__year">{e.year}</p>
+          <h3 class="timeline__label">{e.label}</h3>
+          {t(e.note, locale) ? <p class="timeline__note">{t(e.note, locale)}</p> : null}
+        </li>
+      ))}
+    </ol>
+  ) : null}
+</section>
+
+<style>
+  .timeline{ margin: 28px 0; }
+  .timeline__title{ margin: 0 0 18px; font-size: clamp(22px, 3vw, 30px); letter-spacing: -.02em; }
+  .timeline__list{
+    list-style: none; padding: 0; margin: 0;
+    border-left: 1px solid rgba(255,255,255,.12);
+  }
+  .timeline__entry{ position: relative; padding: 14px 0 14px 22px; }
+  .timeline__dot{
+    position: absolute; left: -5px; top: 22px;
+    width: 9px; height: 9px; border-radius: 999px;
+    background: color-mix(in srgb, var(--brand-primary) 70%, rgba(255,255,255,.4));
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-primary) 18%, transparent);
+  }
+  .timeline__year{ margin: 0; font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--muted2); }
+  .timeline__label{ margin: 4px 0 4px; font-size: 17px; letter-spacing: -.01em; }
+  .timeline__note{ margin: 0; color: var(--muted); line-height: 1.5; font-size: 14px; max-width: 60ch; }
+</style>

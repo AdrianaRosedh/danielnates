@@ -1,0 +1,144 @@
+---
+import BaseLayout from "../components/layout/BaseLayout.astro";
+import TopDock from "../components/layout/TopDock.astro";
+import HeroFilm from "../components/sections/HeroFilm.astro";
+import PortableText from "../components/content/PortableText.astro";
+import BlockRenderer from "../components/blocks/BlockRenderer.astro";
+import IntroGate from "../components/motion/IntroGate.astro";
+
+import { clientFor, getProject } from "../lib/queries";
+import { href, t, tb, ui } from "../lib/i18n";
+import type { Locale } from "../lib/types";
+
+interface PageProps { lang?: Locale }
+const { lang } = Astro.props as PageProps;
+const locale: Locale = lang ?? Astro.locals.locale ?? "es";
+
+const { slug } = Astro.params as { slug: string };
+
+// Skip reserved top-level paths so this dynamic route doesn't shadow them.
+const RESERVED = new Set(["en", "diario", "arte", "contacto", "contact", "api", "404"]);
+if (RESERVED.has(slug)) return Astro.redirect(href("/404", locale));
+
+const client = clientFor(Astro.cookies);
+const project = await getProject(slug, client);
+
+if (!project) return Astro.redirect(href("/404", locale));
+
+const title = project.title ?? slug;
+const summary = t(project.summary, locale);
+const brand = slug;
+
+const heroVideo = project.heroMedia?.videoUrl ?? null;
+const hasBlocks = (project.blocks?.length ?? 0) > 0;
+const legacy = tb(project.body, locale);
+const hasLegacyBody = legacy.length > 0;
+
+// Per-project framing — what side of him this chapter expresses.
+type ProjectFraming = { kicker: string; intro: string; meta?: string };
+const framings: Record<string, Record<Locale, ProjectFraming>> = {
+  olivea: {
+    es: {
+      kicker: "Capítulo 01 · Lo lento",
+      intro: "Aquí cocino con lo que el huerto deja esa mañana. Valle de Guadalupe.",
+      meta: "Estrella Michelin · Estrella Verde Michelin",
+    },
+    en: {
+      kicker: "Chapter 01 · The slow",
+      intro: "Here I cook with what the garden leaves that morning. Valle de Guadalupe.",
+      meta: "Michelin Star · Michelin Green Star",
+    },
+  },
+  fritanguita: {
+    es: {
+      kicker: "Capítulo 02 · Lo rápido",
+      intro: "Cuando bajo a la ciudad. Fritanga poblana en Roma Norte, con Santiago Muñoz.",
+      meta: "Calle Puebla 236 · Roma Norte · CDMX",
+    },
+    en: {
+      kicker: "Chapter 02 · The fast",
+      intro: "When I come down to the city. Poblano fritanga in Roma Norte, with Santiago Muñoz.",
+      meta: "Calle Puebla 236 · Roma Norte · Mexico City",
+    },
+  },
+  maizal: {
+    es: {
+      kicker: "Capítulo 03 · El primer maestro",
+      intro: "Ocho años en La Casona de los Sapos. Lo que aprendí ahí todavía cocina lo que hago.",
+      meta: "Puebla · 2017–2024 · Cerrado",
+    },
+    en: {
+      kicker: "Chapter 03 · The first teacher",
+      intro: "Eight years at La Casona de los Sapos. What I learned there still cooks what I do.",
+      meta: "Puebla · 2017–2024 · Closed",
+    },
+  },
+};
+
+const framing = framings[brand]?.[locale] ?? null;
+---
+
+<BaseLayout
+  title={title}
+  description={summary}
+  locale={locale}
+  og={{
+    title,
+    kicker: framing?.kicker ?? title,
+    sig: summary,
+    brand: (brand as "olivea" | "fritanguita" | "maizal" | undefined) ?? "daniel",
+    meta: framing?.meta ?? "Daniel Nates",
+  }}
+>
+  <IntroGate title={title} subtitle={summary || undefined} brand={brand} />
+
+  <div class="shell" data-brand={brand}>
+    <TopDock locale={locale} />
+
+    {!hasBlocks ? (
+      <div class="reveal">
+        <HeroFilm
+          title={title}
+          sub={summary}
+          videoUrl={heroVideo}
+          posterUrl={null}
+          transitionKey={brand}
+        />
+      </div>
+    ) : null}
+
+    {framing ? (
+      <section class="section reveal">
+        <p class="kicker">{framing.kicker}</p>
+        <p class="lede" style="margin-top: 14px; max-width: 56ch;">{framing.intro}</p>
+        {framing.meta ? (
+          <p style="margin-top: 14px; font-family: var(--font-sans); font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: var(--text-3);">
+            {framing.meta}
+          </p>
+        ) : null}
+      </section>
+    ) : null}
+
+    {hasBlocks ? <BlockRenderer blocks={project.blocks} locale={locale} /> : null}
+
+    {!hasBlocks && hasLegacyBody ? (
+      <section class="section reveal">
+        <p class="kicker">{ui("chapter", locale)}</p>
+        <div class="projectCard" style="flex-direction:column;gap:12px;">
+          <PortableText value={legacy} />
+        </div>
+      </section>
+    ) : null}
+
+    {project.links?.length ? (
+      <section class="section reveal">
+        <div class="badges reveal-stagger">
+          {project.links.map((l) => (
+            <a class="cta" href={l.href} target="_blank" rel="noreferrer">{l.label}</a>
+          ))}
+        </div>
+      </section>
+    ) : null}
+  </div>
+
+</BaseLayout>

@@ -1,0 +1,138 @@
+---
+import type { ArtPiece, Locale } from "../../lib/types";
+import { href, ui } from "../../lib/i18n";
+import { img } from "../../lib/image";
+import TextReveal from "../motion/TextReveal.astro";
+
+interface Props {
+  pieces?: ArtPiece[];
+  locale?: Locale;
+}
+
+const { pieces = [], locale: propLocale } = Astro.props as Props;
+const locale: Locale = propLocale ?? Astro.locals.locale ?? "es";
+
+const list = pieces.slice(0, 4);
+const heroPiece = list[0];
+const heroImg = img(heroPiece?.cover, { width: 2000 });
+---
+
+<section class="atelier scene--ink" data-scene="ink">
+  <div class="atelier__media bleed">
+    {heroImg ? (
+      <img src={heroImg} alt={heroPiece?.title ?? ""} loading="lazy" />
+    ) : (
+      <div class="atelier__plate" aria-hidden="true"></div>
+    )}
+    <div class="atelier__scrim"></div>
+  </div>
+
+  <div class="atelier__inner">
+    <p class="kicker atelier__kicker">{ui("art", locale)}</p>
+    <TextReveal as="h2" mode="word" stagger={70} class="atelier__title">
+      {locale === "es" ? "Atelier." : "Studio."}
+    </TextReveal>
+    <p class="atelier__lede">
+      {locale === "es"
+        ? "Lo que la mano hace cuando no está cocinando. Dibujo, pintura, marcas en papel."
+        : "What the hand makes when it isn't cooking. Drawing, painting, marks on paper."}
+    </p>
+
+    {list.length ? (
+      <ul class="atelier__strip">
+        {list.map((p) => {
+          const cover = img(p.cover, { width: 600 });
+          return (
+            <li>
+              <a href={href(`/arte/${p.slug?.current}`, locale)} aria-label={p.title}>
+                {cover ? <img src={cover} alt={p.title ?? ""} loading="lazy" /> : null}
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    ) : null}
+
+    <div class="atelier__cta">
+      <a class="cta chapterHero__cta" href={href("/arte", locale)}>
+        {ui("viewAll", locale)} <span aria-hidden="true">→</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<style>
+  .atelier{
+    position: relative;
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    background: var(--ink);
+    color: var(--bone);
+    overflow: hidden;
+    padding: 0 0 clamp(72px, 10vw, 140px);
+  }
+  .atelier__media{
+    position: relative;
+    height: clamp(380px, 70vh, 720px);
+    overflow: hidden;
+  }
+  .atelier__media img{
+    width: 100%; height: 100%; object-fit: cover;
+    opacity: .7;
+  }
+  .atelier__plate{
+    position: absolute; inset: 0;
+    background: radial-gradient(60% 60% at 50% 50%, rgba(244,239,230,.06), transparent 60%), var(--ink);
+  }
+  .atelier__scrim{
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,.35) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,.85) 100%);
+  }
+  .atelier__inner{
+    position: relative;
+    z-index: 2;
+    margin: -180px auto 0;
+    max-width: 1280px;
+    padding: 0 clamp(20px, 5vw, 80px);
+  }
+  .atelier__kicker{ color: rgba(244,239,230,.6); margin: 0 0 clamp(16px, 2vw, 24px); }
+  .atelier__title{
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(64px, 12vw, 200px);
+    line-height: .9;
+    letter-spacing: -0.028em;
+    word-spacing: .04em;
+    color: var(--bone);
+  }
+  .atelier__lede{
+    margin: clamp(20px, 2.4vw, 32px) 0 clamp(36px, 5vw, 56px);
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: clamp(18px, 1.8vw, 24px);
+    line-height: 1.45;
+    color: rgba(244,239,230,.78);
+    max-width: 56ch;
+  }
+  .atelier__strip{
+    list-style: none; padding: 0; margin: 0;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  @media (min-width: 880px){
+    .atelier__strip{ grid-template-columns: repeat(4, 1fr); }
+  }
+  .atelier__strip a{ display: block; transition: opacity .25s, transform .35s; }
+  .atelier__strip a:hover{ opacity: .9; transform: translateY(-2px); }
+  .atelier__strip img{
+    width: 100%;
+    aspect-ratio: 4/5;
+    object-fit: cover;
+    display: block;
+    background: rgba(244,239,230,.04);
+    border-radius: var(--r-1);
+  }
+  .atelier__cta{ margin-top: clamp(28px, 3vw, 40px); display: flex; justify-content: flex-end; }
+</style>

@@ -1,15 +1,110 @@
 ---
-const { items = [] } = Astro.props;
----
-<div class="topDock">
-  <div class="brandPill">
-    <span class="brandDot" aria-hidden="true"></span>
-    <span class="brandName">Daniel Nates</span>
-  </div>
+import { ui } from "../../lib/i18n";
+import type { Locale } from "../../lib/types";
 
-  <nav class="chapterNav" aria-label="Chapters">
-    {items.map((it) => (
-      <a class="chip" href={it.href}>{it.label}</a>
-    ))}
-  </nav>
-</div>
+interface Props {
+  locale?: Locale;
+}
+const { locale: localeProp } = Astro.props as Props;
+const locale: Locale = localeProp ?? Astro.locals.locale ?? "es";
+
+const homeHref = locale === "es" ? "/" : "/en";
+---
+<header class="dock" data-dock>
+  <a class="dock__brand" href={homeHref} aria-label="Daniel Nates · Inicio">
+    <span class="dock__dot" aria-hidden="true"></span>
+    <span class="dock__name">Daniel Nates</span>
+  </a>
+
+  <button class="dock__menu" type="button" data-menu-trigger aria-label={locale === "es" ? "Abrir menú" : "Open menu"}>
+    <span class="dock__menuMark" aria-hidden="true">
+      <span></span>
+      <span></span>
+    </span>
+    <span class="dock__menuText">{locale === "es" ? "Menú" : "Menu"}</span>
+  </button>
+</header>
+
+<style>
+  .dock{
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 50;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: clamp(20px, 2.4vw, 32px) clamp(20px, 4vw, 56px);
+    pointer-events: none;
+    color: rgba(244,239,230,.92);
+  }
+
+  .dock__brand,
+  .dock__menu{ pointer-events: auto; }
+
+  .dock__brand{
+    display: inline-flex;
+    align-items: center;
+    gap: 11px;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+    font-weight: 500;
+    color: inherit;
+    transition: opacity .25s;
+  }
+  .dock__brand:hover{ opacity: .7; }
+  .dock__dot{
+    width: 8px; height: 8px;
+    border-radius: 999px;
+    background: currentColor;
+    box-shadow: 0 0 0 3px rgba(244,239,230,.16);
+  }
+
+  .dock__menu{
+    appearance: none;
+    background: transparent;
+    border: 0;
+    padding: 8px 0;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+    font-weight: 500;
+    color: inherit;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 11px;
+    transition: opacity .25s;
+  }
+  .dock__menu:hover{ opacity: .7; }
+  .dock__menuMark{
+    display: inline-flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 18px;
+  }
+  .dock__menuMark span{
+    display: block;
+    height: 1px;
+    background: currentColor;
+    transition: width .25s, transform .25s;
+  }
+  .dock__menuMark span:first-child{ width: 100%; }
+  .dock__menuMark span:last-child{ width: 60%; align-self: flex-end; }
+  .dock__menu:hover .dock__menuMark span:last-child{ width: 100%; }
+
+  /* Bone scene flip */
+  body.dock-on-bone .dock{ color: rgba(14,15,12,.88); }
+  body.dock-on-bone .dock__dot{ box-shadow: 0 0 0 3px rgba(14,15,12,.14); }
+
+  /* Hide the dock when overlay is open — fluid fade, no snap */
+  .dock{ transition: opacity 700ms var(--ease-fluid), color 800ms var(--ease-fluid); }
+  body.menu-open .dock{ opacity: 0; pointer-events: none; }
+
+  /* Brand + menu hovers — longer */
+  .dock__brand{ transition: opacity 600ms var(--ease-fluid); }
+  .dock__menu{ transition: opacity 600ms var(--ease-fluid); }
+  .dock__menuMark span{ transition: width 700ms var(--ease-fluid); }
+</style>

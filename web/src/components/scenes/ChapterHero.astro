@@ -1,0 +1,167 @@
+---
+import TextReveal from "../motion/TextReveal.astro";
+import VoiceMark from "../motion/VoiceMark.astro";
+import { ui } from "../../lib/i18n";
+import type { Locale, VoiceTrack } from "../../lib/types";
+
+interface Props {
+  index?: string;
+  brand?: string;
+  title: string;
+  summary?: string;
+  videoUrl?: string | null;
+  posterUrl?: string | null;
+  href?: string;
+  align?: "left" | "right";
+  locale?: Locale;
+  voice?: VoiceTrack | null;
+}
+
+const {
+  index = "",
+  brand,
+  title,
+  summary,
+  videoUrl = null,
+  posterUrl = null,
+  href = null,
+  align = "left",
+  locale: propLocale,
+  voice = null,
+} = Astro.props as Props;
+
+const locale: Locale = propLocale ?? Astro.locals.locale ?? "es";
+---
+
+<section
+  class={`chapterHero scene--ink chapterHero--${align}`}
+  data-scene="ink"
+  data-brand={brand}
+  data-hero-scroll
+>
+  <div class="chapterHero__media" data-hero-media aria-hidden="true">
+    {videoUrl ? (
+      <video data-block-video muted playsinline loop preload="metadata" poster={posterUrl ?? undefined}>
+        <source src={videoUrl} />
+      </video>
+    ) : posterUrl ? (
+      <img src={posterUrl} alt="" loading="lazy" decoding="async" />
+    ) : (
+      <div class="chapterHero__plate" aria-hidden="true"></div>
+    )}
+    <div class="chapterHero__scrim"></div>
+  </div>
+
+  <div class="chapterHero__inner" data-hero-inner>
+    <p class="chapterHero__index">
+      <span class="chapterHero__dot" aria-hidden="true"></span>
+      <span>{index ? `Capítulo ${index}` : "Capítulo"}</span>
+    </p>
+    <TextReveal as="h2" mode="word" stagger={70} class="chapterHero__title">
+      {title}
+    </TextReveal>
+    {summary ? <p class="chapterHero__summary">{summary}</p> : null}
+    {href ? (
+      <a class="cta chapterHero__cta" href={href}>
+        {ui("explore", locale)}
+        <span aria-hidden="true">→</span>
+      </a>
+    ) : null}
+  </div>
+
+  {voice ? (
+    <VoiceMark
+      voice={voice}
+      locale={locale}
+      variant="absolute"
+      position={align === "right" ? "top-left" : "top-right"}
+      label={locale === "es" ? "Su voz" : "His voice"}
+    />
+  ) : null}
+</section>
+
+<style>
+  .chapterHero{
+    position: relative;
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    height: 100svh;
+    min-height: 600px;
+    display: grid;
+    align-items: end;
+    overflow: hidden;
+    background: var(--ink);
+    color: var(--bone);
+  }
+  .chapterHero__media{ position: absolute; inset: 0; will-change: transform; }
+  .chapterHero__media img,
+  .chapterHero__media video{ width: 100%; height: 100%; object-fit: cover; opacity: .55; }
+  .chapterHero__plate{
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(80% 60% at 30% 70%, color-mix(in srgb, var(--brand-primary) 25%, transparent), transparent 65%),
+      radial-gradient(60% 50% at 80% 20%, color-mix(in srgb, var(--brand-primary) 18%, transparent), transparent 65%),
+      var(--ink);
+  }
+  .chapterHero__scrim{
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,.10) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,.78) 100%);
+  }
+  .chapterHero__inner{
+    position: relative;
+    z-index: 2;
+    padding: clamp(28px, 4vw, 64px) clamp(20px, 5vw, 90px) clamp(40px, 6vw, 84px);
+    max-width: 1280px;
+    width: 100%;
+    margin: 0 auto;
+    will-change: transform, opacity;
+  }
+  .chapterHero--right .chapterHero__inner{ text-align: right; margin-left: auto; }
+
+  .chapterHero__index{
+    margin: 0 0 clamp(20px, 3vw, 36px);
+    display: inline-flex; align-items: center; gap: 12px;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .28em;
+    text-transform: uppercase;
+    color: rgba(244,239,230,.66);
+  }
+  .chapterHero__dot{
+    width: 8px; height: 8px; border-radius: 999px;
+    background: var(--brand-primary);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-primary) 25%, transparent);
+  }
+  .chapterHero__title{
+    color: var(--bone);
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(56px, 12vw, 180px);
+    line-height: .92;
+    letter-spacing: -0.028em;
+    word-spacing: .04em;
+    margin: 0;
+    max-width: 14ch;
+  }
+  .chapterHero--right .chapterHero__title{ margin-left: auto; }
+  .chapterHero__summary{
+    margin: clamp(20px, 2.4vw, 32px) 0 clamp(28px, 3vw, 40px);
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: clamp(18px, 1.6vw, 22px);
+    line-height: 1.45;
+    color: rgba(244,239,230,.78);
+    max-width: 50ch;
+  }
+  .chapterHero--right .chapterHero__summary{ margin-left: auto; }
+  .chapterHero__cta{
+    background: transparent;
+    color: var(--bone);
+    border-color: var(--bone);
+  }
+  .chapterHero__cta:hover{
+    background: var(--bone);
+    color: var(--ink);
+  }
+</style>

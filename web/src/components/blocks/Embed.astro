@@ -1,0 +1,63 @@
+---
+import type { EmbedBlock } from "../../lib/types";
+
+interface Props { block: EmbedBlock }
+const { block } = Astro.props as Props;
+
+function detect(url: string): { kind: "youtube" | "vimeo" | "spotify" | "instagram" | "iframe"; src: string } {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, "");
+    if (host === "youtube.com" || host === "m.youtube.com") {
+      const id = u.searchParams.get("v");
+      if (id) return { kind: "youtube", src: `https://www.youtube.com/embed/${id}` };
+    }
+    if (host === "youtu.be") {
+      const id = u.pathname.replace(/^\//, "");
+      if (id) return { kind: "youtube", src: `https://www.youtube.com/embed/${id}` };
+    }
+    if (host === "vimeo.com") {
+      const id = u.pathname.split("/").filter(Boolean)[0];
+      if (id) return { kind: "vimeo", src: `https://player.vimeo.com/video/${id}` };
+    }
+    if (host.endsWith("spotify.com")) {
+      const path = u.pathname.replace(/^\//, "");
+      return { kind: "spotify", src: `https://open.spotify.com/embed/${path}` };
+    }
+    if (host === "instagram.com") {
+      return { kind: "instagram", src: `${url.replace(/\/?$/, "/")}embed` };
+    }
+  } catch {}
+  return { kind: "iframe", src: url };
+}
+
+const aspect = block.aspect ?? "16x9";
+const detected = block.url ? detect(block.url) : null;
+---
+
+{detected ? (
+  <figure class={`embedBlock embedBlock--${aspect} reveal`}>
+    <iframe
+      src={detected.src}
+      title={block.caption ?? "Embed"}
+      loading="lazy"
+      allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+      allowfullscreen
+      referrerpolicy="strict-origin-when-cross-origin"
+    ></iframe>
+    {block.caption ? <figcaption>{block.caption}</figcaption> : null}
+  </figure>
+) : null}
+
+<style>
+  .embedBlock{ margin: 22px 0; }
+  .embedBlock figcaption{ font-size: 12px; color: var(--muted2); margin-top: 8px; }
+  .embedBlock iframe{
+    width: 100%; border: 0; display: block;
+    border-radius: var(--radius2); background: rgba(255,255,255,.04);
+  }
+  .embedBlock--16x9 iframe{ aspect-ratio: 16 / 9; }
+  .embedBlock--9x16 iframe{ aspect-ratio: 9 / 16; max-width: 420px; margin: 0 auto; }
+  .embedBlock--1x1 iframe{ aspect-ratio: 1 / 1; }
+  .embedBlock--4x5 iframe{ aspect-ratio: 4 / 5; max-width: 540px; margin: 0 auto; }
+</style>

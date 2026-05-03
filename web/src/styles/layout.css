@@ -1,98 +1,28 @@
 .shell{
-  position:relative;
-  max-width:var(--max);
-  margin:0 auto;
-  padding:18px 16px 120px;
-}
-@media (min-width:880px){
-  .shell{padding:18px 18px 140px;}
-}
-
-.topDock{
-  position:sticky;
-  top:12px;
-  z-index:20;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-  padding:10px 12px;
-  margin:10px 0 14px;
-  border-radius:999px;
-  border:1px solid var(--border);
-  background:rgba(10,10,10,.28);
-  backdrop-filter:blur(14px);
-}
-
-.brandPill{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  padding:6px 10px;
-  border-radius:999px;
-  border:1px solid var(--border);
-  background:rgba(255,255,255,.03);
-}
-.brandDot{
-  width:10px;height:10px;border-radius:999px;
-  background:rgba(94,118,88,.9);
-  box-shadow:0 0 0 4px rgba(94,118,88,.18);
-}
-.brandName{
-  font-size:12px;
-  letter-spacing:.18em;
-  text-transform:uppercase;
-  opacity:.9;
-}
-
-.chapterNav{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  overflow:auto;
-  scrollbar-width:none;
-}
-.chapterNav::-webkit-scrollbar{display:none;}
-
-.chip{
-  font-size:12px;
-  padding:8px 10px;
-  border-radius:999px;
-  border:1px solid var(--border);
-  background:rgba(255,255,255,.03);
-  opacity:.92;
-  white-space:nowrap;
-}
-.chip:hover{border-color:var(--border2);background:rgba(255,255,255,.05);}
-
-.section{margin-top:26px;padding-top:10px;}
-
-.kicker{
-  font-size:12px;
-  letter-spacing:.22em;
-  text-transform:uppercase;
-  color:var(--muted2);
-  margin:0 0 10px;
-}
-
-/* ✅ Brand section wash: subtle but visible */
-.section[data-brand]{
   position: relative;
-  border-radius: 24px;
-  padding: 10px 10px 14px;
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: clamp(80px, 9vw, 120px) clamp(18px, 3vw, 36px) var(--s-9);
+  /* top padding clears the floating dock + brand mark */
 }
-.section[data-brand]::before{
-  content:"";
-  position:absolute;
-  inset:-2px;
-  border-radius: 26px;
-  pointer-events:none;
-  background:
-    radial-gradient(900px 380px at 18% 10%, var(--brand-soft), transparent 60%),
-    radial-gradient(900px 420px at 82% 30%, color-mix(in srgb, var(--brand-primary) 18%, transparent), transparent 62%);
-  opacity: .95;
-}
-.section[data-brand] > *{
+
+/* Bare wrapper used on cinematic home where the dock floats and content
+   bleeds full-width. */
+.dockBar{
   position: relative;
-  z-index: 1;
+  z-index: 0;
 }
+
+/* ── Section primitives ────────────────────────────────────────────── */
+.section{
+  margin-top: var(--s-9);
+  padding-top: var(--s-3);
+}
+.section--tight{ margin-top: var(--s-7); }
+.section--wide{ margin-top: var(--s-10); }
+
+/* Per-scene chrome */
+[data-scene="bone"] body,
+.scene--bone{ color-scheme: light; }
+[data-scene="ink"] body,
+.scene--ink{ color-scheme: dark; }

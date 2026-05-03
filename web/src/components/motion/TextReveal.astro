@@ -1,0 +1,32 @@
+---
+/**
+ * TextReveal — markup only. AnimationDirector splits + animates on scroll.
+ *
+ *   <TextReveal as="h1" mode="word">Hello world</TextReveal>
+ *   <TextReveal as="span" mode="letter">Daniel</TextReveal>
+ *
+ * Don't put HTML inside; the Director rewrites innerHTML.
+ */
+type Mode = "word" | "letter";
+interface Props {
+  as?: "h1" | "h2" | "h3" | "p" | "span" | "div";
+  mode?: Mode;
+  class?: string;
+  id?: string;
+}
+const { as: Tag = "p", mode = "word", class: cls, id } = Astro.props as Props;
+const slot = await Astro.slots.render("default");
+const raw = (slot && slot.replace(/<[^>]+>/g, "").trim()) || "";
+---
+
+<Tag
+  class={`tr tr--${mode} ${cls ?? ""}`}
+  id={id}
+  data-reveal-text
+  data-reveal-mode={mode}
+  aria-label={raw}
+>{raw}</Tag>
+
+<style>
+  .tr{ display: block; }
+</style>

@@ -1,0 +1,54 @@
+---
+import TextReveal from "../motion/TextReveal.astro";
+
+interface Props {
+  line?: string;
+  attribution?: string;
+}
+const {
+  line = "Cocinar y dibujar — la misma lengua.",
+  attribution = "Daniel Nates",
+} = Astro.props as Props;
+---
+
+<section class="theLine scene--ink" data-scene="ink">
+  <div class="theLine__inner">
+    <TextReveal as="p" mode="word" class="theLine__text">{line}</TextReveal>
+    {attribution ? <p class="theLine__attr">{attribution}</p> : null}
+  </div>
+</section>
+
+<style>
+  .theLine{
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    background: #0B0C0A; /* a touch deeper than the cold-open ink for tonal step */
+    color: var(--bone);
+    padding: clamp(140px, 20vw, 280px) clamp(20px, 6vw, 120px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-top: 1px solid rgba(244,239,230,.06);
+    border-bottom: 1px solid rgba(244,239,230,.06);
+  }
+  .theLine__inner{ max-width: 1100px; margin: 0 auto; text-align: left; }
+  .theLine__text{
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(40px, 7vw, 110px);
+    line-height: .98;
+    letter-spacing: -0.025em;
+    word-spacing: .02em;
+    color: var(--bone);
+    margin: 0;
+  }
+  .theLine__attr{
+    margin: clamp(28px, 3vw, 48px) 0 0;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .24em;
+    text-transform: uppercase;
+    color: rgba(244,239,230,.5);
+  }
+</style>

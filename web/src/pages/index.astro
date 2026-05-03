@@ -1,76 +1,185 @@
 ---
+export const prerender = true;
+
 import BaseLayout from "../components/layout/BaseLayout.astro";
 import TopDock from "../components/layout/TopDock.astro";
-import HeroFilm from "../components/sections/HeroFilm.astro";
-import ProjectsSection from "../components/sections/ProjectsSection.astro";
-import FieldNotesSection from "../components/sections/FieldNotesSection.astro";
-import ChapterProgress from "../components/motion/ChapterProgress.astro";
+import ColdOpen from "../components/scenes/ColdOpen.astro";
+import TheLine from "../components/scenes/TheLine.astro";
+import Manifesto from "../components/scenes/Manifesto.astro";
+import ChapterHero from "../components/scenes/ChapterHero.astro";
+import MagazineSpread from "../components/scenes/MagazineSpread.astro";
+import AtelierPreview from "../components/scenes/AtelierPreview.astro";
+import Closing from "../components/scenes/Closing.astro";
 
-import MotionScripts from "../components/motion/MotionScripts.astro";
+import { getDaniel, getProjects, getLatestArticles, getArtPieces } from "../lib/queries";
+import { href, pressHref, t, ui } from "../lib/i18n";
+import type { Locale, Pillar } from "../lib/types";
 
-import { sanity } from "../lib/sanity";
-import { DANIEL_QUERY, PROJECTS_QUERY, FIELD_NOTES_QUERY } from "../lib/queries";
+interface PageProps { lang?: Locale }
+const { lang } = Astro.props as PageProps;
+const locale: Locale = lang ?? Astro.locals.locale ?? "es";
 
-const daniel = await sanity.fetch(DANIEL_QUERY);
-const projects = await sanity.fetch(PROJECTS_QUERY);
-const notes = await sanity.fetch(FIELD_NOTES_QUERY);
+const [daniel, projects, articles, art] = await Promise.all([
+  getDaniel(),
+  getProjects(),
+  getLatestArticles(3),
+  getArtPieces(),
+]);
 
-const safeProjects = Array.isArray(projects) ? projects : [];
-const safeNotes = Array.isArray(notes) ? notes : [];
+const safeProjects = projects ?? [];
+const safeArticles = articles ?? [];
+const safeArt = art ?? [];
 
-const heroTitle = daniel?.tagline?.es ?? daniel?.name ?? "Daniel Nates";
-const heroSub = daniel?.subline?.es ?? null;
-const pills = Array.isArray(daniel?.pillars) ? daniel.pillars : [];
+const heroName = daniel?.name ?? "Daniel Nates";
+
+// The site is Daniel — chef + artist — not any single project.
+// His own framing (from press): cooking and drawing share a language.
+const heroLine = t(daniel?.tagline, locale) || (locale === "es"
+  ? "Cocinar y dibujar — la misma lengua."
+  : "To cook and to draw — the same language.");
+
+const heroSig = t(daniel?.subline, locale) || (locale === "es"
+  ? "Cocinero en Olivea · Socio en Fritanguita · Dibujante."
+  : "Chef at Olivea · Partner at Fritanguita · Draughtsman.");
+
+const heroMeta = locale === "es"
+  ? "Valle de Guadalupe · CDMX · MMXXVI"
+  : "Valle de Guadalupe · Mexico City · MMXXVI";
+
+// Manifesto — four pillars: a principle, his slow side, his fast side,
+// and his other practice (drawing). Maíz isn't a theme; it's an ingredient.
+const pillars: Pillar[] = (daniel?.pillars && daniel.pillars.length
+  ? daniel.pillars
+  : [
+    {
+      label: "Producto",
+      copy: {
+        es: "Ingrediente primero, técnica después. Lo que el campo o el mar permite, eso se cocina.",
+        en: "Ingredient first, technique second. What the field or the sea allows is what gets cooked.",
+      },
+    },
+    {
+      label: "Huerto",
+      copy: {
+        es: "En Olivea, la carta cambia con la temporada del huerto. La cocina escucha primero al campo.",
+        en: "At Olivea, the menu changes with the garden's season. The kitchen listens to the field first.",
+      },
+    },
+    {
+      label: "Calle",
+      copy: {
+        es: "En Fritanguita, la fritanga poblana en su forma más contemporánea. Hecha a mano, fuego rápido.",
+        en: "At Fritanguita, the poblano fritanga in its most contemporary form. Hand-made, fast fire.",
+      },
+    },
+    {
+      label: "Imagen",
+      copy: {
+        es: "Dibujar y cocinar comparten lengua: composición, contraste, intención. El cocinero también hace imágenes.",
+        en: "To draw and to cook share a language: composition, contrast, intent. The cook also makes images.",
+      },
+    },
+  ]) as Pillar[];
 
 const olivea = safeProjects.find((p) => p?.slug?.current === "olivea");
-const frita = safeProjects.find((p) => p?.slug?.current === "fritanguita");
+const frita  = safeProjects.find((p) => p?.slug?.current === "fritanguita");
 const maizal = safeProjects.find((p) => p?.slug?.current === "maizal");
+
 ---
 
 <BaseLayout
-  title={heroTitle}
-  description="Daniel Nates — técnica global, territorio local. Ingrediente, fermentación, algas y eficiencia."
+  title={`${heroName} — ${heroLine}`}
+  description={heroSig ?? heroLine}
+  locale={locale}
+  og={{
+    title: heroName,
+    kicker: locale === "es" ? "Capítulo 0" : "Chapter 0",
+    sig: heroLine,
+    brand: "daniel",
+    meta: heroMeta,
+  }}
 >
+  <TopDock locale={locale} />
 
-  <div class="shell">
-    <TopDock
-      items={[
-        { label: "Inicio", href: "#inicio" },
-        { label: "Olivea", href: "#olivea" },
-        { label: "Fritanguita", href: "#fritanguita" },
-        { label: "Field Notes", href: "#fieldnotes" },
-      ]}
+  {/* Beat 1 — Cold open */}
+  <ColdOpen
+    name={heroName}
+    signature={heroSig}
+    meta={heroMeta}
+    videoUrl="/media/hero/hero.mp4"
+    voice={daniel?.voice ?? null}
+    locale={locale}
+  />
+
+  {/* Beat 2 — The line. Daniel's voice, not a project's. */}
+  <TheLine line={heroLine} attribution={heroName} />
+
+  {/* Beat 3 — Manifesto */}
+  <Manifesto
+    pillars={pillars}
+    kicker={locale === "es" ? "Manifiesto" : "Manifesto"}
+    locale={locale}
+  />
+
+  {/* Beat 4 — The work. Each project is a different side of him:
+       Olivea = his slow, garden-led, deliberate side (where he lives).
+       Fritanguita = his fast, playful, street side (run with partners).
+       Maizal = where it began (Puebla, closed 2024). */}
+  {olivea ? (
+    <ChapterHero
+      index="01"
+      brand="olivea"
+      title={olivea.title ?? "Olivea"}
+      summary={t(olivea.summary, locale) || (locale === "es"
+        ? "Mi lado lento. La cocina al lado del huerto, en Valle de Guadalupe. Estrella Michelin y Estrella Verde."
+        : "My slow side. The kitchen beside the garden, in Valle de Guadalupe. Michelin Star and Green Star.")}
+      videoUrl={olivea.heroMedia?.videoUrl ?? "/media/olivea/olivea.mp4"}
+      href={href(`/${olivea.slug?.current}`, locale)}
+      align="left"
+      locale={locale}
+      voice={olivea.voice ?? null}
     />
+  ) : null}
 
-    <div class="reveal">
-      <HeroFilm
-        title={heroTitle}
-        sub={heroSub}
-        videoUrl="/media/hero/hero.mp4"
-      />
-    </div>
+  {frita ? (
+    <ChapterHero
+      index="02"
+      brand="fritanguita"
+      title={frita.title ?? "Fritanguita"}
+      summary={t(frita.summary, locale) || (locale === "es"
+        ? "Mi lado rápido. Fritanga poblana, maíz nativo nixtamalizado, en Roma Norte. Con Santiago Muñoz."
+        : "My fast side. Poblano fritanga, native nixtamalized corn, in Roma Norte. With Santiago Muñoz.")}
+      videoUrl={frita.heroMedia?.videoUrl ?? "/media/fritanguita/fritanguita.mp4"}
+      href={href(`/${frita.slug?.current}`, locale)}
+      align="right"
+      locale={locale}
+      voice={frita.voice ?? null}
+    />
+  ) : null}
 
-    <section id="olivea" data-brand="olivea" class="section reveal">
-      <p class="kicker">Olivea</p>
-      <ProjectsSection projects={olivea ? [olivea] : []} />
-    </section>
+  {maizal ? (
+    <ChapterHero
+      index="03"
+      brand="maizal"
+      title={maizal.title ?? "Maizal"}
+      summary={t(maizal.summary, locale) || (locale === "es"
+        ? "Mi primer maestro. Ocho años en La Casona de los Sapos, Puebla. Lo que aprendí ahí sigue cocinando lo que hago hoy. 2017–2024."
+        : "My first teacher. Eight years at La Casona de los Sapos, Puebla. What I learned there still cooks what I do today. 2017–2024.")}
+      videoUrl={maizal.heroMedia?.videoUrl ?? null}
+      href={href(`/${maizal.slug?.current}`, locale)}
+      align="left"
+      locale={locale}
+      voice={maizal.voice ?? null}
+    />
+  ) : null}
 
-    <section id="fritanguita" data-brand="fritanguita" class="section reveal">
-      <p class="kicker">Fritanguita</p>
-      <ProjectsSection projects={frita ? [frita] : []} />
-    </section>
+  {/* Beat 5 — Words */}
+  <MagazineSpread articles={safeArticles} locale={locale} />
 
-    <section id="maizal" data-brand="maizal" class="section reveal">
-      <p class="kicker">Maizal</p>
-      <ProjectsSection projects={maizal ? [maizal] : []} />
-    </section>
+  {/* Beat 6 — Atelier */}
+  <AtelierPreview pieces={safeArt} locale={locale} />
 
-    <section id="fieldnotes" class="section reveal">
-      <p class="kicker">Field Notes</p>
-      <FieldNotesSection notes={safeNotes} />
-    </section>
-  </div>
+  {/* Beat 7 — Closing */}
+  <Closing locale={locale} daniel={daniel} />
 
-  <ChapterProgress />
-  <MotionScripts />
 </BaseLayout>

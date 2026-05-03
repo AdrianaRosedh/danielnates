@@ -1,0 +1,61 @@
+---
+import type { GalleryBlock } from "../../lib/types";
+import { img, imgSrcset } from "../../lib/image";
+
+interface Props { block: GalleryBlock }
+const { block } = Astro.props as Props;
+
+const layout = block.layout ?? "grid";
+const images = block.images ?? [];
+---
+
+{images.length ? (
+  <section class={`gallery gallery--${layout} reveal-stagger`} aria-label={block.caption}>
+    {images.map((im) => {
+      const src = img(im, { width: 1200 });
+      const srcset = imgSrcset(im);
+      const alt = im.alt ?? im.caption ?? "";
+      return src ? (
+        <figure class="gallery__item">
+          <img
+            src={src}
+            srcset={srcset ?? undefined}
+            sizes="(min-width: 1100px) 540px, 100vw"
+            alt={alt}
+            loading="lazy"
+            decoding="async"
+          />
+          {im.caption ? <figcaption>{im.caption}</figcaption> : null}
+        </figure>
+      ) : null;
+    })}
+    {block.caption ? <p class="gallery__caption">{block.caption}</p> : null}
+  </section>
+) : null}
+
+<style>
+  .gallery{ margin: 22px 0; display: grid; gap: 12px; }
+  .gallery__item img{ width: 100%; height: auto; display: block; border-radius: var(--radius2); }
+  .gallery__item figcaption{ font-size: 12px; color: var(--muted2); margin-top: 8px; }
+  .gallery__caption{ font-size: 12px; color: var(--muted2); margin: 6px 0 0; }
+
+  .gallery--grid{ grid-template-columns: repeat(2, 1fr); }
+  @media (min-width: 880px){ .gallery--grid{ grid-template-columns: repeat(3, 1fr); } }
+
+  .gallery--strip{
+    grid-auto-flow: column;
+    grid-auto-columns: 78%;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 6px;
+    scrollbar-width: thin;
+  }
+  .gallery--strip .gallery__item{ scroll-snap-align: start; }
+  @media (min-width: 880px){ .gallery--strip{ grid-auto-columns: 42%; } }
+
+  .gallery--masonry{
+    column-count: 2; column-gap: 12px; display: block;
+  }
+  @media (min-width: 880px){ .gallery--masonry{ column-count: 3; } }
+  .gallery--masonry .gallery__item{ break-inside: avoid; margin: 0 0 12px; }
+</style>

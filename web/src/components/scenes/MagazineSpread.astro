@@ -1,0 +1,140 @@
+---
+import type { Article, Locale } from "../../lib/types";
+import { dateFormat, href, t, ui } from "../../lib/i18n";
+import { img } from "../../lib/image";
+
+interface Props {
+  articles?: Article[];
+  locale?: Locale;
+  kicker?: string;
+  title?: string;
+}
+
+const { articles = [], locale: propLocale, kicker, title } = Astro.props as Props;
+const locale: Locale = propLocale ?? Astro.locals.locale ?? "es";
+
+const safeKicker = kicker ?? ui("diary", locale);
+const safeTitle = title ?? (locale === "es" ? "Palabras." : "Words.");
+const list = articles.slice(0, 3);
+---
+
+{list.length ? (
+  <section class="spread scene--ink" data-scene="ink">
+    <div class="spread__head">
+      <p class="kicker spread__kicker">{safeKicker}</p>
+      <h2 class="spread__title">{safeTitle}</h2>
+    </div>
+
+    <div class="spread__grid">
+      {list.map((a, i) => {
+        const cover = img(a.cover, { width: 1200 });
+        const url = href(`/diario/${a.slug?.current}`, locale);
+        return (
+          <a class={`spread__card ${i === 0 ? "spread__card--lead" : ""}`} href={url}>
+            {cover ? <img src={cover} alt={a.title ?? ""} loading="lazy" /> : <div class="spread__noimg" aria-hidden="true"></div>}
+            <div class="spread__body">
+              <p class="spread__date">{dateFormat(a.date, locale)}</p>
+              <h3 class="spread__cardTitle">{a.title}</h3>
+              {t(a.excerpt, locale) ? <p class="spread__excerpt">{t(a.excerpt, locale)}</p> : null}
+            </div>
+          </a>
+        );
+      })}
+    </div>
+
+    <div class="spread__more">
+      <a class="cta cta--ghost" href={href("/diario", locale)}>
+        {ui("viewAll", locale)} <span aria-hidden="true">→</span>
+      </a>
+    </div>
+  </section>
+) : null}
+
+<style>
+  .spread{
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    background: #100F0C;  /* warmest ink — slight tonal step from cold-open */
+    color: var(--bone);
+    padding: clamp(96px, 12vw, 180px) clamp(20px, 5vw, 80px);
+    border-top: 1px solid rgba(244,239,230,.06);
+  }
+  .spread__head{
+    max-width: 1280px;
+    margin: 0 auto clamp(48px, 6vw, 80px);
+  }
+  .spread__kicker{ color: rgba(244,239,230,.5); margin: 0 0 clamp(16px, 2vw, 24px); }
+  .spread__title{
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(48px, 9vw, 140px);
+    line-height: .95;
+    letter-spacing: -0.025em;
+    color: var(--bone);
+  }
+
+  .spread__grid{
+    max-width: 1280px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: clamp(20px, 3vw, 36px);
+  }
+  @media (min-width: 880px){
+    .spread__grid{ grid-template-columns: 2fr 1fr 1fr; }
+  }
+
+  .spread__card{
+    display: block;
+    color: var(--bone);
+    transition: opacity .25s;
+  }
+  .spread__card:hover{ opacity: .85; }
+  .spread__card img,
+  .spread__noimg{
+    width: 100%;
+    aspect-ratio: 4/5;
+    object-fit: cover;
+    display: block;
+    background: rgba(244,239,230,.04);
+    margin-bottom: clamp(14px, 2vw, 22px);
+    filter: saturate(.94);
+  }
+  .spread__card--lead img,
+  .spread__card--lead .spread__noimg{ aspect-ratio: 4/3; }
+
+  .spread__body{ padding: 0; }
+  .spread__date{
+    margin: 0 0 8px;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: rgba(244,239,230,.5);
+  }
+  .spread__cardTitle{
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(22px, 2.4vw, 32px);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    color: var(--bone);
+  }
+  .spread__card--lead .spread__cardTitle{ font-size: clamp(28px, 3.4vw, 44px); }
+  .spread__excerpt{
+    margin: 10px 0 0;
+    color: rgba(244,239,230,.72);
+    line-height: 1.5;
+    font-size: 14px;
+    max-width: 56ch;
+  }
+
+  .spread__more{
+    max-width: 1280px;
+    margin: clamp(40px, 5vw, 64px) auto 0;
+    display: flex;
+    justify-content: flex-end;
+  }
+</style>

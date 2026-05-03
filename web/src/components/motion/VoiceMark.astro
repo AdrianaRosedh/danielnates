@@ -1,0 +1,138 @@
+---
+import type { Locale, VoiceTrack } from "../../lib/types";
+
+interface Props {
+  voice?: VoiceTrack | null;
+  locale?: Locale;
+  /** Visual placement: "absolute" floats inside its parent (default), "inline" sits in flow. */
+  variant?: "absolute" | "inline";
+  /** Optional label shown next to the circle ("Escucha", "Listen") */
+  label?: string;
+  /** Position when variant=absolute */
+  position?: "top-left" | "top-right" | "bottom-left" | "bottom-right";
+}
+
+const {
+  voice = null,
+  locale: propLocale,
+  variant = "absolute",
+  label,
+  position = "top-left",
+} = Astro.props as Props;
+const locale: Locale = propLocale ?? Astro.locals.locale ?? "es";
+
+const src = voice ? voice[locale] ?? voice.es ?? voice.en : null;
+if (!src) return null;
+
+const labelText = label ?? (locale === "es" ? "Escucha" : "Listen");
+---
+
+<div
+  class={`voice voice--${variant} voice--${position}`}
+  data-voice
+  data-voice-src={src}
+>
+  <button class="voice__btn" type="button" aria-label={labelText}>
+    <span class="voice__ring" aria-hidden="true"></span>
+    <svg class="voice__icon voice__icon--play" viewBox="0 0 16 16" aria-hidden="true">
+      <path d="M5 3.5v9l8-4.5z" fill="currentColor"/>
+    </svg>
+    <svg class="voice__icon voice__icon--pause" viewBox="0 0 16 16" aria-hidden="true">
+      <rect x="5" y="3.5" width="2.2" height="9" fill="currentColor"/>
+      <rect x="9" y="3.5" width="2.2" height="9" fill="currentColor"/>
+    </svg>
+  </button>
+  <span class="voice__label">{labelText}</span>
+</div>
+
+<style>
+  .voice{
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    color: rgba(244,239,230,.85);
+    pointer-events: auto;
+    z-index: 5;
+  }
+  .voice--absolute{
+    position: absolute;
+    z-index: 6;
+  }
+  .voice--top-left    { top: clamp(96px, 12vh, 140px); left: clamp(20px, 4vw, 56px); }
+  .voice--top-right   { top: clamp(96px, 12vh, 140px); right: clamp(20px, 4vw, 56px); }
+  .voice--bottom-left { bottom: clamp(96px, 12vh, 140px); left: clamp(20px, 4vw, 56px); }
+  .voice--bottom-right{ bottom: clamp(96px, 12vh, 140px); right: clamp(20px, 4vw, 56px); }
+
+  .voice__btn{
+    position: relative;
+    width: 48px; height: 48px;
+    border-radius: 999px;
+    border: 1px solid rgba(244,239,230,.30);
+    background: rgba(14,15,12,.45);
+    backdrop-filter: blur(14px) saturate(150%);
+    -webkit-backdrop-filter: blur(14px) saturate(150%);
+    color: var(--bone);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    transition: transform .25s cubic-bezier(.22,1,.36,1), border-color .25s, background .25s;
+  }
+  .voice__btn:hover{
+    border-color: var(--bone);
+    background: rgba(14,15,12,.6);
+    transform: translateY(-1px);
+  }
+  .voice__btn:active{ transform: translateY(0); }
+
+  .voice__ring{
+    position: absolute;
+    inset: -4px;
+    border-radius: 999px;
+    border: 1px solid rgba(244,239,230,.0);
+    transition: border-color .25s;
+    pointer-events: none;
+  }
+  .voice[data-playing="1"] .voice__ring{
+    border-color: rgba(244,239,230,.45);
+    animation: voicePulse 2.4s cubic-bezier(.45,0,.55,1) infinite;
+  }
+  @keyframes voicePulse{
+    0%   { transform: scale(1); opacity: .7; }
+    70%  { transform: scale(1.4); opacity: 0; }
+    100% { transform: scale(1.4); opacity: 0; }
+  }
+
+  .voice__icon{ width: 16px; height: 16px; }
+  .voice__icon--pause{ display: none; }
+  .voice[data-playing="1"] .voice__icon--play{ display: none; }
+  .voice[data-playing="1"] .voice__icon--pause{ display: block; }
+
+  .voice__label{
+    font-family: var(--font-sans);
+    font-size: 10.5px;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+    color: rgba(244,239,230,.7);
+    transition: color .25s;
+  }
+  .voice[data-playing="1"] .voice__label{ color: var(--bone); }
+
+  /* Bone-scene variant — invert chrome */
+  body.dock-on-bone .voice__btn,
+  .scene--bone .voice__btn{
+    border-color: rgba(14,15,12,.30);
+    background: rgba(244,239,230,.6);
+    color: var(--ink);
+  }
+  body.dock-on-bone .voice__label,
+  .scene--bone .voice__label{ color: rgba(14,15,12,.7); }
+
+  @media (max-width: 720px){
+    .voice__label{ display: none; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .voice[data-playing="1"] .voice__ring{ animation: none; }
+  }
+</style>

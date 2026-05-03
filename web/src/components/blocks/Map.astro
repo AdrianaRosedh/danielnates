@@ -1,0 +1,43 @@
+---
+import type { MapBlock } from "../../lib/types";
+
+interface Props { block: MapBlock }
+const { block } = Astro.props as Props;
+
+const zoom = block.zoom ?? 14;
+const hasCoords = typeof block.lat === "number" && typeof block.lng === "number";
+const embed = hasCoords
+  ? `https://www.google.com/maps?q=${block.lat},${block.lng}&z=${zoom}&output=embed`
+  : block.address
+    ? `https://www.google.com/maps?q=${encodeURIComponent(block.address)}&output=embed`
+    : null;
+const link = block.mapsUrl ?? (hasCoords
+  ? `https://www.google.com/maps/?q=${block.lat},${block.lng}`
+  : block.address
+    ? `https://www.google.com/maps/search/${encodeURIComponent(block.address)}`
+    : null);
+---
+
+{embed ? (
+  <section class="mapBlock reveal">
+    <header class="mapBlock__head">
+      {block.title ? <h2>{block.title}</h2> : null}
+      {block.address ? <p>{block.address}</p> : null}
+      {link ? <a class="cta" href={link} target="_blank" rel="noreferrer">Google Maps ↗</a> : null}
+    </header>
+    <iframe
+      src={embed}
+      title={block.title ?? "Mapa"}
+      loading="lazy"
+      referrerpolicy="no-referrer-when-downgrade"
+    ></iframe>
+  </section>
+) : null}
+
+<style>
+  .mapBlock{ margin: 28px 0; border-radius: var(--radius); overflow: hidden; border: 1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.02); }
+  .mapBlock__head{ padding: 16px 18px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,.08); }
+  .mapBlock__head h2{ margin: 0; font-size: 18px; letter-spacing: -.01em; }
+  .mapBlock__head p{ margin: 0; color: var(--muted); font-size: 13px; }
+  .mapBlock iframe{ width: 100%; height: clamp(280px, 50vh, 460px); display: block; border: 0; background: rgba(255,255,255,.04); }
+</style>

@@ -1,0 +1,32 @@
+---
+import type { AudioBlock } from "../../lib/types";
+
+interface Props { block: AudioBlock }
+const { block } = Astro.props as Props;
+---
+
+{block.audioUrl ? (
+  <figure class="audioBlock reveal">
+    {block.title ? <figcaption class="audioBlock__title">{block.title}</figcaption> : null}
+    <audio controls preload="metadata" src={block.audioUrl}>
+      Your browser does not support the audio element.
+    </audio>
+    {block.caption ? <p class="audioBlock__caption">{block.caption}</p> : null}
+    {block.transcript ? (
+      <details class="audioBlock__transcript">
+        <summary>Transcripción</summary>
+        <p>{block.transcript}</p>
+      </details>
+    ) : null}
+  </figure>
+) : null}
+
+<style>
+  .audioBlock{ margin: 22px 0; padding: 16px; border-radius: var(--radius2); background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.10); }
+  .audioBlock__title{ margin: 0 0 10px; font-size: 14px; letter-spacing: -.01em; }
+  .audioBlock audio{ width: 100%; }
+  .audioBlock__caption{ font-size: 12px; color: var(--muted2); margin: 8px 0 0; }
+  .audioBlock__transcript{ margin-top: 10px; font-size: 13px; color: var(--muted); }
+  .audioBlock__transcript summary{ cursor: pointer; color: var(--muted2); font-size: 12px; }
+  .audioBlock__transcript p{ margin: 8px 0 0; line-height: 1.55; white-space: pre-wrap; }
+</style>

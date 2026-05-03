@@ -1,31 +1,29 @@
-/* Default / Daniel (neutral stage) */
+/* Brand colors only as accents — borders, dots, focus ring, single CTA.
+   Painterly, oxidized — they live alongside the bone parchment, not on top of it. */
 :root {
-  --brand-primary: rgba(255,255,255,.90);
-  --brand-soft: rgba(255,255,255,.06);
-  --brand-glow: rgba(255,255,255,.14);
-  --brand-light: rgba(255,255,255,.88);
+  --brand-primary: var(--bone);
+  --brand-soft:    rgba(239, 230, 212, .06);
+  --brand-glow:    rgba(239, 230, 212, .18);
+  --brand-light:   var(--bone);
 }
 
-/* Olivea */
 [data-brand="olivea"] {
-  --brand-primary: #5e7658;
-  --brand-soft: rgba(94,118,88,.16);
-  --brand-glow: rgba(94,118,88,.34);
-  --brand-light: #e7eae1;
+  --brand-primary: var(--olivar);
+  --brand-soft:    rgba(86, 102, 74, .12);
+  --brand-glow:    rgba(86, 102, 74, .30);
+  --brand-light:   #DDE2D2;
 }
 
-/* Fritanguita */
 [data-brand="fritanguita"] {
-  --brand-primary: #028a59;
-  --brand-soft: rgba(2,138,89,.18);
-  --brand-glow: rgba(2,138,89,.38);
-  --brand-light: #f1f1e8;
+  --brand-primary: var(--cinnabar);
+  --brand-soft:    rgba(181, 64, 42, .10);
+  --brand-glow:    rgba(181, 64, 42, .30);
+  --brand-light:   #EED5C9;
 }
 
-/* Optional: Maizal archival tone (neutral stone) */
 [data-brand="maizal"] {
-  --brand-primary: rgba(255,255,255,.75);
-  --brand-soft: rgba(255,255,255,.05);
-  --brand-glow: rgba(255,255,255,.12);
-  --brand-light: rgba(255,255,255,.82);
+  --brand-primary: var(--clay);
+  --brand-soft:    rgba(164, 135, 103, .10);
+  --brand-glow:    rgba(164, 135, 103, .28);
+  --brand-light:   #E4D4BE;
 }

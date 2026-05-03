@@ -1,0 +1,379 @@
+---
+export const prerender = true;
+
+import BaseLayout from "../components/layout/BaseLayout.astro";
+import TopDock from "../components/layout/TopDock.astro";
+import PortableText from "../components/content/PortableText.astro";
+
+import { getDaniel, getPressKit } from "../lib/queries";
+import { dateFormat, href, t, tb, ui } from "../lib/i18n";
+import { img, imgSrcset } from "../lib/image";
+import type { Locale, PressMention, PressRecognition } from "../lib/types";
+
+interface PageProps { lang?: Locale }
+const { lang } = Astro.props as PageProps;
+const locale: Locale = lang ?? Astro.locals.locale ?? "es";
+
+const [daniel, kit] = await Promise.all([getDaniel(), getPressKit()]);
+
+/* ── Real, researched defaults so this page is presentable from day 1 ── */
+const defaultBioOneLine = locale === "es"
+  ? "Cocinero mexicano. Olivea Farm to Table en Valle de Guadalupe (Estrella Michelin + Estrella Verde). Socio de Fritanguita en CDMX. Dibujante."
+  : "Mexican chef. Olivea Farm to Table in Valle de Guadalupe (Michelin Star + Green Star). Partner at Fritanguita in CDMX. Draughtsman.";
+
+const defaultBioShort = locale === "es"
+  ? "Daniel Nates es chef de Olivea Farm to Table (Valle de Guadalupe), galardonado con Estrella Michelin y Estrella Verde Michelin. Es socio fundador de Fritanguita, una fritanga poblana en Roma Norte, CDMX. Antes dirigió ocho años Maizal en Puebla. Finalista regional Latinoamérica de S.Pellegrino Young Chef 2016 con su platillo Quiltamal — premio al Mensaje Más Inspirador. Reconocido por Food & Wine en Español como uno de los 19 mejores chefs nuevos de México."
+  : "Daniel Nates is chef of Olivea Farm to Table (Valle de Guadalupe), awarded a Michelin Star and Michelin Green Star. He is co-founder of Fritanguita, a poblano fritanga stand in Roma Norte, Mexico City. Before that he led Maizal in Puebla for eight years. Latin America regional finalist of S.Pellegrino Young Chef 2016 with his dish Quiltamal — winner of the Most Inspiring Message award. Named by Food & Wine en Español as one of Mexico's 19 best new chefs.";
+
+const defaultRecognitions: PressRecognition[] = [
+  {
+    year: "2025",
+    label: locale === "es" ? "Estrella Michelin · Estrella Verde Michelin" : "Michelin Star · Michelin Green Star",
+    org: "Olivea Farm to Table · Guía Michelin México",
+    url: "https://guide.michelin.com/us/en/baja-california/ensenada_2059847/restaurant/olivea-farm-to-table",
+  },
+  {
+    year: "2024",
+    label: locale === "es" ? "Inclusión Guía Michelin" : "Michelin Guide listing",
+    org: "Olivea Farm to Table",
+  },
+  {
+    year: "2016",
+    label: locale === "es" ? "S.Pellegrino Young Chef · Latinoamérica · Mensaje Más Inspirador" : "S.Pellegrino Young Chef · Latin America · Most Inspiring Message",
+    org: "S.Pellegrino · Quiltamal",
+    url: "https://www.sanpellegrinoyoungchefacademy.com/academy-stories/latin-america-winner",
+  },
+  {
+    year: "2018",
+    label: locale === "es" ? "19 Mejores Chefs Nuevos de México" : "Best New Chefs Mexico — 19",
+    org: "Food & Wine en Español",
+  },
+];
+
+const defaultMentions: PressMention[] = [
+  {
+    outlet: "Michelin Guide",
+    title: "Olivea Farm to Table — Ensenada / Baja California",
+    url: "https://guide.michelin.com/us/en/baja-california/ensenada_2059847/restaurant/olivea-farm-to-table",
+    language: "en",
+  },
+  {
+    outlet: "El Financiero",
+    title: "Fritanguita: el puesto callejero en CDMX de chefs de Shark Tank y S.Pellegrino",
+    url: "https://www.elfinanciero.com.mx/food-and-drink/2025/12/19/asi-es-fritanguita-puesto-en-cdmx-de-los-chefs-daniel-nates-y-santiago-munoz/",
+    date: "2025-12-19",
+    language: "es",
+  },
+  {
+    outlet: "Yahoo Noticias",
+    title: "Daniel Nates llega a Olivea, el restaurante Michelin donde el huerto lo define todo",
+    url: "https://es-us.noticias.yahoo.com/daniel-nates-llega-olivea-restaurante-150500146.html",
+    language: "es",
+  },
+  {
+    outlet: "Guía OCA",
+    title: "Daniel Nates: el chef como artista",
+    url: "https://puebla.guiaoca.mx/es/contenido/daniel-nates-el-chef-como-artista/",
+    language: "es",
+  },
+  {
+    outlet: "Food and Pleasure",
+    title: "Por qué un restaurante mexicano tiene una estrella verde Michelin",
+    url: "https://foodandpleasure.com/olivea-farm-to-table-valle-guadalupe/",
+    language: "es",
+  },
+];
+
+const bioOneLine = t(kit?.bioOneLine, locale) || defaultBioOneLine;
+const bioShort = t(kit?.bioShort, locale) || defaultBioShort;
+const bioLong = tb(kit?.bioLong, locale);
+const recognitions = kit?.recognitions?.length ? kit.recognitions : defaultRecognitions;
+const mentions = kit?.mentions?.length ? kit.mentions : defaultMentions;
+const photos = kit?.photos ?? [];
+const pressEmail = kit?.pressEmail || daniel?.social?.email || null;
+const pressPdfUrl = kit?.pressPdf?.asset?.url ?? null;
+
+const headline = locale === "es" ? "Prensa." : "Press.";
+const lede = locale === "es"
+  ? "Bio, fotografías de alta resolución, reconocimientos y menciones recientes. Para entrevistas, escribe directo."
+  : "Bio, hi-res photographs, recognitions and recent mentions. For interviews, write directly.";
+
+---
+
+<BaseLayout
+  title={`${locale === "es" ? "Prensa" : "Press"} — Daniel Nates`}
+  description={bioOneLine}
+  locale={locale}
+  og={{
+    title: locale === "es" ? "Prensa" : "Press",
+    kicker: "Daniel Nates",
+    sig: bioOneLine,
+    brand: "daniel",
+    meta: locale === "es" ? "Kit de prensa" : "Press kit",
+  }}
+>
+  <div class="shell">
+    <TopDock locale={locale} />
+
+    <section class="section reveal">
+      <p class="kicker">{locale === "es" ? "Prensa" : "Press"}</p>
+      <h1 class="h1" style="margin-bottom: 18px;">{headline}</h1>
+      <p class="lede" style="max-width: 60ch;">{lede}</p>
+    </section>
+
+    {/* Bio — three lengths, expandable */}
+    <section class="section press__bio reveal">
+      <p class="kicker">{locale === "es" ? "Bio" : "Bio"}</p>
+
+      <div class="press__bioBlock">
+        <p class="press__bioLabel">{locale === "es" ? "Una línea" : "One line"}</p>
+        <p class="press__bioText">{bioOneLine}</p>
+      </div>
+
+      <div class="press__bioBlock">
+        <p class="press__bioLabel">{locale === "es" ? "Párrafo" : "Paragraph"}</p>
+        <p class="press__bioText">{bioShort}</p>
+      </div>
+
+      {bioLong.length ? (
+        <div class="press__bioBlock">
+          <p class="press__bioLabel">{locale === "es" ? "Larga" : "Long"}</p>
+          <PortableText value={bioLong} />
+        </div>
+      ) : null}
+    </section>
+
+    {/* Recognitions */}
+    {recognitions.length ? (
+      <section class="section reveal">
+        <p class="kicker">{locale === "es" ? "Reconocimientos" : "Recognitions"}</p>
+        <ol class="press__recList">
+          {recognitions.map((r) => (
+            <li class="press__rec">
+              <span class="press__recYear">{r.year}</span>
+              <div class="press__recBody">
+                <p class="press__recLabel">
+                  {r.url ? <a href={r.url} target="_blank" rel="noreferrer">{r.label}</a> : r.label}
+                </p>
+                {r.org ? <p class="press__recOrg">{r.org}</p> : null}
+              </div>
+            </li>
+          ))}
+        </ol>
+      </section>
+    ) : null}
+
+    {/* Photos — downloadable */}
+    {photos.length ? (
+      <section class="section reveal">
+        <p class="kicker">{locale === "es" ? "Fotografías (alta resolución)" : "Photographs (hi-res)"}</p>
+        <div class="press__photos reveal-stagger">
+          {photos.map((p) => {
+            const src = img(p, { width: 900 });
+            const fullSrc = img(p, { width: 2400 });
+            return src ? (
+              <figure class="press__photo">
+                <img
+                  src={src}
+                  srcset={imgSrcset(p) ?? undefined}
+                  sizes="(min-width: 900px) 32vw, 100vw"
+                  alt={p.caption ?? ""}
+                  loading="lazy"
+                />
+                <figcaption>
+                  {p.caption ? <span>{p.caption}</span> : null}
+                  {p.credit ? <span class="press__credit">© {p.credit}</span> : null}
+                  {fullSrc ? (
+                    <a class="press__download" href={fullSrc} download target="_blank" rel="noreferrer">
+                      {locale === "es" ? "Descargar ↓" : "Download ↓"}
+                    </a>
+                  ) : null}
+                </figcaption>
+              </figure>
+            ) : null;
+          })}
+        </div>
+      </section>
+    ) : null}
+
+    {/* Mentions */}
+    {mentions.length ? (
+      <section class="section reveal">
+        <p class="kicker">{locale === "es" ? "Menciones" : "Mentions"}</p>
+        <ul class="press__mentions">
+          {mentions.map((m) => (
+            <li class="press__mention">
+              <a href={m.url} target="_blank" rel="noreferrer">
+                <span class="press__outlet">{m.outlet}</span>
+                {m.title ? <span class="press__mentionTitle">{m.title}</span> : null}
+                <span class="press__mentionMeta">
+                  {m.date ? dateFormat(m.date, locale) : null}
+                  {m.language ? ` · ${m.language.toUpperCase()}` : null}
+                  <span aria-hidden="true"> ↗</span>
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ) : null}
+
+    {/* Contact + downloads */}
+    <section class="section reveal press__contact">
+      <p class="kicker">{locale === "es" ? "Contacto de prensa" : "Press contact"}</p>
+      <div class="press__contactRow">
+        {pressEmail ? (
+          <a class="cta cta--primary" href={`mailto:${pressEmail}?subject=${encodeURIComponent("Prensa — Daniel Nates")}`}>
+            {pressEmail}
+          </a>
+        ) : null}
+        {pressPdfUrl ? (
+          <a class="cta cta--ghost" href={pressPdfUrl} target="_blank" rel="noreferrer">
+            {locale === "es" ? "Kit completo (PDF) ↓" : "Full kit (PDF) ↓"}
+          </a>
+        ) : null}
+      </div>
+    </section>
+  </div>
+</BaseLayout>
+
+<style>
+  .press__bio{ display: grid; gap: clamp(28px, 4vw, 48px); }
+  .press__bioBlock{
+    display: grid; gap: 10px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+  }
+  .press__bioLabel{
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  .press__bioText{
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(20px, 2vw, 26px);
+    line-height: 1.4;
+    color: var(--text);
+    max-width: 70ch;
+  }
+
+  .press__recList{
+    list-style: none;
+    margin: 0; padding: 0;
+    display: grid; gap: 0;
+  }
+  .press__rec{
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    gap: 24px;
+    padding: 22px 0;
+    border-top: 1px solid var(--line);
+    align-items: baseline;
+  }
+  .press__recYear{
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-3);
+    letter-spacing: .04em;
+  }
+  .press__recLabel{
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(20px, 2.2vw, 26px);
+    letter-spacing: -0.01em;
+    color: var(--text);
+  }
+  .press__recLabel a{ border-bottom: 1px solid var(--line-2); }
+  .press__recLabel a:hover{ border-bottom-color: var(--bone); }
+  .press__recOrg{
+    margin: 6px 0 0;
+    font-family: var(--font-sans);
+    font-size: 13px;
+    color: var(--text-2);
+    letter-spacing: .04em;
+  }
+
+  .press__photos{
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  @media (min-width: 720px){ .press__photos{ grid-template-columns: 1fr 1fr; } }
+  @media (min-width: 1080px){ .press__photos{ grid-template-columns: repeat(3, 1fr); } }
+  .press__photo{
+    margin: 0;
+    border-radius: var(--r-2);
+    overflow: hidden;
+    background: rgba(244,239,230,.04);
+    border: 1px solid var(--line);
+  }
+  .press__photo img{ width: 100%; aspect-ratio: 4/5; object-fit: cover; display: block; }
+  .press__photo figcaption{
+    display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center;
+    padding: 10px 14px 12px;
+    font-family: var(--font-sans);
+    font-size: 12px;
+    color: var(--text-2);
+  }
+  .press__credit{ color: var(--text-3); }
+  .press__download{
+    margin-left: auto;
+    color: var(--text-2);
+    border-bottom: 1px solid var(--line-2);
+    padding-bottom: 1px;
+  }
+  .press__download:hover{ color: var(--text); border-bottom-color: var(--bone); }
+
+  .press__mentions{
+    list-style: none; margin: 0; padding: 0;
+    display: grid; gap: 0;
+  }
+  .press__mention{
+    border-top: 1px solid var(--line);
+  }
+  .press__mention a{
+    display: grid;
+    grid-template-columns: 1fr;
+    padding: 18px 0;
+    transition: background .25s;
+  }
+  @media (min-width: 720px){
+    .press__mention a{ grid-template-columns: 200px 1fr auto; gap: 20px; align-items: baseline; }
+  }
+  .press__mention a:hover{ background: color-mix(in srgb, var(--text) 3%, transparent); }
+  .press__outlet{
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--text);
+    font-weight: 600;
+  }
+  .press__mentionTitle{
+    font-family: var(--font-display);
+    font-size: clamp(16px, 1.6vw, 20px);
+    color: var(--text);
+    line-height: 1.4;
+  }
+  .press__mentionMeta{
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    white-space: nowrap;
+  }
+
+  .press__contact{
+    margin-top: clamp(64px, 9vw, 120px);
+    padding: clamp(36px, 5vw, 64px);
+    border: 1px solid var(--line);
+    border-radius: var(--r-3);
+    background: color-mix(in srgb, var(--text) 3%, transparent);
+  }
+  .press__contactRow{ display: flex; flex-wrap: wrap; gap: 14px; margin-top: 18px; }
+</style>

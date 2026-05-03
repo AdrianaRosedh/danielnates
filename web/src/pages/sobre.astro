@@ -1,0 +1,394 @@
+---
+export const prerender = true;
+
+import BaseLayout from "../components/layout/BaseLayout.astro";
+import TopDock from "../components/layout/TopDock.astro";
+import VoiceMark from "../components/motion/VoiceMark.astro";
+import TextReveal from "../components/motion/TextReveal.astro";
+import PortableText from "../components/content/PortableText.astro";
+
+import { getDaniel, getPressKit } from "../lib/queries";
+import { aboutHref, href, pressHref, t, tb, ui } from "../lib/i18n";
+import { img, imgSrcset } from "../lib/image";
+import type { Locale, PressRecognition } from "../lib/types";
+
+interface PageProps { lang?: Locale }
+const { lang } = Astro.props as PageProps;
+const locale: Locale = lang ?? Astro.locals.locale ?? "es";
+
+const [daniel, kit] = await Promise.all([getDaniel(), getPressKit()]);
+
+const name = daniel?.name ?? "Daniel Nates";
+const tagline = t(daniel?.tagline, locale) || (locale === "es"
+  ? "Cocinar y dibujar — la misma lengua."
+  : "To cook and to draw — the same language.");
+const subline = t(daniel?.subline, locale) || (locale === "es"
+  ? "Cocinero en Olivea · Socio en Fritanguita · Dibujante."
+  : "Chef at Olivea · Partner at Fritanguita · Draughtsman.");
+
+/* ── Long bio: pull from Sanity if present, else use a researched default ── */
+const bioBlocks = tb(daniel?.bioLong, locale);
+
+const defaultBioParas = locale === "es" ? [
+  "Daniel Nates es chef y dibujante. Vive en Valle de Guadalupe, Baja California, donde cocina en Olivea Farm to Table — un restaurante con Estrella Michelin y Estrella Verde Michelin, donde la carta cambia con la temporada del huerto. Es socio fundador de Fritanguita, una fritanga poblana en Roma Norte, Ciudad de México, junto a Santiago Muñoz Moctezuma de Maizajo.",
+  "Es poblano de origen. Estudió en el Centro Culinario Internacional de la Universidad de Oriente. En 2016 fue finalista regional de Latinoamérica en la S.Pellegrino Young Chef Academy con su platillo Quiltamal, ganador del premio al Mensaje Más Inspirador. Food & Wine en Español lo nombró uno de los 19 mejores chefs nuevos de México.",
+  "Antes de Olivea dirigió ocho años Maizal — su primer restaurante, en La Casona de los Sapos, Puebla. Lo cerró en 2024. Lo que aprendió ahí sigue cocinando lo que hace hoy.",
+  "Cocinar y dibujar le interesan por las mismas razones: composición, contraste, intención. Su práctica visual —dibujo, pintura, marcas en papel— corre en paralelo a la cocina. La mesa, dice, es el último cuadro.",
+] : [
+  "Daniel Nates is a chef and a draughtsman. He lives in Valle de Guadalupe, Baja California, where he cooks at Olivea Farm to Table — a restaurant with a Michelin Star and a Michelin Green Star, whose menu changes with the garden's season. He is co-founder of Fritanguita, a poblano fritanga stand in Roma Norte, Mexico City, alongside Santiago Muñoz Moctezuma of Maizajo.",
+  "He is poblano by origin. He studied at the Centro Culinario Internacional of the Universidad de Oriente. In 2016 he was a Latin America regional finalist in the S.Pellegrino Young Chef Academy with his dish Quiltamal, winner of the Most Inspiring Message award. Food & Wine en Español named him one of Mexico's 19 best new chefs.",
+  "Before Olivea he led Maizal for eight years — his first restaurant, at La Casona de los Sapos in Puebla. He closed it in 2024. What he learned there still cooks what he does today.",
+  "Cooking and drawing interest him for the same reasons: composition, contrast, intent. His visual practice — drawing, painting, marks on paper — runs parallel to the kitchen. The table, he says, is the last painting.",
+];
+
+/* ── Recognition timeline (uses press-kit if set, else researched defaults) ── */
+const defaultRecs: PressRecognition[] = [
+  { year: "2025", label: locale === "es" ? "Estrella Michelin · Estrella Verde Michelin" : "Michelin Star · Michelin Green Star", org: "Olivea Farm to Table" },
+  { year: "2024", label: locale === "es" ? "Inclusión Guía Michelin" : "Michelin Guide listing", org: "Olivea Farm to Table" },
+  { year: "2024", label: locale === "es" ? "Cierre de Maizal" : "Maizal closes", org: "La Casona de los Sapos · Puebla" },
+  { year: "2025", label: "Fritanguita", org: locale === "es" ? "Apertura · Roma Norte, CDMX" : "Opens · Roma Norte, Mexico City" },
+  { year: "2018", label: locale === "es" ? "19 Mejores Chefs Nuevos de México" : "Best New Chefs Mexico — 19", org: "Food & Wine en Español" },
+  { year: "2017", label: locale === "es" ? "Apertura de Maizal" : "Maizal opens", org: "Puebla" },
+  { year: "2016", label: locale === "es" ? "S.Pellegrino Young Chef · Mensaje Más Inspirador" : "S.Pellegrino Young Chef · Most Inspiring Message", org: locale === "es" ? "Latinoamérica · Quiltamal" : "Latin America · Quiltamal" },
+];
+const recs = (kit?.recognitions?.length ? kit.recognitions : defaultRecs)
+  .slice()
+  .sort((a, b) => Number(b.year) - Number(a.year));
+
+const portrait = img(daniel?.portrait, { width: 1400 });
+const portraitSrcset = imgSrcset(daniel?.portrait);
+
+const headline = locale === "es" ? "Sobre" : "About";
+---
+
+<BaseLayout
+  title={`${headline} — ${name}`}
+  description={subline}
+  locale={locale}
+  og={{
+    title: name,
+    kicker: locale === "es" ? "Sobre" : "About",
+    sig: tagline,
+    brand: "daniel",
+    meta: locale === "es" ? "Valle de Guadalupe · CDMX" : "Valle de Guadalupe · Mexico City",
+  }}
+>
+  <TopDock locale={locale} />
+
+  {/* ── Hero — portrait + name + signature ───────────────────── */}
+  <section class="about__hero scene--ink" data-scene="ink">
+    <div class="about__heroGrid">
+      <div class="about__heroMedia">
+        {portrait ? (
+          <img src={portrait} srcset={portraitSrcset ?? undefined} sizes="(min-width: 1100px) 50vw, 100vw" alt={name} loading="eager" />
+        ) : (
+          <div class="about__heroPlate" aria-hidden="true"></div>
+        )}
+      </div>
+
+      <div class="about__heroBody">
+        <p class="kicker about__kicker">{locale === "es" ? "Sobre" : "About"}</p>
+        <TextReveal as="h1" mode="word" class="about__name">{name}</TextReveal>
+        <p class="about__tagline">{tagline}</p>
+        <p class="about__subline">{subline}</p>
+
+        {daniel?.voice ? (
+          <div style="margin-top: clamp(28px, 4vw, 48px);">
+            <VoiceMark
+              voice={daniel.voice}
+              locale={locale}
+              variant="inline"
+              label={locale === "es" ? "Su voz" : "His voice"}
+            />
+          </div>
+        ) : null}
+      </div>
+    </div>
+  </section>
+
+  {/* ── Bio — long-form editorial ────────────────────────────── */}
+  <section class="about__bio scene--ink" data-scene="ink">
+    <div class="about__bioInner">
+      <p class="kicker">{locale === "es" ? "Bio" : "Bio"}</p>
+
+      {bioBlocks.length ? (
+        <div class="about__bioBlocks">
+          <PortableText value={bioBlocks} />
+        </div>
+      ) : (
+        <div class="about__bioBlocks">
+          {defaultBioParas.map((p) => <p>{p}</p>)}
+        </div>
+      )}
+    </div>
+  </section>
+
+  {/* ── Arc / Recognitions timeline ──────────────────────────── */}
+  {recs.length ? (
+    <section class="about__arc scene--ink" data-scene="ink">
+      <div class="about__arcInner">
+        <p class="kicker">{locale === "es" ? "Trayecto" : "Arc"}</p>
+        <h2 class="about__arcTitle">{locale === "es" ? "Lo que llevo." : "What I carry."}</h2>
+
+        <ol class="about__timeline">
+          {recs.map((r) => (
+            <li class="about__t">
+              <span class="about__tYear">{r.year}</span>
+              <div class="about__tBody">
+                <p class="about__tLabel">{r.label}</p>
+                {r.org ? <p class="about__tOrg">{r.org}</p> : null}
+              </div>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
+  ) : null}
+
+  {/* ── Doors — links to projects, journal, art, press, contact ── */}
+  <section class="about__doors scene--ink" data-scene="ink">
+    <div class="about__doorsInner">
+      <p class="kicker">{locale === "es" ? "Sigue" : "Continue"}</p>
+      <ul class="about__doorList">
+        <li>
+          <a href={href("/olivea", locale)}>
+            <span class="about__doorLabel">Olivea</span>
+            <span class="about__doorMeta">{locale === "es" ? "Lo lento · Valle de Guadalupe" : "The slow · Valle de Guadalupe"}</span>
+          </a>
+        </li>
+        <li>
+          <a href={href("/fritanguita", locale)}>
+            <span class="about__doorLabel">Fritanguita</span>
+            <span class="about__doorMeta">{locale === "es" ? "Lo rápido · Roma Norte, CDMX" : "The fast · Roma Norte, Mexico City"}</span>
+          </a>
+        </li>
+        <li>
+          <a href={href("/diario", locale)}>
+            <span class="about__doorLabel">{locale === "es" ? "Diario" : "Journal"}</span>
+            <span class="about__doorMeta">{locale === "es" ? "Notas, ensayos y archivo" : "Notes, essays, archive"}</span>
+          </a>
+        </li>
+        <li>
+          <a href={href("/arte", locale)}>
+            <span class="about__doorLabel">{locale === "es" ? "Arte" : "Art"}</span>
+            <span class="about__doorMeta">{locale === "es" ? "Lo que también hace la mano" : "What the hand also does"}</span>
+          </a>
+        </li>
+        <li>
+          <a href={pressHref(locale)}>
+            <span class="about__doorLabel">{locale === "es" ? "Prensa" : "Press"}</span>
+            <span class="about__doorMeta">{locale === "es" ? "Bio, fotos, menciones" : "Bio, photos, mentions"}</span>
+          </a>
+        </li>
+        <li>
+          <a href={href("/contacto", locale)}>
+            <span class="about__doorLabel">{locale === "es" ? "Escribe" : "Write"}</span>
+            <span class="about__doorMeta">{locale === "es" ? "Prensa, colabs, una idea" : "Press, collabs, an idea"}</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  /* ── Hero ─────────────────────────────────────────────────── */
+  .about__hero{
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    background: var(--ink);
+    color: var(--bone);
+    padding: clamp(120px, 14vw, 200px) 0 clamp(80px, 10vw, 140px);
+  }
+  .about__heroGrid{
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 clamp(20px, 5vw, 80px);
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: clamp(32px, 5vw, 64px);
+    align-items: center;
+  }
+  @media (min-width: 880px){
+    .about__heroGrid{ grid-template-columns: 5fr 7fr; gap: clamp(40px, 6vw, 80px); }
+  }
+  .about__heroMedia img{
+    width: 100%;
+    aspect-ratio: 4/5;
+    object-fit: cover;
+    display: block;
+    border-radius: var(--r-2);
+    background: rgba(239, 230, 212, .04);
+    filter: saturate(.94);
+  }
+  .about__heroPlate{
+    width: 100%;
+    aspect-ratio: 4/5;
+    border-radius: var(--r-2);
+    background:
+      radial-gradient(60% 50% at 50% 50%, color-mix(in srgb, var(--ochre) 18%, transparent), transparent 70%),
+      var(--ink-2);
+  }
+
+  .about__kicker{ color: rgba(239, 230, 212, .55); margin: 0 0 clamp(20px, 3vw, 36px); }
+  .about__name{
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(56px, 9vw, 132px);
+    line-height: .95;
+    letter-spacing: -0.025em;
+    color: var(--bone);
+    margin: 0;
+  }
+  .about__tagline{
+    margin: clamp(20px, 2.4vw, 32px) 0 0;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: clamp(20px, 2.2vw, 28px);
+    line-height: 1.35;
+    color: rgba(239, 230, 212, .9);
+    max-width: 36ch;
+  }
+  .about__subline{
+    margin: clamp(16px, 2vw, 24px) 0 0;
+    font-family: var(--font-sans);
+    font-size: 12px;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: rgba(239, 230, 212, .55);
+  }
+
+  /* ── Bio ──────────────────────────────────────────────────── */
+  .about__bio{
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    background: #100F0C;
+    color: var(--bone);
+    padding: clamp(80px, 10vw, 140px) clamp(20px, 5vw, 80px);
+    border-top: 1px solid rgba(239, 230, 212, .06);
+  }
+  .about__bioInner{ max-width: 760px; margin: 0 auto; }
+  .about__bioInner .kicker{ margin: 0 0 clamp(24px, 3vw, 40px); }
+  .about__bioBlocks p{
+    margin: 0 0 clamp(18px, 2vw, 28px);
+    font-family: var(--font-display);
+    font-size: clamp(18px, 1.6vw, 22px);
+    line-height: 1.55;
+    color: rgba(239, 230, 212, .92);
+  }
+  .about__bioBlocks p:first-child::first-letter{
+    font-family: var(--font-display);
+    font-size: 4.2em;
+    float: left;
+    line-height: .9;
+    margin: 0.06em 0.08em 0 0;
+    color: var(--bone);
+  }
+
+  /* ── Arc / Timeline ──────────────────────────────────────── */
+  .about__arc{
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    background: var(--ink);
+    color: var(--bone);
+    padding: clamp(80px, 10vw, 140px) clamp(20px, 5vw, 80px);
+    border-top: 1px solid rgba(239, 230, 212, .06);
+  }
+  .about__arcInner{ max-width: 1080px; margin: 0 auto; }
+  .about__arcTitle{
+    margin: clamp(16px, 2vw, 24px) 0 clamp(40px, 5vw, 64px);
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(40px, 6vw, 80px);
+    line-height: 1;
+    letter-spacing: -0.025em;
+    color: var(--bone);
+  }
+  .about__timeline{
+    list-style: none; margin: 0; padding: 0;
+    display: grid; gap: 0;
+  }
+  .about__t{
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    gap: clamp(20px, 3vw, 36px);
+    padding: clamp(18px, 2.4vw, 28px) 0;
+    border-top: 1px solid rgba(239, 230, 212, .08);
+    align-items: baseline;
+  }
+  .about__t:last-child{ border-bottom: 1px solid rgba(239, 230, 212, .08); }
+  .about__tYear{
+    font-family: var(--font-mono);
+    font-size: 13px;
+    letter-spacing: .04em;
+    color: rgba(239, 230, 212, .45);
+  }
+  .about__tLabel{
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(20px, 2.2vw, 28px);
+    letter-spacing: -0.01em;
+    color: var(--bone);
+  }
+  .about__tOrg{
+    margin: 6px 0 0;
+    font-family: var(--font-sans);
+    font-size: 12px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: rgba(239, 230, 212, .5);
+  }
+
+  /* ── Doors ───────────────────────────────────────────────── */
+  .about__doors{
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    background: #08090A;
+    color: var(--bone);
+    padding: clamp(80px, 10vw, 140px) clamp(20px, 5vw, 80px) clamp(120px, 14vw, 200px);
+    border-top: 1px solid rgba(239, 230, 212, .06);
+  }
+  .about__doorsInner{ max-width: 1080px; margin: 0 auto; }
+  .about__doorList{
+    list-style: none; margin: clamp(28px, 3vw, 40px) 0 0; padding: 0;
+    display: grid; gap: 0;
+  }
+  .about__doorList li{ border-top: 1px solid rgba(239, 230, 212, .08); }
+  .about__doorList li:last-child{ border-bottom: 1px solid rgba(239, 230, 212, .08); }
+  .about__doorList a{
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+    gap: 24px;
+    padding: clamp(20px, 2.6vw, 32px) 0;
+    color: var(--bone);
+    transition:
+      padding-left 700ms var(--ease-fluid),
+      color 700ms var(--ease-fluid);
+  }
+  .about__doorList a:hover{
+    padding-left: clamp(8px, 1.5vw, 18px);
+  }
+  .about__doorLabel{
+    font-family: var(--font-display);
+    font-size: clamp(28px, 4vw, 56px);
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .about__doorMeta{
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: rgba(239, 230, 212, .5);
+    text-align: right;
+  }
+  @media (max-width: 720px){
+    .about__doorList a{ grid-template-columns: 1fr; gap: 6px; }
+    .about__doorMeta{ text-align: left; }
+  }
+</style>

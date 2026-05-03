@@ -1,0 +1,99 @@
+---
+import TextReveal from "../motion/TextReveal.astro";
+import type { Locale, Pillar } from "../../lib/types";
+import { t } from "../../lib/i18n";
+
+interface Props {
+  pillars?: Pillar[];
+  kicker?: string;
+  locale?: Locale;
+}
+
+const { pillars = [], kicker = "Manifiesto", locale: propLocale } = Astro.props as Props;
+const locale: Locale = propLocale ?? Astro.locals.locale ?? "es";
+---
+
+{pillars.length ? (
+  <section class="manifesto scene--ink" data-scene="ink">
+    <div class="manifesto__inner">
+      <p class="kicker manifesto__kicker">{kicker}</p>
+
+      <ol class="manifesto__list">
+        {pillars.map((p, i) => (
+          <li class="manifesto__item">
+            <span class="manifesto__num">{String(i + 1).padStart(2, "0")}</span>
+            <div class="manifesto__body">
+              <TextReveal as="h2" mode="word" stagger={60} class="manifesto__label">
+                {p.label}
+              </TextReveal>
+              {t(p.copy, locale) ? (
+                <p class="manifesto__copy">{t(p.copy, locale)}</p>
+              ) : null}
+            </div>
+          </li>
+        ))}
+      </ol>
+    </div>
+  </section>
+) : null}
+
+<style>
+  .manifesto{
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    background: var(--ink);
+    color: var(--bone);
+    padding: clamp(80px, 12vw, 180px) clamp(20px, 5vw, 80px);
+    position: relative;
+  }
+  .manifesto__inner{ max-width: 1280px; margin: 0 auto; }
+  .manifesto__kicker{ color: rgba(244,239,230,.55); margin: 0 0 clamp(36px, 5vw, 72px); }
+
+  .manifesto__list{
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: clamp(36px, 5vw, 72px);
+  }
+  .manifesto__item{
+    display: grid;
+    grid-template-columns: 56px 1fr;
+    gap: clamp(20px, 3vw, 56px);
+    align-items: baseline;
+    padding-bottom: clamp(36px, 5vw, 72px);
+    border-bottom: 1px solid rgba(244,239,230,.10);
+  }
+  .manifesto__item:last-child{ border-bottom: 0; padding-bottom: 0; }
+
+  .manifesto__num{
+    font-family: var(--font-sans);
+    font-size: 12px;
+    letter-spacing: .18em;
+    color: rgba(244,239,230,.45);
+    padding-top: 14px;
+  }
+  .manifesto__body{ min-width: 0; }
+  .manifesto__label{
+    font-family: var(--font-display);
+    font-size: clamp(36px, 6vw, 80px);
+    line-height: .98;
+    letter-spacing: -0.025em;
+    color: var(--bone);
+    margin: 0;
+  }
+  .manifesto__copy{
+    margin: clamp(14px, 2vw, 24px) 0 0;
+    font-family: var(--font-sans);
+    font-size: clamp(15px, 1.2vw, 17px);
+    line-height: 1.55;
+    color: rgba(244,239,230,.72);
+    max-width: 56ch;
+  }
+
+  @media (max-width: 720px){
+    .manifesto__item{ grid-template-columns: 1fr; gap: 14px; }
+    .manifesto__num{ padding: 0; }
+  }
+</style>

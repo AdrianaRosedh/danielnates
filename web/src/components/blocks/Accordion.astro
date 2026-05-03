@@ -1,0 +1,61 @@
+---
+import type { AccordionBlock, Locale } from "../../lib/types";
+import { t, tb } from "../../lib/i18n";
+import PortableText from "../content/PortableText.astro";
+
+interface Props { block: AccordionBlock; locale?: Locale }
+const { block, locale: propLocale } = Astro.props as Props;
+const locale: Locale = propLocale ?? Astro.locals.locale ?? "es";
+
+const items = block.items ?? [];
+---
+
+<section class="accordion reveal">
+  {block.title ? <h2 class="accordion__title">{block.title}</h2> : null}
+  {items.length ? (
+    <div class="accordion__list">
+      {items.map((it) => {
+        const q = t(it.q, locale);
+        const a = tb(it.a, locale);
+        return q ? (
+          <details class="accordion__item">
+            <summary>
+              <span>{q}</span>
+              <span class="accordion__chev" aria-hidden="true">+</span>
+            </summary>
+            <div class="accordion__body">
+              {a.length ? <PortableText value={a} /> : null}
+            </div>
+          </details>
+        ) : null;
+      })}
+    </div>
+  ) : null}
+</section>
+
+<style>
+  .accordion{ margin: 28px 0; }
+  .accordion__title{ margin: 0 0 14px; font-size: clamp(20px, 2.6vw, 26px); letter-spacing: -.02em; }
+  .accordion__list{ display: grid; gap: 8px; }
+  .accordion__item{
+    border: 1px solid rgba(255,255,255,.10);
+    border-radius: var(--radius2);
+    background: rgba(255,255,255,.02);
+    overflow: hidden;
+    transition: border-color .25s, background .25s;
+  }
+  .accordion__item:hover{ border-color: color-mix(in srgb, var(--brand-primary) 38%, rgba(255,255,255,.14)); }
+  .accordion__item summary{
+    list-style: none;
+    cursor: pointer;
+    padding: 14px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px;
+    font-size: 15px;
+    letter-spacing: -.01em;
+  }
+  .accordion__item summary::-webkit-details-marker{ display: none; }
+  .accordion__chev{ transition: transform .25s; color: var(--muted2); }
+  .accordion__item[open] .accordion__chev{ transform: rotate(45deg); }
+  .accordion__body{ padding: 0 16px 16px; color: var(--muted); }
+</style>

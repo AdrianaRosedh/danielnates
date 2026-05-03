@@ -1,16 +1,21 @@
 {
   "name": "studio",
   "private": true,
+  "engines": {
+    "node": ">=22.13.0"
+  },
   "scripts": {
     "dev": "sanity dev",
     "build": "sanity build",
+    "deploy": "sanity deploy",
     "start": "sanity start"
   },
   "dependencies": {
-    "@sanity/structure": "^2.36.2",
-    "@sanity/vision": "^5.1.0",
-    "lucide-react": "^0.562.0",
-    "sanity": "^5.1.0",
-    "styled-components": "^6.1.19"
+    "@sanity/vision": "^5.23.0",
+    "lucide-react": "^1.14.0",
+    "react": "^19.2.2",
+    "react-dom": "^19.2.2",
+    "sanity": "^5.23.0",
+    "styled-components": "^6.4.1"
   }
 }

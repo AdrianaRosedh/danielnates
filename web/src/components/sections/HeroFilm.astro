@@ -1,20 +1,33 @@
 ---
+interface Pill {
+  label?: string;
+}
+
+interface Props {
+  title?: string;
+  sub?: string | null;
+  pills?: Pill[];
+  videoUrl?: string | null;
+  posterUrl?: string | null;
+  transitionKey?: string | null;
+}
+
 const {
   title,
   sub,
   pills = [],
   videoUrl = null,
   posterUrl = null,
-  transitionKey = null
-} = Astro.props;
+  transitionKey = null,
+} = Astro.props as Props;
 ---
 
-<section id="inicio" class="hero">
+<section id="inicio" class="hero" data-hero-scroll>
   <div
     class="heroCard"
     transition:name={transitionKey ? `proj-${transitionKey}` : undefined}
   >
-    <div class="heroMedia" aria-hidden="true">
+    <div class="heroMedia" data-hero-media aria-hidden="true">
       {posterUrl ? <img src={posterUrl} alt="" loading="eager" decoding="async" /> : null}
 
       {videoUrl ? (
@@ -33,7 +46,7 @@ const {
 
     <div class="heroScrim"></div>
 
-    <div class="heroInner">
+    <div class="heroInner" data-hero-inner>
       <h1
         class="h1"
         transition:name={transitionKey ? `proj-title-${transitionKey}` : undefined}

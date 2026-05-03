@@ -1,0 +1,361 @@
+---
+import { aboutHref, dayHref, href, pressHref, switchLocale, ui } from "../../lib/i18n";
+import type { Locale, Person } from "../../lib/types";
+
+interface Props {
+  locale?: Locale;
+  daniel?: Person | null;
+}
+
+const { locale: localeProp, daniel = null } = Astro.props as Props;
+const locale: Locale = localeProp ?? Astro.locals.locale ?? "es";
+
+const otherLocale: Locale = locale === "es" ? "en" : "es";
+const otherPath = switchLocale(Astro.url.pathname, otherLocale);
+
+const primary = [
+  { label: ui("home", locale), href: href("/", locale) },
+  { label: locale === "es" ? "Sobre" : "About", href: aboutHref(locale) },
+  { label: locale === "es" ? "Día" : "Day", href: dayHref(locale) },
+  { label: locale === "es" ? "Diario" : "Journal", href: href("/diario", locale) },
+  { label: locale === "es" ? "Arte" : "Art", href: href("/arte", locale) },
+  { label: locale === "es" ? "Prensa" : "Press", href: pressHref(locale) },
+  { label: locale === "es" ? "Contacto" : "Contact", href: href("/contacto", locale) },
+];
+
+const projects = [
+  { label: "Olivea", meta: "Valle de Guadalupe", href: href("/olivea", locale) },
+  { label: "Fritanguita", meta: "CDMX", href: href("/fritanguita", locale) },
+  { label: "Maizal", meta: "2017–2024", href: href("/maizal", locale) },
+];
+
+const email = daniel?.social?.email ?? null;
+const ig1 = daniel?.social?.oliveaInstagram ?? null;
+const ig2 = daniel?.social?.fritanguitaInstagram ?? null;
+
+const here = Astro.url.pathname;
+function isCurrent(path: string): boolean {
+  if (path === here) return true;
+  if (path !== "/" && path !== "/en" && here.startsWith(path)) return true;
+  return false;
+}
+---
+
+<div class="overlay" data-menu-overlay aria-hidden="true">
+  <div class="overlay__bg" data-menu-bg></div>
+
+  <div class="overlay__inner" role="dialog" aria-modal="true" aria-label={locale === "es" ? "Menú principal" : "Main menu"}>
+    {/* Top bar — brand mark + close */}
+    <div class="overlay__top">
+      <a class="overlay__brand" href={locale === "es" ? "/" : "/en"}>
+        <span class="overlay__dot" aria-hidden="true"></span>
+        <span>Daniel Nates</span>
+      </a>
+      <button class="overlay__close" type="button" data-menu-close aria-label={locale === "es" ? "Cerrar" : "Close"}>
+        <span class="overlay__closeText">{locale === "es" ? "Cerrar" : "Close"}</span>
+        <span class="overlay__closeMark" aria-hidden="true"></span>
+      </button>
+    </div>
+
+    {/* Primary nav */}
+    <nav class="overlay__nav" aria-label="Primary">
+      <ol>
+        {primary.map((item, i) => (
+          <li class={isCurrent(item.href) ? "is-current" : ""}>
+            <a href={item.href} data-menu-link>
+              <span class="overlay__num">{String(i + 1).padStart(2, "0")}</span>
+              <span class="overlay__label">{item.label}</span>
+            </a>
+          </li>
+        ))}
+      </ol>
+    </nav>
+
+    {/* Project shortcuts */}
+    <div class="overlay__projects">
+      <p class="overlay__group">{locale === "es" ? "Proyectos" : "Projects"}</p>
+      <ul>
+        {projects.map((p) => (
+          <li class={isCurrent(p.href) ? "is-current" : ""}>
+            <a href={p.href} data-menu-link>
+              <span class="overlay__projLabel">{p.label}</span>
+              <span class="overlay__projMeta">{p.meta}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+
+    {/* Footer row */}
+    <div class="overlay__foot">
+      <div class="overlay__foot-col">
+        <p class="overlay__group">{locale === "es" ? "Idioma" : "Language"}</p>
+        <a class="overlay__footLink" href={otherPath}>
+          {otherLocale === "en" ? "English" : "Español"} ↗
+        </a>
+      </div>
+      {email ? (
+        <div class="overlay__foot-col">
+          <p class="overlay__group">{locale === "es" ? "Escribe" : "Write"}</p>
+          <a class="overlay__footLink" href={`mailto:${email}`}>{email}</a>
+        </div>
+      ) : null}
+      <div class="overlay__foot-col">
+        <p class="overlay__group">Olivea</p>
+        {ig1 ? <a class="overlay__footLink" href={ig1} target="_blank" rel="noreferrer">Instagram ↗</a> : null}
+      </div>
+      <div class="overlay__foot-col">
+        <p class="overlay__group">Fritanguita</p>
+        {ig2 ? <a class="overlay__footLink" href={ig2} target="_blank" rel="noreferrer">Instagram ↗</a> : null}
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .overlay{
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    pointer-events: none;
+    visibility: hidden;
+  }
+  .overlay.is-open{
+    pointer-events: auto;
+    visibility: visible;
+  }
+
+  .overlay__bg{
+    position: absolute; inset: 0;
+    background: rgba(8, 9, 10, .94);
+    backdrop-filter: blur(0px) saturate(100%);
+    -webkit-backdrop-filter: blur(0px) saturate(100%);
+    opacity: 0;
+    transition:
+      opacity 1100ms var(--ease-fluid),
+      backdrop-filter 1300ms var(--ease-fluid),
+      -webkit-backdrop-filter 1300ms var(--ease-fluid);
+  }
+  .overlay.is-open .overlay__bg{
+    opacity: 1;
+    backdrop-filter: blur(32px) saturate(140%);
+    -webkit-backdrop-filter: blur(32px) saturate(140%);
+  }
+
+  .overlay__inner{
+    position: relative;
+    height: 100%;
+    width: 100%;
+    color: var(--bone);
+    display: flex;
+    flex-direction: column;
+    padding: clamp(24px, 3vw, 40px) clamp(20px, 5vw, 80px);
+    opacity: 0;
+    transform: translate3d(0, 16px, 0);
+    transition:
+      opacity 900ms var(--ease-fluid) 200ms,
+      transform 1100ms var(--ease-fluid) 200ms;
+  }
+  .overlay.is-open .overlay__inner{
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+
+  .overlay__top{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: clamp(40px, 8vw, 100px);
+  }
+  .overlay__brand{
+    display: inline-flex;
+    align-items: center;
+    gap: 11px;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+    color: var(--bone);
+    transition: opacity 600ms var(--ease-fluid);
+  }
+  .overlay__brand:hover{ opacity: .65; }
+  .overlay__dot{
+    width: 8px; height: 8px;
+    border-radius: 999px;
+    background: var(--bone);
+    box-shadow: 0 0 0 3px rgba(244,239,230,.18);
+  }
+
+  .overlay__close{
+    appearance: none;
+    background: transparent;
+    border: 0;
+    padding: 8px 0;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+    color: var(--bone);
+    transition: opacity 600ms var(--ease-fluid);
+  }
+  .overlay__close:hover{ opacity: .65; }
+  .overlay__closeMark::before,
+  .overlay__closeMark::after{
+    transition: transform 700ms var(--ease-fluid);
+  }
+  .overlay__close:hover .overlay__closeMark::before{ transform: rotate(135deg); }
+  .overlay__close:hover .overlay__closeMark::after{ transform: rotate(45deg); }
+  .overlay__closeMark{
+    position: relative;
+    width: 16px; height: 16px;
+  }
+  .overlay__closeMark::before,
+  .overlay__closeMark::after{
+    content: "";
+    position: absolute;
+    top: 50%; left: 0;
+    width: 100%; height: 1px;
+    background: currentColor;
+    transform-origin: center;
+  }
+  .overlay__closeMark::before{ transform: rotate(45deg); }
+  .overlay__closeMark::after{ transform: rotate(-45deg); }
+
+  /* Primary nav — big serif stack */
+  .overlay__nav{ flex: 1; display: flex; align-items: center; }
+  .overlay__nav ol{
+    list-style: none;
+    margin: 0; padding: 0;
+    display: flex; flex-direction: column;
+    gap: clamp(4px, 0.6vw, 12px);
+    width: 100%;
+  }
+  .overlay__nav li{
+    overflow: hidden;
+    transform: translateY(64px);
+    opacity: 0;
+    filter: blur(8px);
+    transition:
+      transform 1400ms var(--ease-fluid),
+      opacity 1100ms var(--ease-fluid),
+      filter 1100ms var(--ease-fluid);
+  }
+  .overlay.is-open .overlay__nav li{
+    transform: translateY(0);
+    opacity: 1;
+    filter: blur(0);
+  }
+  .overlay.is-open .overlay__nav li:nth-child(1){ transition-delay: 280ms; }
+  .overlay.is-open .overlay__nav li:nth-child(2){ transition-delay: 350ms; }
+  .overlay.is-open .overlay__nav li:nth-child(3){ transition-delay: 420ms; }
+  .overlay.is-open .overlay__nav li:nth-child(4){ transition-delay: 490ms; }
+  .overlay.is-open .overlay__nav li:nth-child(5){ transition-delay: 560ms; }
+  .overlay.is-open .overlay__nav li:nth-child(6){ transition-delay: 630ms; }
+  .overlay.is-open .overlay__nav li:nth-child(7){ transition-delay: 700ms; }
+
+  .overlay__nav a{
+    display: inline-flex;
+    align-items: baseline;
+    gap: clamp(16px, 2vw, 32px);
+    font-family: var(--font-display);
+    font-size: clamp(48px, 9vw, 132px);
+    line-height: .95;
+    letter-spacing: -0.025em;
+    color: var(--bone);
+    transition: color 800ms var(--ease-fluid), opacity 800ms var(--ease-fluid);
+  }
+  .overlay__num{
+    font-family: var(--font-mono);
+    font-size: clamp(11px, 1.2vw, 14px);
+    letter-spacing: .14em;
+    color: rgba(244,239,230,.4);
+    align-self: flex-start;
+    padding-top: clamp(20px, 3vw, 36px);
+    transition: color 800ms var(--ease-fluid);
+  }
+  .overlay__label{
+    position: relative;
+    display: inline-block;
+    transform-origin: left center;
+    transition: transform 900ms var(--ease-fluid);
+  }
+  .overlay__nav li.is-current .overlay__label{ font-style: italic; color: rgba(244,239,230,.96); }
+  .overlay__nav li.is-current .overlay__num{ color: var(--ember, #D9421C); }
+  .overlay__nav a:hover .overlay__label{ font-style: italic; transform: translateX(8px); }
+  .overlay__nav a:hover .overlay__num{ color: var(--bone); }
+
+  /* Projects */
+  .overlay__projects{
+    margin-top: clamp(36px, 5vw, 64px);
+    padding-top: clamp(24px, 3vw, 36px);
+    border-top: 1px solid rgba(244,239,230,.10);
+  }
+  .overlay__projects ul{
+    list-style: none; margin: 12px 0 0; padding: 0;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  @media (min-width: 720px){
+    .overlay__projects ul{ grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  }
+  .overlay__projects a{
+    display: flex; flex-direction: column; gap: 2px;
+    color: var(--bone);
+    transition: opacity 700ms var(--ease-fluid), transform 700ms var(--ease-fluid);
+  }
+  .overlay__projects a:hover{ opacity: .65; transform: translateY(-2px); }
+  .overlay__projLabel{
+    font-family: var(--font-display);
+    font-size: clamp(20px, 2vw, 26px);
+    letter-spacing: -0.01em;
+  }
+  .overlay__projMeta{
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: rgba(244,239,230,.5);
+  }
+  .overlay__projects li.is-current .overlay__projLabel{ font-style: italic; }
+
+  .overlay__group{
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 10.5px;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+    color: rgba(244,239,230,.45);
+  }
+
+  /* Footer */
+  .overlay__foot{
+    margin-top: clamp(40px, 5vw, 64px);
+    padding-top: clamp(20px, 2.4vw, 32px);
+    border-top: 1px solid rgba(244,239,230,.10);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (min-width: 720px){ .overlay__foot{ grid-template-columns: repeat(4, 1fr); } }
+  .overlay__foot-col{ display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .overlay__footLink{
+    font-family: var(--font-sans);
+    font-size: 13px;
+    color: rgba(244,239,230,.88);
+    word-break: break-word;
+    transition: color 700ms var(--ease-fluid);
+  }
+  .overlay__footLink:hover{ color: var(--ember, #D9421C); }
+
+  @media (prefers-reduced-motion: reduce){
+    .overlay__bg, .overlay__inner, .overlay__nav li{
+      transition: opacity .2s !important;
+      transform: none !important;
+    }
+  }
+</style>

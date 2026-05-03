@@ -89,6 +89,13 @@ export default defineType({
     }),
 
     defineField({
+      name: 'voice',
+      title: 'Voz · Cold-open',
+      description: 'Narración para la apertura del sitio (Capítulo 0).',
+      type: 'voiceTrack',
+    }),
+
+    defineField({
       name: 'social',
       title: 'Redes',
       type: 'object',

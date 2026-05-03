@@ -1,10 +1,24 @@
 ---
-const { notes = [] } = Astro.props;
+import type { FieldNote, Locale } from "../../lib/types";
+import { ui } from "../../lib/i18n";
+
+interface Props {
+  notes?: FieldNote[];
+  locale?: Locale;
+}
+
+const { notes = [], locale: propLocale } = Astro.props as Props;
+const locale: Locale = propLocale ?? Astro.locals.locale ?? "es";
+
+const categoryLabel: Record<string, Record<Locale, string>> = {
+  ingredient: { es: "Ingrediente", en: "Ingredient" },
+  territory: { es: "Territorio", en: "Territory" },
+  technique: { es: "Técnica", en: "Technique" },
+  influence: { es: "Influencia", en: "Influence" },
+};
 ---
 
-<section id="fieldnotes" class="section">
-  <p class="kicker">Field Notes</p>
-
+<section class="section">
   {notes.length ? (
     <div class="noteList">
       {notes.slice(0, 6).map((n) => (
@@ -13,15 +27,15 @@ const { notes = [] } = Astro.props;
             <p class="noteTitle">{n?.title ?? "Nota"}</p>
             {n?.externalLink ? (
               <p class="sub" style="margin-top:6px;font-size:12px;">
-                <a href={n.externalLink} target="_blank" rel="noreferrer">Ver referencia</a>
+                <a href={n.externalLink} target="_blank" rel="noreferrer">{ui("readMore", locale)}</a>
               </p>
             ) : null}
           </div>
-          <p class="noteMeta">{n?.category ?? "—"}</p>
+          <p class="noteMeta">{n?.category ? categoryLabel[n.category]?.[locale] ?? n.category : "—"}</p>
         </div>
       ))}
     </div>
   ) : (
-    <p class="sub">Sin Field Notes todavía. Crea y publica notas en Sanity.</p>
+    <p class="sub">{ui("noEntries", locale)}</p>
   )}
 </section>

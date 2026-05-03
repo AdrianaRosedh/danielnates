@@ -1,0 +1,54 @@
+---
+import type { FeaturedCardsBlock } from "../../lib/types";
+import { img, imgSrcset } from "../../lib/image";
+
+interface Props { block: FeaturedCardsBlock }
+const { block } = Astro.props as Props;
+
+const cards = block.cards ?? [];
+---
+
+{cards.length ? (
+  <section class="featured reveal">
+    {block.title ? <h2 class="featured__title">{block.title}</h2> : null}
+    <div class="featured__grid reveal-stagger">
+      {cards.map((c) => {
+        const src = img(c.image, { width: 900 });
+        const srcset = imgSrcset(c.image);
+        const Tag = c.href ? "a" : "div";
+        return (
+          <Tag class="featured__card" href={c.href || undefined}>
+            {src ? <img src={src} srcset={srcset ?? undefined} sizes="(min-width: 880px) 360px, 100vw" alt={c.title} loading="lazy" /> : null}
+            <div class="featured__body">
+              {c.tag ? <p class="featured__tag">{c.tag}</p> : null}
+              <h3 class="featured__cardTitle">{c.title}</h3>
+              {c.description ? <p class="featured__desc">{c.description}</p> : null}
+            </div>
+          </Tag>
+        );
+      })}
+    </div>
+  </section>
+) : null}
+
+<style>
+  .featured{ margin: 28px 0; }
+  .featured__title{ margin: 0 0 14px; font-size: clamp(20px, 2.6vw, 28px); letter-spacing: -.02em; }
+  .featured__grid{ display: grid; grid-template-columns: 1fr; gap: 12px; }
+  @media (min-width: 720px){ .featured__grid{ grid-template-columns: 1fr 1fr; } }
+  @media (min-width: 1000px){ .featured__grid{ grid-template-columns: repeat(3, 1fr); } }
+  .featured__card{
+    display: block;
+    border-radius: var(--radius2);
+    overflow: hidden;
+    background: rgba(255,255,255,.03);
+    border: 1px solid rgba(255,255,255,.10);
+    transition: transform .25s, border-color .25s;
+  }
+  .featured__card:hover{ transform: translateY(-2px); border-color: color-mix(in srgb, var(--brand-primary) 50%, rgba(255,255,255,.16)); }
+  .featured__card img{ width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block; }
+  .featured__body{ padding: 14px 14px 16px; }
+  .featured__tag{ margin: 0; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted2); }
+  .featured__cardTitle{ margin: 6px 0 4px; font-size: 16px; letter-spacing: -.01em; }
+  .featured__desc{ margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+</style>

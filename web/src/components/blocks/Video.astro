@@ -1,0 +1,57 @@
+---
+import type { VideoBlock } from "../../lib/types";
+import { img } from "../../lib/image";
+
+interface Props { block: VideoBlock }
+const { block } = Astro.props as Props;
+
+const layout = block.layout ?? "full";
+const poster = img(block.poster, { width: 2000 });
+const autoplay = block.autoplay ?? true;
+const loop = block.loop ?? true;
+---
+
+{block.videoUrl ? (
+  <figure class={`videoBlock videoBlock--${layout} reveal`}>
+    <video
+      data-block-video
+      muted={autoplay}
+      playsinline
+      loop={loop}
+      controls={!autoplay}
+      preload="metadata"
+      poster={poster ?? undefined}
+    >
+      <source src={block.videoUrl} />
+    </video>
+    {block.caption ? <figcaption>{block.caption}</figcaption> : null}
+  </figure>
+) : null}
+
+<style>
+  .videoBlock{ margin: 22px 0; }
+  .videoBlock video{ width: 100%; height: auto; display: block; border-radius: var(--radius2); background: #000; }
+  .videoBlock figcaption{ font-size: 12px; color: var(--muted2); margin-top: 8px; }
+  .videoBlock--full video{ border-radius: var(--radius); }
+  .videoBlock--bleed{ margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw); }
+  .videoBlock--bleed video{ border-radius: 0; }
+</style>
+
+<script is:inline>
+{`
+(function(){
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const lite = navigator.connection && navigator.connection.saveData;
+  if (reduce || lite) return;
+  const vids = document.querySelectorAll('[data-block-video]');
+  vids.forEach((v) => {
+    if (!v.muted) return;
+    const io = new IntersectionObserver((es) => {
+      const e = es[0]; if (!e) return;
+      if (e.isIntersecting) v.play().catch(()=>{}); else v.pause();
+    }, { threshold: .35 });
+    io.observe(v);
+  });
+})();
+`}
+</script>

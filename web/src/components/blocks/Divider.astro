@@ -1,0 +1,17 @@
+---
+import type { DividerBlock } from "../../lib/types";
+interface Props { block: DividerBlock }
+const { block } = Astro.props as Props;
+const style = block.style ?? "rule";
+---
+
+<div class={`divider divider--${style}`} aria-hidden="true">
+  {style === "dot" ? <span>•</span> : null}
+</div>
+
+<style>
+  .divider{ display: flex; align-items: center; justify-content: center; }
+  .divider--rule{ height: 1px; background: rgba(255,255,255,.10); margin: 28px 0; }
+  .divider--dot{ font-size: 12px; color: var(--muted2); margin: 28px 0; letter-spacing: .8em; }
+  .divider--space{ height: 56px; }
+</style>

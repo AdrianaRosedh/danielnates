@@ -1,0 +1,36 @@
+---
+export const prerender = true;
+
+import BaseLayout from "../components/layout/BaseLayout.astro";
+import TopDock from "../components/layout/TopDock.astro";
+import ContactForm from "../components/ContactForm.astro";
+
+import { href, ui } from "../lib/i18n";
+import type { Locale } from "../lib/types";
+
+interface PageProps { lang?: Locale }
+const { lang } = Astro.props as PageProps;
+const locale: Locale = lang ?? Astro.locals.locale ?? "es";
+
+const lede = locale === "es"
+  ? "Reservas en Olivea o Fritanguita: por sus canales. Para todo lo demás —prensa, colaboraciones, una idea suelta— escribe aquí."
+  : "Reservations at Olivea or Fritanguita: through their channels. For everything else — press, collaborations, a loose idea — write here.";
+---
+
+<BaseLayout
+  title={`${ui("contact", locale)} — Daniel Nates`}
+  description={lede}
+  locale={locale}
+>
+  <div class="shell">
+    <TopDock locale={locale} />
+
+    <section class="section reveal">
+      <p class="kicker">{ui("contact", locale)}</p>
+      <h1 class="h1">{ui("contactPrompt", locale)}</h1>
+      <p class="lede" style="margin-top: 18px;">{lede}</p>
+    </section>
+
+    <ContactForm locale={locale} />
+  </div>
+</BaseLayout>

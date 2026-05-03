@@ -1,0 +1,171 @@
+---
+import { href, pressHref, ui } from "../../lib/i18n";
+import type { Locale, Person } from "../../lib/types";
+import TextReveal from "../motion/TextReveal.astro";
+
+interface Props {
+  locale?: Locale;
+  daniel?: Person | null;
+}
+const { locale: propLocale, daniel = null } = Astro.props as Props;
+const locale: Locale = propLocale ?? Astro.locals.locale ?? "es";
+
+// Closing thought — Daniel as a whole person (cooks, draws, makes).
+const closingLine = locale === "es"
+  ? "La mesa es el último cuadro."
+  : "The table is the last painting.";
+
+const sigName = daniel?.name ?? "Daniel Nates";
+const place = locale === "es"
+  ? "Valle de Guadalupe · CDMX · MMXXVI"
+  : "Valle de Guadalupe · Mexico City · MMXXVI";
+const email = daniel?.social?.email ?? null;
+const ig1 = daniel?.social?.oliveaInstagram ?? null;
+const ig2 = daniel?.social?.fritanguitaInstagram ?? null;
+---
+
+<section class="closing scene--ink" data-scene="ink">
+  <div class="closing__inner">
+    <span class="closing__rule" aria-hidden="true"></span>
+
+    <TextReveal as="p" mode="word" class="closing__line">
+      {closingLine}
+    </TextReveal>
+
+    <div class="closing__sig">
+      <span class="closing__name">{sigName}</span>
+      <span class="closing__place">{place}</span>
+    </div>
+  </div>
+
+  <footer class="closing__foot">
+    <div class="closing__col">
+      <p class="closing__label">{ui("contact", locale)}</p>
+      {email ? <a class="closing__link" href={`mailto:${email}`}>{email}</a> : null}
+    </div>
+
+    <div class="closing__col">
+      <p class="closing__label">Olivea</p>
+      {ig1 ? <a class="closing__link" href={ig1} target="_blank" rel="noreferrer">Instagram ↗</a> : null}
+    </div>
+
+    <div class="closing__col">
+      <p class="closing__label">Fritanguita</p>
+      {ig2 ? <a class="closing__link" href={ig2} target="_blank" rel="noreferrer">Instagram ↗</a> : null}
+    </div>
+
+    <div class="closing__col">
+      <p class="closing__label">{ui("press", locale)}</p>
+      <a class="closing__link" href={pressHref(locale)}>
+        {locale === "es" ? "Bio · fotos · menciones" : "Bio · photos · mentions"}
+      </a>
+      <a class="closing__link" href={href(Astro.url.pathname, locale === "es" ? "en" : "es")}>
+        {locale === "es" ? "English" : "Español"} ↗
+      </a>
+    </div>
+
+    <div class="closing__bottom">
+      <span>© MMXXVI · Daniel Nates</span>
+      <span>danielnates.com</span>
+    </div>
+  </footer>
+</section>
+
+<style>
+  .closing{
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    background: #08090A;          /* deepest ink — true fade-to-black */
+    color: var(--bone);
+    border-top: 1px solid rgba(244,239,230,.06);
+    overflow: hidden;
+  }
+
+  /* Hero-like statement — the film's last line */
+  .closing__inner{
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: clamp(160px, 22vw, 320px) clamp(20px, 6vw, 120px) clamp(120px, 14vw, 200px);
+    text-align: center;
+  }
+  .closing__rule{
+    display: block;
+    width: 1px;
+    height: clamp(56px, 8vw, 96px);
+    background: linear-gradient(to bottom, transparent, rgba(244,239,230,.4), transparent);
+    margin: 0 auto clamp(40px, 5vw, 64px);
+  }
+  .closing__line{
+    margin: 0;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 400;
+    font-size: clamp(36px, 6vw, 96px);
+    line-height: 1.05;
+    letter-spacing: -0.025em;
+    color: var(--bone);
+    max-width: 22ch;
+    margin-inline: auto;
+  }
+  .closing__sig{
+    margin-top: clamp(36px, 5vw, 64px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+  }
+  .closing__name{ color: rgba(244,239,230,.9); }
+  .closing__place{ color: rgba(244,239,230,.45); }
+
+  /* Quiet, editorial footer */
+  .closing__foot{
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: clamp(48px, 7vw, 88px) clamp(20px, 6vw, 120px) clamp(40px, 5vw, 64px);
+    border-top: 1px solid rgba(244,239,230,.08);
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: clamp(24px, 3vw, 36px);
+  }
+  @media (min-width: 720px){
+    .closing__foot{ grid-template-columns: repeat(4, 1fr); }
+  }
+  .closing__col{ display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .closing__label{
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 10.5px;
+    letter-spacing: .24em;
+    text-transform: uppercase;
+    color: rgba(244,239,230,.45);
+  }
+  .closing__link{
+    font-family: var(--font-sans);
+    font-size: 13px;
+    color: rgba(244,239,230,.88);
+    transition: color .25s, opacity .25s;
+    word-break: break-word;
+  }
+  .closing__link:hover{ color: var(--ember, #D9421C); }
+
+  .closing__bottom{
+    grid-column: 1 / -1;
+    margin-top: clamp(24px, 3vw, 36px);
+    padding-top: clamp(20px, 2vw, 28px);
+    border-top: 1px solid rgba(244,239,230,.06);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: rgba(244,239,230,.4);
+  }
+</style>

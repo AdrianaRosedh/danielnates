@@ -1,0 +1,44 @@
+---
+import type { Locale, PillarsBlock } from "../../lib/types";
+import { t } from "../../lib/i18n";
+
+interface Props { block: PillarsBlock; locale?: Locale }
+const { block, locale: propLocale } = Astro.props as Props;
+const locale: Locale = propLocale ?? Astro.locals.locale ?? "es";
+
+const pillars = block.pillars ?? [];
+---
+
+{pillars.length ? (
+  <section class="pillars reveal">
+    {block.kicker ? <p class="kicker">{block.kicker}</p> : null}
+    <div class="pillars__grid reveal-stagger">
+      {pillars.map((p, i) => (
+        <article class="pillar">
+          <span class="pillar__num">{String(i + 1).padStart(2, "0")}</span>
+          <h3 class="pillar__label">{p.label}</h3>
+          {t(p.copy, locale) ? <p class="pillar__copy">{t(p.copy, locale)}</p> : null}
+        </article>
+      ))}
+    </div>
+  </section>
+) : null}
+
+<style>
+  .pillars{ margin: 28px 0; }
+  .pillars__grid{ display: grid; gap: 12px; grid-template-columns: 1fr; margin-top: 14px; }
+  @media (min-width: 720px){ .pillars__grid{ grid-template-columns: 1fr 1fr; } }
+  @media (min-width: 1000px){ .pillars__grid{ grid-template-columns: repeat(3, 1fr); } }
+  .pillar{
+    position: relative;
+    padding: 18px;
+    border-radius: var(--radius2);
+    border: 1px solid color-mix(in srgb, var(--brand-primary) 22%, rgba(255,255,255,.10));
+    background: rgba(255,255,255,.03);
+    transition: border-color .25s, background .25s, transform .25s;
+  }
+  .pillar:hover{ transform: translateY(-2px); border-color: color-mix(in srgb, var(--brand-primary) 50%, rgba(255,255,255,.16)); background: rgba(255,255,255,.05); }
+  .pillar__num{ font-size: 11px; letter-spacing: .2em; color: var(--muted2); }
+  .pillar__label{ margin: 8px 0 6px; font-size: 18px; letter-spacing: -.02em; }
+  .pillar__copy{ margin: 0; color: var(--muted); line-height: 1.5; font-size: 14px; }
+</style>

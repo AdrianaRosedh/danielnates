@@ -1,0 +1,56 @@
+---
+import type { Locale, PageBlock } from "../../lib/types";
+import Hero from "./Hero.astro";
+import RichText from "./RichText.astro";
+import ImageBlock from "./Image.astro";
+import Gallery from "./Gallery.astro";
+import Video from "./Video.astro";
+import Quote from "./Quote.astro";
+import Divider from "./Divider.astro";
+import Embed from "./Embed.astro";
+import Cta from "./Cta.astro";
+import Marquee from "./Marquee.astro";
+import Recipe from "./Recipe.astro";
+import Audio from "./Audio.astro";
+import Pillars from "./Pillars.astro";
+import Split from "./Split.astro";
+import Timeline from "./Timeline.astro";
+import Accordion from "./Accordion.astro";
+import FeaturedCards from "./FeaturedCards.astro";
+import MapBlock from "./Map.astro";
+import Stats from "./Stats.astro";
+import Code from "./Code.astro";
+
+interface Props {
+  blocks?: PageBlock[];
+  locale?: Locale;
+}
+const { blocks = [], locale: propLocale } = Astro.props as Props;
+const locale: Locale = propLocale ?? Astro.locals.locale ?? "es";
+---
+
+{blocks.map((b) => {
+  switch (b._type) {
+    case "heroBlock": return <Hero block={b} />;
+    case "richTextBlock": return <RichText block={b} />;
+    case "imageBlock": return <ImageBlock block={b} />;
+    case "galleryBlock": return <Gallery block={b} />;
+    case "videoBlock": return <Video block={b} />;
+    case "quoteBlock": return <Quote block={b} />;
+    case "dividerBlock": return <Divider block={b} />;
+    case "embedBlock": return <Embed block={b} />;
+    case "ctaBlock": return <Cta block={b} />;
+    case "marqueeBlock": return <Marquee block={b} />;
+    case "recipeBlock": return <Recipe block={b} locale={locale} />;
+    case "audioBlock": return <Audio block={b} />;
+    case "pillarsBlock": return <Pillars block={b} locale={locale} />;
+    case "splitBlock": return <Split block={b} locale={locale} />;
+    case "timelineBlock": return <Timeline block={b} locale={locale} />;
+    case "accordionBlock": return <Accordion block={b} locale={locale} />;
+    case "featuredCardsBlock": return <FeaturedCards block={b} />;
+    case "mapBlock": return <MapBlock block={b} />;
+    case "statsBlock": return <Stats block={b} />;
+    case "codeBlock": return <Code block={b} />;
+    default: return null;
+  }
+})}

@@ -1,5 +1,14 @@
 ---
-const { projects = [] } = Astro.props;
+import type { Locale, Project } from "../../lib/types";
+import { href, t, ui } from "../../lib/i18n";
+
+interface Props {
+  projects?: Project[];
+  locale?: Locale;
+}
+
+const { projects = [], locale: propLocale } = Astro.props as Props;
+const locale: Locale = propLocale ?? Astro.locals.locale ?? "es";
 ---
 
 <section class="section">
@@ -18,30 +27,30 @@ const { projects = [] } = Astro.props;
               {p?.title ?? "Proyecto"}
             </h3>
 
-            <p class="projectText">{p?.summary?.es ?? ""}</p>
+            <p class="projectText">{t(p?.summary, locale)}</p>
 
             <div class="badges">
               <span class="badge">
                 {p?.status === "primary"
-                  ? "Primario"
+                  ? ui("primaryProject", locale)
                   : p?.status === "secondary"
-                  ? "Secundario"
-                  : "Pasado"}
+                  ? ui("secondaryProject", locale)
+                  : ui("pastProject", locale)}
               </span>
 
-              {p?.slug?.current === "olivea" && <span class="badge">Proyecto central</span>}
-              {p?.slug?.current === "fritanguita" && <span class="badge">Ritmo rápido</span>}
-              {p?.slug?.current === "maizal" && <span class="badge">Archivo</span>}
+              {p?.slug?.current === "olivea" && <span class="badge">{ui("centralProject", locale)}</span>}
+              {p?.slug?.current === "fritanguita" && <span class="badge">{ui("fastRhythm", locale)}</span>}
+              {p?.slug?.current === "maizal" && <span class="badge">{ui("archive", locale)}</span>}
             </div>
           </div>
 
           {p?.slug?.current ? (
-            <a class="cta" href={`/${p.slug.current}`}>Explorar</a>
+            <a class="cta" href={href(`/${p.slug.current}`, locale)}>{ui("explore", locale)}</a>
           ) : null}
         </article>
       ))}
     </div>
   ) : (
-    <p class="sub">Sin proyectos todavía. Crea y publica proyectos en Sanity.</p>
+    <p class="sub">{ui("noProjects", locale)}</p>
   )}
 </section>

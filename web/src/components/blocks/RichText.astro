@@ -1,0 +1,19 @@
+---
+import type { RichTextBlock } from "../../lib/types";
+import PortableText from "../content/PortableText.astro";
+
+interface Props { block: RichTextBlock }
+const { block } = Astro.props as Props;
+const width = block.maxWidth ?? "editorial";
+---
+
+<div class={`richText richText--${width} reveal`}>
+  <PortableText value={block.body ?? []} />
+</div>
+
+<style>
+  .richText{ margin: 22px auto; width: 100%; }
+  .richText--comfort{ max-width: 60ch; }
+  .richText--editorial{ max-width: 72ch; }
+  .richText--full{ max-width: none; }
+</style>

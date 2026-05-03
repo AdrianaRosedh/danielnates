@@ -1,0 +1,24 @@
+---
+export const prerender = true;
+
+import BaseLayout from "../components/layout/BaseLayout.astro";
+import TopDock from "../components/layout/TopDock.astro";
+import { href, ui } from "../lib/i18n";
+import type { Locale } from "../lib/types";
+
+interface PageProps { lang?: Locale }
+const { lang } = Astro.props as PageProps;
+const locale: Locale = lang ?? Astro.locals.locale ?? "es";
+---
+
+<BaseLayout title={`${ui("404Title", locale)} — Daniel Nates`} locale={locale}>
+  <div class="shell">
+    <TopDock locale={locale} />
+    <section class="section reveal" style="text-align:center;padding:80px 20px;">
+      <p class="kicker">404</p>
+      <h1 class="h1">{ui("404Title", locale)}</h1>
+      <p class="sub" style="margin:14px auto 22px;">{ui("404Body", locale)}</p>
+      <a class="cta" href={href("/", locale)}>{ui("backHome", locale)}</a>
+    </section>
+  </div>
+</BaseLayout>

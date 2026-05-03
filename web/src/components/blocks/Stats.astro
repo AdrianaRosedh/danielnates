@@ -1,0 +1,47 @@
+---
+import type { StatsBlock } from "../../lib/types";
+
+interface Props { block: StatsBlock }
+const { block } = Astro.props as Props;
+
+const stats = block.stats ?? [];
+---
+
+{stats.length ? (
+  <section class="stats reveal">
+    {block.title ? <h2 class="stats__title">{block.title}</h2> : null}
+    <dl class="stats__grid reveal-stagger">
+      {stats.map((s) => (
+        <div class="stat">
+          <dt class="stat__value">{s.value}</dt>
+          <dd class="stat__label">{s.label}</dd>
+          {s.note ? <small class="stat__note">{s.note}</small> : null}
+        </div>
+      ))}
+    </dl>
+  </section>
+) : null}
+
+<style>
+  .stats{ margin: 28px 0; }
+  .stats__title{ margin: 0 0 14px; font-size: clamp(20px, 2.6vw, 26px); letter-spacing: -.02em; }
+  .stats__grid{ display: grid; gap: 12px; grid-template-columns: 1fr 1fr; margin: 0; }
+  @media (min-width: 720px){ .stats__grid{ grid-template-columns: repeat(3, 1fr); } }
+  @media (min-width: 1000px){ .stats__grid{ grid-template-columns: repeat(4, 1fr); } }
+  .stat{
+    padding: 18px;
+    border-radius: var(--radius2);
+    border: 1px solid rgba(255,255,255,.10);
+    background: rgba(255,255,255,.03);
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .stat__value{
+    margin: 0;
+    font-size: clamp(28px, 4vw, 44px);
+    letter-spacing: -.03em;
+    line-height: 1;
+    color: color-mix(in srgb, var(--brand-primary) 80%, var(--text));
+  }
+  .stat__label{ margin: 4px 0 0; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .stat__note{ display: block; margin-top: 6px; font-size: 11px; color: var(--muted2); }
+</style>

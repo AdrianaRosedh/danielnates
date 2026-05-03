@@ -1,0 +1,76 @@
+---
+import type { HeroBlock } from "../../lib/types";
+import { img } from "../../lib/image";
+
+interface Props { block: HeroBlock }
+const { block } = Astro.props as Props;
+
+const tone = block.tone ?? "cinematic";
+const poster = img(block.image, { width: 2000 });
+---
+
+<section class={`heroBlock heroBlock--${tone} reveal`} data-hero-scroll>
+  <div class="heroBlock__media" data-hero-media aria-hidden="true">
+    {poster ? <img src={poster} alt="" loading="eager" decoding="async" /> : null}
+    {block.videoUrl ? (
+      <video data-hero-video muted playsinline loop preload="metadata" poster={poster ?? undefined}>
+        <source src={block.videoUrl} />
+      </video>
+    ) : null}
+    <div class="heroBlock__scrim"></div>
+  </div>
+
+  <div class="heroBlock__inner" data-hero-inner>
+    {block.eyebrow ? <p class="kicker">{block.eyebrow}</p> : null}
+    {block.title ? <h1 class="h1">{block.title}</h1> : null}
+    {block.subtitle ? <p class="sub">{block.subtitle}</p> : null}
+  </div>
+</section>
+
+<style>
+  .heroBlock{
+    position: relative;
+    width: 100%;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--brand-glow);
+    background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+    box-shadow: var(--shadow);
+    min-height: clamp(420px, 70svh, 720px);
+    display: flex;
+    align-items: flex-end;
+    margin: 14px 0 22px;
+  }
+  .heroBlock__media{ position: absolute; inset: 0; opacity: .55; filter: saturate(1.05) contrast(1.05); }
+  .heroBlock__media img,
+  .heroBlock__media video{ width: 100%; height: 100%; object-fit: cover; }
+  .heroBlock__scrim{
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(900px 420px at 12% 12%, var(--brand-soft), transparent 60%),
+      radial-gradient(900px 480px at 88% 18%, rgba(160,120,220,.22), transparent 62%),
+      linear-gradient(180deg, rgba(0,0,0,.18), rgba(0,0,0,.62));
+  }
+  .heroBlock__inner{ position: relative; padding: 22px 18px 22px; }
+  @media (min-width: 880px){ .heroBlock__inner{ padding: 30px 28px 28px; } }
+
+  .heroBlock--clean{ background: rgba(255,255,255,.04); }
+  .heroBlock--clean .heroBlock__scrim{ background: linear-gradient(180deg, rgba(0,0,0,.05), rgba(0,0,0,.18)); }
+</style>
+
+<script is:inline>
+{`
+(function(){
+  const v = document.querySelector('[data-hero-video]');
+  if (!v) return;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const lite = navigator.connection && navigator.connection.saveData;
+  if (reduce || lite) return;
+  const io = new IntersectionObserver((es) => {
+    const e = es[0]; if (!e) return;
+    if (e.isIntersecting) v.play().catch(()=>{}); else v.pause();
+  }, { threshold: .4 });
+  io.observe(v);
+})();
+`}
+</script>

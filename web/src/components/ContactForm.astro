@@ -1,0 +1,101 @@
+---
+import { ui } from "../lib/i18n";
+import type { Locale } from "../lib/types";
+
+interface Props { locale: Locale }
+const { locale } = Astro.props as Props;
+---
+
+<form class="contactForm reveal" data-contact-form>
+  <input type="hidden" name="locale" value={locale} />
+  <input type="text" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" class="contactForm__honeypot" />
+
+  <label class="field">
+    <span>{ui("name", locale)}</span>
+    <input type="text" name="name" required maxlength="200" autocomplete="name" />
+  </label>
+  <label class="field">
+    <span>{ui("email", locale)}</span>
+    <input type="email" name="email" required maxlength="320" autocomplete="email" />
+  </label>
+  <label class="field">
+    <span>{ui("message", locale)}</span>
+    <textarea name="message" required maxlength="5000" rows="5"></textarea>
+  </label>
+
+  <div class="contactForm__row">
+    <button type="submit" class="cta cta--primary" data-submit>{ui("send", locale)}</button>
+    <p class="contactForm__status" data-status></p>
+  </div>
+</form>
+
+<script>
+  function init() {
+    const form = document.querySelector<HTMLFormElement>("[data-contact-form]");
+    if (!form) return;
+    if ((form as any).__bound) return;
+    (form as any).__bound = true;
+
+    const status = form.querySelector<HTMLElement>("[data-status]");
+    const submit = form.querySelector<HTMLButtonElement>("[data-submit]");
+    const setStatus = (text: string, ok = true) => {
+      if (!status) return;
+      status.textContent = text;
+      status.dataset.ok = ok ? "1" : "0";
+    };
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const data = new FormData(form);
+      if (submit) { submit.disabled = true; submit.textContent = "…"; }
+      try {
+        const res = await fetch("/api/contact", { method: "POST", body: data });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json.ok) {
+          setStatus(json.error || "Error", false);
+          return;
+        }
+        const okText = (form.dataset.thanksText as string) || "✓";
+        setStatus(okText, true);
+        form.reset();
+      } catch {
+        setStatus("Error", false);
+      } finally {
+        if (submit) { submit.disabled = false; submit.textContent = (form.dataset.sendText as string) || "Send"; }
+      }
+    });
+  }
+
+  if (document.readyState === "complete") init();
+  else window.addEventListener("load", init, { once: true });
+  document.addEventListener("astro:page-load", init);
+</script>
+
+<style>
+  .contactForm{ display: grid; gap: 14px; max-width: 60ch; margin: 22px 0; }
+  .contactForm__honeypot{ position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+  .field{ display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
+  .field span{ letter-spacing: .04em; }
+  .field input,
+  .field textarea{
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.03);
+    color: var(--text);
+    font: inherit;
+    transition: border-color .2s, background .2s;
+  }
+  .field input:focus,
+  .field textarea:focus{
+    outline: none;
+    border-color: color-mix(in srgb, var(--brand-primary) 60%, rgba(255,255,255,.2));
+    background: rgba(255,255,255,.05);
+  }
+  .field textarea{ resize: vertical; min-height: 96px; }
+  .contactForm__row{ display: flex; align-items: center; gap: 12px; }
+  .contactForm__status{ margin: 0; font-size: 13px; color: var(--muted); }
+  .contactForm__status[data-ok="0"]{ color: #ff8b8b; }
+  .contactForm__status[data-ok="1"]{ color: color-mix(in srgb, var(--brand-primary) 80%, var(--text)); }
+</style>
