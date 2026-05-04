@@ -26,7 +26,6 @@ const {
 } = Astro.props as Props;
 
 const locale: Locale = propLocale ?? Astro.locals.locale ?? "es";
-const nameWords = name.trim().split(/\s+/);
 ---
 
 <section class="cold scene--ink" data-scene="ink" data-hero-scroll>

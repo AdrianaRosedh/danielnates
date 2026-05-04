@@ -4,7 +4,6 @@ import AdminLayout from "../../components/admin/AdminLayout.astro";
 import { getSupabaseFromRequest } from "../../lib/supabase";
 
 const supabase = getSupabaseFromRequest(Astro.cookies);
-type CountResult = { count: number };
 async function count(table: string): Promise<number> {
   if (!supabase) return 0;
   const { count } = await supabase.from(table).select("*", { count: "exact", head: true });
