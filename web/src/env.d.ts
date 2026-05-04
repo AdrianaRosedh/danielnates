@@ -4,16 +4,14 @@ declare namespace App {
   interface Locals {
     locale: "es" | "en";
     user?: import("@supabase/supabase-js").User;
+    /** Admin scope: 'all' for full admin, or a project slug for
+     *  scoped access. Only set on /admin/* routes for logged-in users. */
+    adminScope?: string;
   }
 }
 
 interface ImportMetaEnv {
-  readonly PUBLIC_SANITY_PROJECT_ID: string;
-  readonly PUBLIC_SANITY_DATASET: string;
-  readonly PUBLIC_SANITY_API_VERSION?: string;
   readonly PUBLIC_SITE_URL?: string;
-  readonly SANITY_API_READ_TOKEN?: string;
-  readonly SANITY_PREVIEW_SECRET?: string;
   readonly PUBLIC_SUPABASE_URL?: string;
   readonly PUBLIC_SUPABASE_ANON_KEY?: string;
   readonly SUPABASE_SERVICE_ROLE_KEY?: string;

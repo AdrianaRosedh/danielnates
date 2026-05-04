@@ -4,6 +4,8 @@ import AdminLayout from "../../../components/admin/AdminLayout.astro";
 import { getSupabaseServer } from "../../../lib/supabase";
 
 const supabase = getSupabaseServer(Astro.cookies);
+const scope = Astro.locals.adminScope ?? "all";
+const isFullAdmin = scope === "all";
 
 let rows: Array<{
   id: string;
@@ -16,11 +18,14 @@ let rows: Array<{
 }> = [];
 
 if (supabase) {
-  const { data } = await supabase
+  let q = supabase
     .from("projects")
     .select("id, slug, title, status, hero_image_url, published, updated_at")
     .order("updated_at", { ascending: false })
     .limit(200);
+  // Scoped users (e.g. Fritanguita team) only see their project.
+  if (!isFullAdmin) q = q.eq("slug", scope);
+  const { data } = await q;
   rows = (data ?? []) as typeof rows;
 }
 
@@ -40,7 +45,9 @@ function statusLabel(s: string | null) {
       <p class="admin__crumb">Contenido</p>
       <h1 class="admin__title">Proyectos</h1>
     </div>
-    <a class="admin__btn admin__btn--primary" href="/admin/projects/new">+ Nuevo proyecto</a>
+    {isFullAdmin ? (
+      <a class="admin__btn admin__btn--primary" href="/admin/projects/new">+ Nuevo proyecto</a>
+    ) : null}
   </header>
 
   {rows.length ? (
@@ -65,8 +72,12 @@ function statusLabel(s: string | null) {
     </div>
   ) : (
     <div class="admin__list" style="padding: 40px; text-align: center;">
-      <p style="margin: 0; color: var(--text-2);">Aún no hay proyectos.</p>
-      <a class="admin__btn admin__btn--primary" href="/admin/projects/new" style="margin-top: 16px;">Crear el primero</a>
+      <p style="margin: 0; color: var(--text-2);">
+        {isFullAdmin ? "Aún no hay proyectos." : `Tu proyecto (${scope}) aún no existe — pídele a un admin que lo cree.`}
+      </p>
+      {isFullAdmin ? (
+        <a class="admin__btn admin__btn--primary" href="/admin/projects/new" style="margin-top: 16px;">Crear el primero</a>
+      ) : null}
     </div>
   )}
 </AdminLayout>

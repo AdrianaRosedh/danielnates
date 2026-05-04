@@ -104,5 +104,21 @@ export async function getUserFromRequest(cookies: AstroCookies) {
   return data.user ?? null;
 }
 
+/** Looks up the admin_emails.scope for an email — `'all'` for full
+ *  admin, or a project slug for scoped access. Returns null if the
+ *  email is not whitelisted. Uses the service-role client to bypass
+ *  RLS on admin_emails. */
+export async function getAdminScopeFor(email: string | null | undefined): Promise<string | null> {
+  if (!email) return null;
+  const admin = getSupabaseAdmin();
+  if (!admin) return null;
+  const { data } = await admin
+    .from("admin_emails")
+    .select("scope")
+    .eq("email", email.toLowerCase())
+    .maybeSingle();
+  return (data?.scope as string | undefined) ?? null;
+}
+
 /** Backward-compat alias used by older admin code paths. */
 export const getSupabaseFromRequest = getSupabaseServer;

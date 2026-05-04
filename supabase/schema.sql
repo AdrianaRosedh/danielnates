@@ -20,12 +20,13 @@ $$;
 -- Add admin emails here. Anyone else who logs in is denied at API level.
 create table if not exists public.admin_emails (
   email text primary key,
+  scope text default 'all',                  -- 'all' = full admin; '<project-slug>' = scoped
   added_at timestamptz default now()
 );
 
 -- Seed: replace with your real emails
-insert into public.admin_emails (email) values
-  ('rose@roseiies.com')
+insert into public.admin_emails (email, scope) values
+  ('rose@roseiies.com', 'all')
 on conflict (email) do nothing;
 
 create or replace function is_admin()
@@ -37,6 +38,20 @@ as $$
   select exists (
     select 1 from public.admin_emails
     where email = auth.jwt() ->> 'email'
+      and scope = 'all'
+  );
+$$;
+
+create or replace function can_edit_project(project_slug text)
+returns boolean
+language sql
+stable
+security definer
+as $$
+  select exists (
+    select 1 from public.admin_emails
+    where email = auth.jwt() ->> 'email'
+      and (scope = 'all' or scope = project_slug)
   );
 $$;
 
@@ -291,7 +306,7 @@ create policy "anon read press_mentions" on public.press_mentions for select to 
 create policy "admin all site_settings"  on public.site_settings  for all to authenticated using (is_admin()) with check (is_admin());
 create policy "admin all person"         on public.person         for all to authenticated using (is_admin()) with check (is_admin());
 create policy "admin all press_kit"      on public.press_kit      for all to authenticated using (is_admin()) with check (is_admin());
-create policy "admin all projects"       on public.projects       for all to authenticated using (is_admin()) with check (is_admin());
+create policy "scoped admin projects"    on public.projects       for all to authenticated using (can_edit_project(slug)) with check (can_edit_project(slug));
 create policy "admin all articles"       on public.articles       for all to authenticated using (is_admin()) with check (is_admin());
 create policy "admin all art_pieces"     on public.art_pieces     for all to authenticated using (is_admin()) with check (is_admin());
 create policy "admin all daily_briefs"   on public.daily_briefs   for all to authenticated using (is_admin()) with check (is_admin());

@@ -9,26 +9,38 @@ interface Props {
 }
 const { title = "Admin · Daniel Nates", active } = Astro.props as Props;
 const user = Astro.locals.user;
+const scope = Astro.locals.adminScope ?? "all";
+const isFullAdmin = scope === "all";
 
 type NavLink = { href: string; label: string; key?: Props["active"]; group?: undefined };
 type NavGroup = { group: string; href?: undefined; label?: undefined; key?: undefined };
 type NavItem = NavLink | NavGroup;
-const items: NavItem[] = [
-  { href: "/admin", label: "Dashboard", key: "dashboard" },
-  { group: "Singletons" },
-  { href: "/admin/site", label: "Ajustes del sitio", key: "site" },
-  { href: "/admin/daniel", label: "Daniel", key: "daniel" },
-  { href: "/admin/press-kit", label: "Prensa (kit)", key: "press_kit" },
-  { group: "Contenido" },
-  { href: "/admin/daily", label: "Brief diario", key: "daily" },
-  { href: "/admin/projects", label: "Proyectos", key: "projects" },
-  { href: "/admin/articles", label: "Diario", key: "articles" },
-  { href: "/admin/art", label: "Arte", key: "art" },
-  { href: "/admin/field-notes", label: "Field Notes", key: "field_notes" },
-  { href: "/admin/press", label: "Press menciones", key: "press" },
-  { group: "Inbox" },
-  { href: "/admin/messages", label: "Contacto", key: "messages" },
-];
+
+/* Build nav based on scope. Scoped users (e.g. Fritanguita team) only
+ * see Dashboard + Projects (filtered to their slug at the page level).
+ * Full admins see everything. */
+const items: NavItem[] = isFullAdmin
+  ? [
+      { href: "/admin", label: "Dashboard", key: "dashboard" },
+      { group: "Singletons" },
+      { href: "/admin/site", label: "Ajustes del sitio", key: "site" },
+      { href: "/admin/daniel", label: "Daniel", key: "daniel" },
+      { href: "/admin/press-kit", label: "Prensa (kit)", key: "press_kit" },
+      { group: "Contenido" },
+      { href: "/admin/daily", label: "Brief diario", key: "daily" },
+      { href: "/admin/projects", label: "Proyectos", key: "projects" },
+      { href: "/admin/articles", label: "Diario", key: "articles" },
+      { href: "/admin/art", label: "Arte", key: "art" },
+      { href: "/admin/field-notes", label: "Field Notes", key: "field_notes" },
+      { href: "/admin/press", label: "Press menciones", key: "press" },
+      { group: "Inbox" },
+      { href: "/admin/messages", label: "Contacto", key: "messages" },
+    ]
+  : [
+      { href: "/admin", label: "Dashboard", key: "dashboard" },
+      { group: "Tu proyecto" },
+      { href: "/admin/projects", label: "Proyecto", key: "projects" },
+    ];
 ---
 
 <!doctype html>
@@ -60,9 +72,14 @@ const items: NavItem[] = [
       )}
 
       <div style="margin-top: auto; padding-top: 24px; border-top: 1px solid var(--line);">
-        <p style="margin: 0 12px 8px; font-size: 11px; color: var(--text-3); letter-spacing: .14em;">
+        <p style="margin: 0 12px 4px; font-size: 11px; color: var(--text-3); letter-spacing: .14em;">
           {user?.email}
         </p>
+        {!isFullAdmin ? (
+          <p style="margin: 0 12px 8px; font-size: 10px; color: var(--text-3); letter-spacing: .22em; text-transform: uppercase;">
+            Acceso · {scope}
+          </p>
+        ) : null}
         <a class="admin__navLink" href="/admin/logout">Cerrar sesión</a>
         <a class="admin__navLink" href="/" style="color: var(--text-3);">Ver el sitio →</a>
       </div>
