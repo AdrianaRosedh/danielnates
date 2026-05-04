@@ -1,0 +1,39 @@
+---
+export const prerender = false;
+import AdminLayout from "../../components/admin/AdminLayout.astro";
+import PressKitForm from "../../components/admin/PressKitForm.tsx";
+import { getSupabaseServer } from "../../lib/supabase";
+
+const supabase = getSupabaseServer(Astro.cookies);
+
+let row: Record<string, any> | null = null;
+if (supabase) {
+  const { data } = await supabase.from("press_kit").select("*").eq("id", "singleton").maybeSingle();
+  row = data;
+}
+
+function blocksToText(blocks: unknown): string {
+  if (typeof blocks === "string") return blocks;
+  if (!Array.isArray(blocks)) return "";
+  return (blocks as Array<{ children?: Array<{ text?: string }> }>)
+    .map((b) => (b.children ?? []).map((c) => c.text ?? "").join(""))
+    .join("\n\n");
+}
+
+const initial = row ? {
+  ...row,
+  bio_long_es: blocksToText(row.bio_long_es),
+  bio_long_en: blocksToText(row.bio_long_en),
+} : undefined;
+---
+
+<AdminLayout title="Press Kit · Admin" active="press_kit">
+  <header class="admin__head">
+    <div>
+      <p class="admin__crumb">Singletons</p>
+      <h1 class="admin__title">Press Kit</h1>
+    </div>
+  </header>
+
+  <PressKitForm client:load initial={initial} />
+</AdminLayout>

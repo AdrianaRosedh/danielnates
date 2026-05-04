@@ -1,0 +1,40 @@
+---
+export const prerender = false;
+import AdminLayout from "../../../components/admin/AdminLayout.astro";
+import FieldNoteForm from "../../../components/admin/FieldNoteForm.tsx";
+import { getSupabaseServer } from "../../../lib/supabase";
+
+const { id } = Astro.params as { id: string };
+const supabase = getSupabaseServer(Astro.cookies);
+
+let row: Record<string, any> | null = null;
+if (supabase) {
+  const { data } = await supabase.from("field_notes").select("*").eq("id", id).single();
+  row = data;
+}
+if (!row) return Astro.redirect("/admin/field-notes");
+
+function blocksToText(blocks: unknown): string {
+  if (typeof blocks === "string") return blocks;
+  if (!Array.isArray(blocks)) return "";
+  return (blocks as Array<{ children?: Array<{ text?: string }> }>)
+    .map((b) => (b.children ?? []).map((c) => c.text ?? "").join(""))
+    .join("\n\n");
+}
+
+const initial = {
+  ...row,
+  body_es: blocksToText(row.body_es),
+  body_en: blocksToText(row.body_en),
+};
+---
+
+<AdminLayout title={`${row.title} · Admin`} active="field_notes">
+  <header class="admin__head">
+    <div>
+      <p class="admin__crumb"><a href="/admin/field-notes" style="color: var(--text-3);">Field Notes</a></p>
+      <h1 class="admin__title">{row.title}</h1>
+    </div>
+  </header>
+  <FieldNoteForm client:load initial={initial} />
+</AdminLayout>

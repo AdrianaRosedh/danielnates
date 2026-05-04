@@ -1,0 +1,14 @@
+---
+export const prerender = false;
+import AdminLayout from "../../../components/admin/AdminLayout.astro";
+import FieldNoteForm from "../../../components/admin/FieldNoteForm.tsx";
+---
+<AdminLayout title="Nueva nota · Admin" active="field_notes">
+  <header class="admin__head">
+    <div>
+      <p class="admin__crumb"><a href="/admin/field-notes" style="color: var(--text-3);">Field Notes</a> · Nueva</p>
+      <h1 class="admin__title">Nueva nota</h1>
+    </div>
+  </header>
+  <FieldNoteForm client:load isNew={true} />
+</AdminLayout>

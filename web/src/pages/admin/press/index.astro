@@ -1,0 +1,37 @@
+---
+export const prerender = false;
+import AdminLayout from "../../../components/admin/AdminLayout.astro";
+import PressMentionsTable from "../../../components/admin/PressMentionsTable";
+import { getSupabaseServer } from "../../../lib/supabase";
+
+const supabase = getSupabaseServer(Astro.cookies);
+
+let rows: Array<{
+  id: string;
+  outlet: string;
+  title: string | null;
+  url: string;
+  date: string | null;
+  language: "es" | "en" | null;
+}> = [];
+
+if (supabase) {
+  const { data } = await supabase
+    .from("press_mentions")
+    .select("id, outlet, title, url, date, language")
+    .order("date", { ascending: false, nullsFirst: false })
+    .limit(500);
+  rows = (data ?? []) as typeof rows;
+}
+---
+
+<AdminLayout title="Prensa · Admin" active="press">
+  <header class="admin__head">
+    <div>
+      <p class="admin__crumb">Contenido</p>
+      <h1 class="admin__title">Menciones de prensa</h1>
+    </div>
+  </header>
+
+  <PressMentionsTable client:load initial={rows} />
+</AdminLayout>

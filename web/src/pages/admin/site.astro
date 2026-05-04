@@ -1,0 +1,25 @@
+---
+export const prerender = false;
+import AdminLayout from "../../components/admin/AdminLayout.astro";
+import SiteSettingsForm from "../../components/admin/SiteSettingsForm.tsx";
+import { getSupabaseServer } from "../../lib/supabase";
+
+const supabase = getSupabaseServer(Astro.cookies);
+
+let row: Record<string, any> | null = null;
+if (supabase) {
+  const { data } = await supabase.from("site_settings").select("*").eq("id", "singleton").maybeSingle();
+  row = data;
+}
+---
+
+<AdminLayout title="Ajustes · Admin" active="site">
+  <header class="admin__head">
+    <div>
+      <p class="admin__crumb">Singletons</p>
+      <h1 class="admin__title">Ajustes del sitio</h1>
+    </div>
+  </header>
+
+  <SiteSettingsForm client:load initial={row ?? undefined} />
+</AdminLayout>

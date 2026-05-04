@@ -1,0 +1,62 @@
+---
+export const prerender = false;
+import AdminLayout from "../../../components/admin/AdminLayout.astro";
+import { getSupabaseServer } from "../../../lib/supabase";
+
+const supabase = getSupabaseServer(Astro.cookies);
+
+let rows: Array<{
+  id: string;
+  title: string;
+  date: string;
+  category: string | null;
+  published: boolean;
+}> = [];
+
+if (supabase) {
+  const { data } = await supabase
+    .from("field_notes")
+    .select("id, title, date, category, published")
+    .order("date", { ascending: false })
+    .limit(200);
+  rows = (data ?? []) as typeof rows;
+}
+
+function fmt(d: string) {
+  try { return new Date(d + "T00:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" }); }
+  catch { return d; }
+}
+---
+
+<AdminLayout title="Field Notes · Admin" active="field_notes">
+  <header class="admin__head">
+    <div>
+      <p class="admin__crumb">Contenido</p>
+      <h1 class="admin__title">Field Notes</h1>
+    </div>
+    <a class="admin__btn admin__btn--primary" href="/admin/field-notes/new">+ Nueva nota</a>
+  </header>
+
+  {rows.length ? (
+    <div class="admin__list">
+      {rows.map((n) => (
+        <a class="admin__row" href={`/admin/field-notes/${n.id}`}>
+          <div style="width: 64px; height: 80px; background: rgba(244,239,230,.04); border-radius: 6px;"></div>
+          <div class="admin__rowMain">
+            <h3>{n.title}</h3>
+            <p>{n.category ?? "—"}</p>
+          </div>
+          <span class={`admin__pill${n.published ? " admin__pill--published" : ""}`}>
+            {n.published ? "Publicado" : "Borrador"}
+          </span>
+          <span class="admin__rowMeta">{fmt(n.date)}</span>
+        </a>
+      ))}
+    </div>
+  ) : (
+    <div class="admin__list" style="padding: 40px; text-align: center;">
+      <p style="margin: 0; color: var(--text-2);">Aún no hay notas.</p>
+      <a class="admin__btn admin__btn--primary" href="/admin/field-notes/new" style="margin-top: 16px;">Crear la primera</a>
+    </div>
+  )}
+</AdminLayout>
