@@ -165,6 +165,21 @@ const maizal = projects.find((p) => p.slug === "maizal");
     />
   ) : null}
 
+  {/* Frame II — second cream interlude after the dark project chapters.
+      Two cream frames flanking the project block create the rhythm
+      that was missing: dark → cream → dark → cream → dark. Reuses the
+      garden image for now; swap with a kitchen / sketchbook / hands
+      photo once more imagery is added to web/public/media/frames/. */}
+  <FrameScene
+    src="/media/hero/daniel-garden.jpg"
+    alt={heroName}
+    index="II"
+    caption={locale === "es" ? "El cuaderno y la sartén — la misma mano." : "The sketchbook and the pan — the same hand."}
+    place={locale === "es" ? "Atelier · MMXXVI" : "Atelier · MMXXVI"}
+    ratio="3/4"
+    locale={locale}
+  />
+
   <MagazineSpread articles={articles} locale={locale} />
 
   <AtelierPreview pieces={art} locale={locale} />

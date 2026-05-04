@@ -39,7 +39,7 @@ const {
 } = Astro.props as Props;
 ---
 
-<section class="frame scene--ink" data-scene="ink" data-frame>
+<section class="frame scene--bone" data-scene="bone" data-frame>
   <div class="frame__corners" aria-hidden="true">
     <span class="frame__rule frame__rule--top"></span>
     <span class="frame__rule frame__rule--bottom"></span>
@@ -69,21 +69,20 @@ const {
     margin-right: calc(50% - 50vw);
     /* 200vh gives the scroll-bound scale animation enough runway. */
     min-height: 200vh;
+    /* CREAM background — this is the rest scene that breaks the
+       all-ink monotone. The dark photograph floats in vast warm
+       space, like a printed page in an art catalogue. */
     background:
-      /* Faint sage corner washes so the dark surface isn't flat. */
-      radial-gradient(50% 40% at 8% 8%,
-        color-mix(in srgb, var(--olivar) 12%, transparent),
-        transparent 70%),
-      radial-gradient(50% 40% at 92% 92%,
-        color-mix(in srgb, var(--clay) 7%, transparent),
-        transparent 70%),
-      var(--ink);
-    color: var(--bone);
+      radial-gradient(60% 50% at 50% 30%,
+        color-mix(in srgb, var(--paper) 60%, var(--bone)),
+        var(--bone) 80%),
+      var(--bone);
+    color: var(--ink);
     overflow: hidden;
   }
 
-  /* Hairline frame lines mirror the cold-open — same aperture motif,
-     so visually the page reads as one document. */
+  /* Hairline frame lines — sage on the cream surface so the
+     accent palette is felt. */
   .frame__corners{
     position: absolute;
     inset: 0;
@@ -94,7 +93,7 @@ const {
     left: clamp(20px, 5vw, 80px);
     right: clamp(20px, 5vw, 80px);
     height: 1px;
-    background: color-mix(in srgb, var(--olivar) 30%, rgba(244,239,230,.06));
+    background: color-mix(in srgb, var(--moss) 28%, rgba(14,15,12,.05));
   }
   .frame__rule--top{ top: clamp(76px, 9vh, 110px); }
   .frame__rule--bottom{ bottom: clamp(70px, 9vh, 110px); }
@@ -122,23 +121,26 @@ const {
     max-height: 70vh;
     overflow: hidden;
     border-radius: var(--r-2);
-    background: rgba(244,239,230,.04);
+    background: rgba(14,15,12,.04);
+    /* Deep printed-photo shadow on warm paper — gives the image
+       physical weight, like it's actually placed on the page. */
     box-shadow:
-      0 30px 90px -30px rgba(0, 0, 0, .65),
-      0 0 0 1px color-mix(in srgb, var(--olivar) 22%, rgba(244,239,230,.08));
+      0 40px 80px -20px rgba(14, 15, 12, .35),
+      0 12px 30px -10px rgba(14, 15, 12, .22),
+      0 0 0 1px color-mix(in srgb, var(--moss) 18%, rgba(14,15,12,.10));
   }
   .frame__media img{
     width: 100%;
     height: 100%;
     object-fit: cover;
     display: block;
-    filter: saturate(.96) contrast(1.04);
+    filter: saturate(1.02) contrast(1.06);
   }
-  /* A subtle inner sage hairline — gives the photo a "matted" feel. */
+  /* Inner sage hairline — the photo feels matted, like a museum print. */
   .frame__inner-rule{
     position: absolute;
     inset: 6px;
-    border: 1px solid color-mix(in srgb, var(--olivar) 30%, transparent);
+    border: 1px solid color-mix(in srgb, var(--bone) 70%, transparent);
     pointer-events: none;
     border-radius: calc(var(--r-2) - 6px);
   }
@@ -155,7 +157,7 @@ const {
     text-transform: uppercase;
   }
   .frame__num{
-    color: var(--olivar);
+    color: var(--moss);
     font-feature-settings: "tnum";
     position: relative;
     padding-right: clamp(16px, 2.4vw, 36px);
@@ -165,20 +167,21 @@ const {
     position: absolute;
     right: 0; top: 50%;
     width: 22px; height: 1px;
-    background: color-mix(in srgb, var(--olivar) 50%, transparent);
+    background: color-mix(in srgb, var(--moss) 50%, transparent);
     transform: translateY(-50%);
   }
   .frame__caption{
-    color: rgba(239,230,212,.78);
+    color: var(--ink);
     text-align: center;
     font-family: var(--font-display);
     font-style: italic;
-    font-size: clamp(13px, 1vw, 16px);
+    font-size: clamp(15px, 1.2vw, 19px);
     letter-spacing: 0;
     text-transform: none;
+    opacity: .82;
   }
   .frame__place{
-    color: rgba(239,230,212,.45);
+    color: rgba(14,15,12,.45);
     text-align: right;
   }
 
