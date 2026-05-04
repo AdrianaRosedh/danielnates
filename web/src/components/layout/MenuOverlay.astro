@@ -1,5 +1,6 @@
 ---
-import { aboutHref, dayHref, href, pressHref, projectsHref, switchLocale, ui } from "../../lib/i18n";
+import { aboutHref, dayHref, href, pressHref, projectsHref, switchLocale, t2, ui } from "../../lib/i18n";
+import { getProjects } from "../../lib/queries";
 import type { Locale, Person } from "../../lib/types";
 
 interface Props {
@@ -24,11 +25,15 @@ const primary = [
   { label: locale === "es" ? "Contacto" : "Contact", href: href("/contacto", locale) },
 ];
 
-const projects = [
-  { label: "Olivea", meta: "Valle de Guadalupe", href: href("/olivea", locale) },
-  { label: "Fritanguita", meta: "CDMX", href: href("/fritanguita", locale) },
-  { label: "Maizal", meta: "2017–2024", href: href("/maizal", locale) },
-];
+/* Project shortcuts pull from the published projects in the DB so any
+ * new project added in admin appears here automatically. The meta line
+ * comes from each project's framing.meta_es/en (admin-editable). */
+const dbProjects = await getProjects();
+const projects = dbProjects.map((p) => ({
+  label: p.title,
+  meta: t2(p.framing?.meta_es, p.framing?.meta_en, locale),
+  href: href(`/${p.slug}`, locale),
+}));
 
 const email = daniel?.social?.email ?? null;
 const ig1 = daniel?.social?.olivea_instagram ?? null;
