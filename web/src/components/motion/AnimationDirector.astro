@@ -230,6 +230,52 @@
     });
   }
 
+  /* ── Frame scenes — single-photo meditative moments ───────────── */
+  /* Each [data-frame] is a 200vh tall scene with a sticky [data-frame-plate]
+   * inside. The plate starts small and softly faded, scales up to 100% as
+   * the section centers in the viewport, then fades while drifting another
+   * few percent on the way out. Editorial-document feel borrowed from
+   * maisonboursier.com — the photo holds the page. */
+  function setupFrames() {
+    const frames = document.querySelectorAll<HTMLElement>("[data-frame]");
+    frames.forEach((frame) => {
+      const plate = frame.querySelector<HTMLElement>("[data-frame-plate]");
+      if (!plate) return;
+
+      // Phase 1: enter — small + soft → full size, full opacity.
+      gsap.fromTo(plate,
+        { scale: 0.42, autoAlpha: 0.55 },
+        {
+          scale: 1.0,
+          autoAlpha: 1,
+          ease: "none",
+          scrollTrigger: {
+            trigger: frame,
+            start: "top bottom",
+            end: "center center",
+            scrub: 1.4,
+          },
+        },
+      );
+
+      // Phase 2: leave — drift slightly larger + fade out as we scroll past.
+      gsap.fromTo(plate,
+        { scale: 1.0, autoAlpha: 1 },
+        {
+          scale: 1.06,
+          autoAlpha: 0.4,
+          ease: "none",
+          scrollTrigger: {
+            trigger: frame,
+            start: "center center",
+            end: "bottom top",
+            scrub: 1.4,
+          },
+        },
+      );
+    });
+  }
+
   /* ── Dock chrome flip (which scene is under it) ───────────────── */
   function setupDockChrome() {
     const scenes = document.querySelectorAll<HTMLElement>("[data-scene]");
@@ -368,6 +414,7 @@
     // hero text is already revealed.
     setupReveals();
     setupHeroes();
+    setupFrames();
     setupDockChrome();
     setupAnchors();
     setupCardSpotlight();

@@ -6,6 +6,7 @@ import TopDock from "../components/layout/TopDock.astro";
 import ColdOpen from "../components/scenes/ColdOpen.astro";
 import TheLine from "../components/scenes/TheLine.astro";
 import Manifesto from "../components/scenes/Manifesto.astro";
+import FrameScene from "../components/scenes/FrameScene.astro";
 import ChapterHero from "../components/scenes/ChapterHero.astro";
 import MagazineSpread from "../components/scenes/MagazineSpread.astro";
 import AtelierPreview from "../components/scenes/AtelierPreview.astro";
@@ -99,6 +100,20 @@ const maizal = projects.find((p) => p.slug === "maizal");
   <Manifesto
     pillars={pillars}
     kicker={locale === "es" ? "Manifiesto" : "Manifesto"}
+    locale={locale}
+  />
+
+  {/* Frame I — meditative pause between manifesto and projects.
+      The same garden image as the cold-open, here treated as a held
+      portrait: scroll-scaled, hairline matted, with editorial
+      metadata. The eye lands on Daniel before meeting his work. */}
+  <FrameScene
+    src="/media/hero/daniel-garden.jpg"
+    alt={heroName}
+    index="I"
+    caption={locale === "es" ? "El cocinero, antes del servicio." : "The cook, before service."}
+    place={locale === "es" ? "Olivea · Valle de Guadalupe · MMXXVI" : "Olivea · Valle de Guadalupe · MMXXVI"}
+    ratio="4/5"
     locale={locale}
   />
 
