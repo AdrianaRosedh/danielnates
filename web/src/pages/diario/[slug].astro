@@ -6,49 +6,21 @@ import TopDock from "../../components/layout/TopDock.astro";
 import PortableText from "../../components/content/PortableText.astro";
 import BlockRenderer from "../../components/blocks/BlockRenderer.astro";
 
-import { getSupabase } from "../../lib/supabase";
-import { dateFormat, href, ui } from "../../lib/i18n";
+import { getArticle } from "../../lib/queries";
+import { dateFormat, href, t2, tb2, ui } from "../../lib/i18n";
 import type { Locale } from "../../lib/types";
-import type { PortableTextBlock } from "@portabletext/types";
 
 interface PageProps { lang?: Locale }
 const { lang } = Astro.props as PageProps;
 const locale: Locale = lang ?? Astro.locals.locale ?? "es";
 
 const { slug } = Astro.params as { slug: string };
-const supabase = getSupabase();
-
-interface Article {
-  id: string;
-  slug: string;
-  title: string;
-  date: string;
-  cover_url: string | null;
-  excerpt_es: string | null;
-  excerpt_en: string | null;
-  body_es: PortableTextBlock[] | null;
-  body_en: PortableTextBlock[] | null;
-  blocks: unknown[] | null;
-}
-
-let article: Article | null = null;
-if (supabase) {
-  const { data } = await supabase
-    .from("articles")
-    .select("*")
-    .eq("slug", slug)
-    .eq("published", true)
-    .single();
-  article = data as Article | null;
-}
-
+const article = await getArticle(slug);
 if (!article) return Astro.redirect(href("/404", locale));
 
 const title = article.title;
-const excerpt = locale === "es"
-  ? (article.excerpt_es ?? article.excerpt_en ?? "")
-  : (article.excerpt_en ?? article.excerpt_es ?? "");
-const body = (locale === "es" ? article.body_es : article.body_en) ?? [];
+const excerpt = t2(article.excerpt_es, article.excerpt_en, locale);
+const body = tb2(article.body_es, article.body_en, locale);
 ---
 
 <BaseLayout title={`${title} — ${ui("diary", locale)}`} description={excerpt} locale={locale}>
@@ -63,7 +35,7 @@ const body = (locale === "es" ? article.body_es : article.body_en) ?? [];
     </article>
 
     {body.length ? <PortableText value={body} /> : null}
-    {article.blocks?.length ? <BlockRenderer blocks={article.blocks as any} locale={locale} /> : null}
+    {article.blocks?.length ? <BlockRenderer blocks={article.blocks} locale={locale} /> : null}
   </div>
 </BaseLayout>
 
