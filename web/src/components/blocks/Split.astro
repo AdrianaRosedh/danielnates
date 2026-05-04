@@ -1,7 +1,6 @@
 ---
 import type { Locale, SplitBlock } from "../../lib/types";
-import { t, tb } from "../../lib/i18n";
-import { img, imgSrcset } from "../../lib/image";
+import { t2, tb2 } from "../../lib/i18n";
 import PortableText from "../content/PortableText.astro";
 
 interface Props { block: SplitBlock; locale?: Locale }
@@ -9,10 +8,9 @@ const { block, locale: propLocale } = Astro.props as Props;
 const locale: Locale = propLocale ?? Astro.locals.locale ?? "es";
 
 const orient = block.orientation ?? "media-left";
-const heading = t(block.heading, locale);
-const body = tb(block.body, locale);
-const src = img(block.image, { width: 1400 });
-const srcset = imgSrcset(block.image);
+const heading = t2(block.heading_es, block.heading_en, locale);
+const body = tb2(block.body_es, block.body_en, locale);
+const src = block.image_url ?? null;
 ---
 
 <section class={`split split--${orient} reveal`}>
@@ -22,7 +20,7 @@ const srcset = imgSrcset(block.image);
         <source src={block.videoUrl} />
       </video>
     ) : src ? (
-      <img src={src} srcset={srcset ?? undefined} sizes="(min-width: 880px) 50vw, 100vw" alt={heading} loading="lazy" decoding="async" />
+      <img src={src} alt={heading} loading="lazy" decoding="async" />
     ) : null}
   </div>
   <div class="split__body">

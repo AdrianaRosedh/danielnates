@@ -1,26 +1,17 @@
 ---
 import type { ImageBlockData } from "../../lib/types";
-import { img, imgSrcset } from "../../lib/image";
 
 interface Props { block: ImageBlockData }
 const { block } = Astro.props as Props;
 
 const layout = block.layout ?? "inline";
-const src = img(block.image, { width: 1600 });
-const srcset = imgSrcset(block.image);
+const src = block.image_url ?? null;
 const alt = block.alt ?? block.caption ?? "";
 ---
 
 {src ? (
   <figure class={`imageBlock imageBlock--${layout} reveal`}>
-    <img
-      src={src}
-      srcset={srcset ?? undefined}
-      sizes="(min-width: 1100px) 1100px, 100vw"
-      alt={alt}
-      loading="lazy"
-      decoding="async"
-    />
+    <img src={src} alt={alt} loading="lazy" decoding="async" />
     {block.caption ? <figcaption>{block.caption}</figcaption> : null}
   </figure>
 ) : null}

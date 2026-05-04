@@ -1,7 +1,7 @@
 ---
 import TextReveal from "../motion/TextReveal.astro";
 import type { Locale, Pillar } from "../../lib/types";
-import { t } from "../../lib/i18n";
+import { t2 } from "../../lib/i18n";
 
 interface Props {
   pillars?: Pillar[];
@@ -26,8 +26,8 @@ const locale: Locale = propLocale ?? Astro.locals.locale ?? "es";
               <TextReveal as="h2" mode="word" stagger={60} class="manifesto__label">
                 {p.label}
               </TextReveal>
-              {t(p.copy, locale) ? (
-                <p class="manifesto__copy">{t(p.copy, locale)}</p>
+              {t2(p.copy_es, p.copy_en, locale) ? (
+                <p class="manifesto__copy">{t2(p.copy_es, p.copy_en, locale)}</p>
               ) : null}
             </div>
           </li>

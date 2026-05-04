@@ -1,12 +1,11 @@
 ---
 import type { HeroBlock } from "../../lib/types";
-import { img } from "../../lib/image";
 
 interface Props { block: HeroBlock }
 const { block } = Astro.props as Props;
 
 const tone = block.tone ?? "cinematic";
-const poster = img(block.image, { width: 2000 });
+const poster = block.image_url ?? null;
 ---
 
 <section class={`heroBlock heroBlock--${tone} reveal`} data-hero-scroll>

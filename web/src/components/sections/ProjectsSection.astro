@@ -1,6 +1,6 @@
 ---
 import type { Locale, Project } from "../../lib/types";
-import { href, t, ui } from "../../lib/i18n";
+import { href, t2, ui } from "../../lib/i18n";
 
 interface Props {
   projects?: Project[];
@@ -15,38 +15,26 @@ const locale: Locale = propLocale ?? Astro.locals.locale ?? "es";
   {projects.length ? (
     <div class="grid reveal-stagger">
       {projects.map((p) => (
-        <article
-          class="projectCard"
-          transition:name={`proj-${p?.slug?.current ?? "x"}`}
-        >
+        <article class="projectCard" transition:name={`proj-${p.slug}`}>
           <div class="projectLeft">
-            <h3
-              class="projectTitle"
-              transition:name={`proj-title-${p?.slug?.current ?? "x"}`}
-            >
-              {p?.title ?? "Proyecto"}
+            <h3 class="projectTitle" transition:name={`proj-title-${p.slug}`}>
+              {p.title}
             </h3>
-
-            <p class="projectText">{t(p?.summary, locale)}</p>
-
+            <p class="projectText">{t2(p.summary_es, p.summary_en, locale)}</p>
             <div class="badges">
               <span class="badge">
-                {p?.status === "primary"
+                {p.status === "primary"
                   ? ui("primaryProject", locale)
-                  : p?.status === "secondary"
+                  : p.status === "secondary"
                   ? ui("secondaryProject", locale)
                   : ui("pastProject", locale)}
               </span>
-
-              {p?.slug?.current === "olivea" && <span class="badge">{ui("centralProject", locale)}</span>}
-              {p?.slug?.current === "fritanguita" && <span class="badge">{ui("fastRhythm", locale)}</span>}
-              {p?.slug?.current === "maizal" && <span class="badge">{ui("archive", locale)}</span>}
+              {p.slug === "olivea" && <span class="badge">{ui("centralProject", locale)}</span>}
+              {p.slug === "fritanguita" && <span class="badge">{ui("fastRhythm", locale)}</span>}
+              {p.slug === "maizal" && <span class="badge">{ui("archive", locale)}</span>}
             </div>
           </div>
-
-          {p?.slug?.current ? (
-            <a class="cta" href={href(`/${p.slug.current}`, locale)}>{ui("explore", locale)}</a>
-          ) : null}
+          <a class="cta" href={href(`/${p.slug}`, locale)}>{ui("explore", locale)}</a>
         </article>
       ))}
     </div>

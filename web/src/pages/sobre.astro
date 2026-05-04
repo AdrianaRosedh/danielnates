@@ -1,5 +1,5 @@
 ---
-export const prerender = true;
+export const prerender = false;
 
 import BaseLayout from "../components/layout/BaseLayout.astro";
 import TopDock from "../components/layout/TopDock.astro";
@@ -8,8 +8,7 @@ import TextReveal from "../components/motion/TextReveal.astro";
 import PortableText from "../components/content/PortableText.astro";
 
 import { getDaniel, getPressKit } from "../lib/queries";
-import { aboutHref, href, pressHref, t, tb, ui } from "../lib/i18n";
-import { img, imgSrcset } from "../lib/image";
+import { href, pressHref, t2, tb2, ui } from "../lib/i18n";
 import type { Locale, PressRecognition } from "../lib/types";
 
 interface PageProps { lang?: Locale }
@@ -19,15 +18,15 @@ const locale: Locale = lang ?? Astro.locals.locale ?? "es";
 const [daniel, kit] = await Promise.all([getDaniel(), getPressKit()]);
 
 const name = daniel?.name ?? "Daniel Nates";
-const tagline = t(daniel?.tagline, locale) || (locale === "es"
+const tagline = t2(daniel?.tagline_es, daniel?.tagline_en, locale) || (locale === "es"
   ? "Cocinar y dibujar — la misma lengua."
   : "To cook and to draw — the same language.");
-const subline = t(daniel?.subline, locale) || (locale === "es"
+const subline = t2(daniel?.subline_es, daniel?.subline_en, locale) || (locale === "es"
   ? "Cocinero en Olivea · Socio en Fritanguita · Dibujante."
   : "Chef at Olivea · Partner at Fritanguita · Draughtsman.");
 
-/* ── Long bio: pull from Sanity if present, else use a researched default ── */
-const bioBlocks = tb(daniel?.bioLong, locale);
+/* ── Long bio: pull from Supabase if present, else use a researched default ── */
+const bioBlocks = tb2(daniel?.bio_long_es, daniel?.bio_long_en, locale);
 
 const defaultBioParas = locale === "es" ? [
   "Daniel Nates es chef y dibujante. Vive en Valle de Guadalupe, Baja California, donde cocina en Olivea Farm to Table — un restaurante con Estrella Michelin y Estrella Verde Michelin, donde la carta cambia con la temporada del huerto. Es socio fundador de Fritanguita, una fritanga poblana en Roma Norte, Ciudad de México, junto a Santiago Muñoz Moctezuma de Maizajo.",
@@ -55,8 +54,7 @@ const recs = (kit?.recognitions?.length ? kit.recognitions : defaultRecs)
   .slice()
   .sort((a, b) => Number(b.year) - Number(a.year));
 
-const portrait = img(daniel?.portrait, { width: 1400 });
-const portraitSrcset = imgSrcset(daniel?.portrait);
+const portrait = daniel?.portrait_url ?? null;
 
 const headline = locale === "es" ? "Sobre" : "About";
 ---
@@ -80,7 +78,7 @@ const headline = locale === "es" ? "Sobre" : "About";
     <div class="about__heroGrid">
       <div class="about__heroMedia">
         {portrait ? (
-          <img src={portrait} srcset={portraitSrcset ?? undefined} sizes="(min-width: 1100px) 50vw, 100vw" alt={name} loading="eager" />
+          <img src={portrait} alt={name} loading="eager" />
         ) : (
           <div class="about__heroPlate" aria-hidden="true"></div>
         )}

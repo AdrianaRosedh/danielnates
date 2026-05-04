@@ -1,13 +1,12 @@
 ---
-export const prerender = true;
+export const prerender = false;
 
 import BaseLayout from "../components/layout/BaseLayout.astro";
 import TopDock from "../components/layout/TopDock.astro";
 import PortableText from "../components/content/PortableText.astro";
 
 import { getDaniel, getPressKit } from "../lib/queries";
-import { dateFormat, href, t, tb, ui } from "../lib/i18n";
-import { img, imgSrcset } from "../lib/image";
+import { dateFormat, t2, tb2 } from "../lib/i18n";
 import type { Locale, PressMention, PressRecognition } from "../lib/types";
 
 interface PageProps { lang?: Locale }
@@ -84,14 +83,14 @@ const defaultMentions: PressMention[] = [
   },
 ];
 
-const bioOneLine = t(kit?.bioOneLine, locale) || defaultBioOneLine;
-const bioShort = t(kit?.bioShort, locale) || defaultBioShort;
-const bioLong = tb(kit?.bioLong, locale);
+const bioOneLine = t2(kit?.bio_one_line_es, kit?.bio_one_line_en, locale) || defaultBioOneLine;
+const bioShort = t2(kit?.bio_short_es, kit?.bio_short_en, locale) || defaultBioShort;
+const bioLong = tb2(kit?.bio_long_es, kit?.bio_long_en, locale);
 const recognitions = kit?.recognitions?.length ? kit.recognitions : defaultRecognitions;
 const mentions = kit?.mentions?.length ? kit.mentions : defaultMentions;
 const photos = kit?.photos ?? [];
-const pressEmail = kit?.pressEmail || daniel?.social?.email || null;
-const pressPdfUrl = kit?.pressPdf?.asset?.url ?? null;
+const pressEmail = kit?.press_email || daniel?.social?.email || null;
+const pressPdfUrl = kit?.press_pdf_url ?? null;
 
 const headline = locale === "es" ? "Prensa." : "Press.";
 const lede = locale === "es"
@@ -169,25 +168,20 @@ const lede = locale === "es"
         <p class="kicker">{locale === "es" ? "Fotografías (alta resolución)" : "Photographs (hi-res)"}</p>
         <div class="press__photos reveal-stagger">
           {photos.map((p) => {
-            const src = img(p, { width: 900 });
-            const fullSrc = img(p, { width: 2400 });
+            const src = p.url;
             return src ? (
               <figure class="press__photo">
                 <img
                   src={src}
-                  srcset={imgSrcset(p) ?? undefined}
-                  sizes="(min-width: 900px) 32vw, 100vw"
                   alt={p.caption ?? ""}
                   loading="lazy"
                 />
                 <figcaption>
                   {p.caption ? <span>{p.caption}</span> : null}
                   {p.credit ? <span class="press__credit">© {p.credit}</span> : null}
-                  {fullSrc ? (
-                    <a class="press__download" href={fullSrc} download target="_blank" rel="noreferrer">
-                      {locale === "es" ? "Descargar ↓" : "Download ↓"}
-                    </a>
-                  ) : null}
+                  <a class="press__download" href={src} download target="_blank" rel="noreferrer">
+                    {locale === "es" ? "Descargar ↓" : "Download ↓"}
+                  </a>
                 </figcaption>
               </figure>
             ) : null;

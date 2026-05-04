@@ -1,7 +1,6 @@
 ---
 import type { ArtPiece, Locale } from "../../lib/types";
 import { href, ui } from "../../lib/i18n";
-import { img } from "../../lib/image";
 import TextReveal from "../motion/TextReveal.astro";
 
 interface Props {
@@ -14,7 +13,7 @@ const locale: Locale = propLocale ?? Astro.locals.locale ?? "es";
 
 const list = pieces.slice(0, 4);
 const heroPiece = list[0];
-const heroImg = img(heroPiece?.cover, { width: 2000 });
+const heroImg = heroPiece?.cover_url ?? null;
 ---
 
 <section class="atelier scene--ink" data-scene="ink">
@@ -29,7 +28,7 @@ const heroImg = img(heroPiece?.cover, { width: 2000 });
 
   <div class="atelier__inner">
     <p class="kicker atelier__kicker">{ui("art", locale)}</p>
-    <TextReveal as="h2" mode="word" stagger={70} class="atelier__title">
+    <TextReveal as="h2" mode="word" class="atelier__title">
       {locale === "es" ? "Atelier." : "Studio."}
     </TextReveal>
     <p class="atelier__lede">
@@ -40,16 +39,13 @@ const heroImg = img(heroPiece?.cover, { width: 2000 });
 
     {list.length ? (
       <ul class="atelier__strip">
-        {list.map((p) => {
-          const cover = img(p.cover, { width: 600 });
-          return (
-            <li>
-              <a href={href(`/arte/${p.slug?.current}`, locale)} aria-label={p.title}>
-                {cover ? <img src={cover} alt={p.title ?? ""} loading="lazy" /> : null}
-              </a>
-            </li>
-          );
-        })}
+        {list.map((p) => (
+          <li>
+            <a href={href(`/arte/${p.slug}`, locale)} aria-label={p.title}>
+              {p.cover_url ? <img src={p.cover_url} alt={p.title} loading="lazy" /> : null}
+            </a>
+          </li>
+        ))}
       </ul>
     ) : null}
 

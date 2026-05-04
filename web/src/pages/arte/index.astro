@@ -1,10 +1,9 @@
 ---
-export const prerender = true;
+export const prerender = false;
 
 import BaseLayout from "../../components/layout/BaseLayout.astro";
 import TopDock from "../../components/layout/TopDock.astro";
 import { getArtPieces } from "../../lib/queries";
-import { img } from "../../lib/image";
 import { href, ui } from "../../lib/i18n";
 import type { Locale } from "../../lib/types";
 
@@ -12,20 +11,14 @@ interface PageProps { lang?: Locale }
 const { lang } = Astro.props as PageProps;
 const locale: Locale = lang ?? Astro.locals.locale ?? "es";
 
-const pieces = (await getArtPieces()) ?? [];
-const headline = locale === "es"
-  ? "Lo que la mano también hace."
-  : "What the hand also does.";
+const pieces = await getArtPieces();
+const headline = locale === "es" ? "Lo que la mano también hace." : "What the hand also does.";
 const lede = locale === "es"
   ? "Dibujo, pintura, marcas en papel. La cocina dejó de ser el único lugar donde compongo."
-  : "Drawing, painting, marks on paper. The kitchen stopped being the only place I compose."
+  : "Drawing, painting, marks on paper. The kitchen stopped being the only place I compose.";
 ---
 
-<BaseLayout
-  title={`${ui("art", locale)} — Daniel Nates`}
-  description={lede}
-  locale={locale}
->
+<BaseLayout title={`${ui("art", locale)} — Daniel Nates`} description={lede} locale={locale}>
   <div class="shell">
     <TopDock locale={locale} />
 
@@ -38,20 +31,15 @@ const lede = locale === "es"
     {pieces.length ? (
       <section class="section">
         <div class="artGrid reveal-stagger">
-          {pieces.map((p) => {
-            const cover = img(p.cover, { width: 900 });
-            return (
-              <a class="artCard" href={href(`/arte/${p.slug?.current}`, locale)}>
-                {cover ? <img src={cover} alt={p.title ?? ""} loading="lazy" /> : null}
-                <div class="artCard__meta">
-                  <p class="artCard__title">{p.title ?? "Sin título"}</p>
-                  <p class="artCard__sub">
-                    {[p.year, p.medium].filter(Boolean).join(" · ")}
-                  </p>
-                </div>
-              </a>
-            );
-          })}
+          {pieces.map((p) => (
+            <a class="artCard" href={href(`/arte/${p.slug}`, locale)}>
+              {p.cover_url ? <img src={p.cover_url} alt={p.title} loading="lazy" /> : null}
+              <div class="artCard__meta">
+                <p class="artCard__title">{p.title}</p>
+                <p class="artCard__sub">{[p.year, p.medium].filter(Boolean).join(" · ")}</p>
+              </div>
+            </a>
+          ))}
         </div>
       </section>
     ) : (
@@ -60,7 +48,6 @@ const lede = locale === "es"
       </section>
     )}
   </div>
-
 </BaseLayout>
 
 <style>
@@ -68,15 +55,15 @@ const lede = locale === "es"
   @media (min-width: 880px){ .artGrid{ grid-template-columns: repeat(3, 1fr); } }
   .artCard{
     display: block;
-    border-radius: var(--radius2);
+    border-radius: var(--r-2);
     overflow: hidden;
-    background: rgba(255,255,255,.03);
-    border: 1px solid rgba(255,255,255,.10);
-    transition: transform .25s, border-color .25s;
+    background: color-mix(in srgb, var(--text) 3%, transparent);
+    border: 1px solid var(--line);
+    transition: transform 600ms var(--ease-fluid), border-color 600ms var(--ease-fluid);
   }
-  .artCard:hover{ transform: translateY(-2px); border-color: color-mix(in srgb, var(--brand-primary) 40%, rgba(255,255,255,.16)); }
+  .artCard:hover{ transform: translateY(-2px); border-color: var(--line-2); }
   .artCard img{ width: 100%; aspect-ratio: 4/5; object-fit: cover; display: block; }
   .artCard__meta{ padding: 12px 12px 14px; }
-  .artCard__title{ margin: 0; font-size: 14px; letter-spacing: -0.01em; }
-  .artCard__sub{ margin: 4px 0 0; font-size: 12px; color: var(--muted2); }
+  .artCard__title{ margin: 0; font-size: 14px; letter-spacing: -0.01em; font-family: var(--font-display); }
+  .artCard__sub{ margin: 4px 0 0; font-size: 12px; color: var(--text-3); }
 </style>

@@ -1,12 +1,13 @@
 ---
+/**
+ * Renders a Portable Text–compatible block array (the format we store
+ * in jsonb columns like article.body_es / project.body_es).
+ * No Sanity dependency.
+ */
 import type { PortableTextBlock } from "@portabletext/types";
 
-interface Props {
-  value?: PortableTextBlock[];
-}
-
+interface Props { value?: PortableTextBlock[] | null }
 const { value = [] } = Astro.props as Props;
-
 const blocks = Array.isArray(value) ? value : [];
 
 function textFromChildren(children: PortableTextBlock["children"] = []): string {
@@ -19,48 +20,45 @@ function textFromChildren(children: PortableTextBlock["children"] = []): string 
 <div class="pt">
   {blocks.map((b) => {
     if (b?._type !== "block") return null;
-
     const style = b.style || "normal";
     const txt = textFromChildren(b.children);
-
     if (!txt?.trim()) return null;
-
     if (style === "h2") return <h2>{txt}</h2>;
     if (style === "h3") return <h3>{txt}</h3>;
     if (style === "blockquote") return <blockquote>{txt}</blockquote>;
-
     return <p>{txt}</p>;
   })}
 </div>
 
 <style>
-  .pt{
-    max-width: 72ch;
-  }
+  .pt{ max-width: 72ch; }
   .pt p{
     margin: 0 0 14px;
-    color: var(--muted);
+    color: var(--text-2);
     line-height: 1.7;
     font-size: 15px;
   }
   .pt h2{
     margin: 22px 0 10px;
-    font-size: 20px;
+    font-size: 22px;
     letter-spacing: -0.02em;
+    font-family: var(--font-display);
+    font-weight: 400;
   }
   .pt h3{
     margin: 18px 0 8px;
-    font-size: 17px;
+    font-size: 18px;
     letter-spacing: -0.01em;
-    opacity: .95;
+    font-family: var(--font-display);
+    font-weight: 400;
   }
   .pt blockquote{
     margin: 18px 0;
     padding: 12px 14px;
-    border-left: 2px solid var(--brand-glow);
-    background: rgba(255,255,255,.03);
+    border-left: 2px solid var(--line-2);
+    background: color-mix(in srgb, var(--text) 3%, transparent);
     border-radius: 14px;
-    color: rgba(255,255,255,.80);
+    color: var(--text);
     line-height: 1.6;
   }
 </style>

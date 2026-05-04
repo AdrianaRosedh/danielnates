@@ -1,12 +1,11 @@
 ---
-interface Pill {
-  label?: string;
-}
-
+/**
+ * Legacy hero used on project pages when no full block layout is set.
+ * No CMS dependency — pure presentation. Fed by the project page directly.
+ */
 interface Props {
   title?: string;
   sub?: string | null;
-  pills?: Pill[];
   videoUrl?: string | null;
   posterUrl?: string | null;
   transitionKey?: string | null;
@@ -15,7 +14,6 @@ interface Props {
 const {
   title,
   sub,
-  pills = [],
   videoUrl = null,
   posterUrl = null,
   transitionKey = null,
@@ -29,14 +27,10 @@ const {
   >
     <div class="heroMedia" data-hero-media aria-hidden="true">
       {posterUrl ? <img src={posterUrl} alt="" loading="eager" decoding="async" /> : null}
-
       {videoUrl ? (
         <video
           data-hero-video
-          muted
-          playsinline
-          loop
-          preload="metadata"
+          muted playsinline loop preload="metadata"
           poster={posterUrl ?? undefined}
         >
           <source src={videoUrl} />
@@ -47,53 +41,33 @@ const {
     <div class="heroScrim"></div>
 
     <div class="heroInner" data-hero-inner>
-      <h1
-        class="h1"
-        transition:name={transitionKey ? `proj-title-${transitionKey}` : undefined}
-      >
-        {title}
-      </h1>
-      {sub ? <p class="sub">{sub}</p> : null}
-
-      {pills?.length ? (
-        <div class="heroMeta reveal-stagger">
-          {pills.slice(0, 6).map((p) => (
-            <span class="pill">{p?.label ?? "Pilar"}</span>
-          ))}
-        </div>
+      {title ? (
+        <h1
+          class="h1"
+          transition:name={transitionKey ? `proj-title-${transitionKey}` : undefined}
+        >
+          {title}
+        </h1>
       ) : null}
+      {sub ? <p class="sub">{sub}</p> : null}
     </div>
   </div>
-
-  {/* Optional: safe autoplay/pause if video exists */}
-  {videoUrl ? (
-    <script is:inline>
-      {`
-        (function () {
-          function prefersReducedMotion() {
-            try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
-            catch { return false; }
-          }
-          function saveDataOn() {
-            try { return !!(navigator.connection && navigator.connection.saveData); }
-            catch { return false; }
-          }
-          function boot() {
-            if (prefersReducedMotion() || saveDataOn()) return;
-            const v = document.querySelector('[data-hero-video]');
-            if (!v) return;
-            const io = new IntersectionObserver((entries) => {
-              const e = entries[0];
-              if (!e) return;
-              if (e.isIntersecting) v.play().catch(() => {});
-              else v.pause();
-            }, { threshold: 0.4 });
-            io.observe(v);
-          }
-          if (document.readyState === 'complete') boot();
-          else window.addEventListener('load', boot, { once: true });
-        })();
-      `}
-    </script>
-  ) : null}
 </section>
+
+<script is:inline>
+{`
+(function(){
+  var v = document.querySelector('[data-hero-video]');
+  if (!v) return;
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var lite = navigator.connection && navigator.connection.saveData;
+  if (reduce || lite) return;
+  var io = new IntersectionObserver(function(es){
+    var e = es[0]; if (!e) return;
+    if (e.isIntersecting) v.play().catch(function(){});
+    else v.pause();
+  }, { threshold: .35 });
+  io.observe(v);
+})();
+`}
+</script>

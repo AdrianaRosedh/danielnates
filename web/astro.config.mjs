@@ -25,23 +25,4 @@ export default defineConfig({
     react({ include: ["**/admin/**"] }),
     sitemap({ i18n: { defaultLocale: "es", locales: { es: "es-ES", en: "en-US" } } }),
   ],
-  image: {
-    domains: ["cdn.sanity.io"],
-  },
-  prefetch: {
-    prefetchAll: true,
-    defaultStrategy: "viewport",
-  },
-  vite: {
-    ssr: {
-      // Keep Sanity packages externalized so Node loads their CJS/ESM
-      // builds directly. Bundling them via Vite breaks @sanity/image-url v2
-      // (its exports map points Vite at the .ts source).
-      external: ["@sanity/client", "@sanity/image-url"],
-    },
-    optimizeDeps: {
-      // Pre-bundle for the client/dev server.
-      include: ["@sanity/client", "@sanity/image-url"],
-    },
-  },
 });

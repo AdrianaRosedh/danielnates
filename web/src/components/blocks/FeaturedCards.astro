@@ -1,6 +1,5 @@
 ---
 import type { FeaturedCardsBlock } from "../../lib/types";
-import { img, imgSrcset } from "../../lib/image";
 
 interface Props { block: FeaturedCardsBlock }
 const { block } = Astro.props as Props;
@@ -13,12 +12,11 @@ const cards = block.cards ?? [];
     {block.title ? <h2 class="featured__title">{block.title}</h2> : null}
     <div class="featured__grid reveal-stagger">
       {cards.map((c) => {
-        const src = img(c.image, { width: 900 });
-        const srcset = imgSrcset(c.image);
+        const src = c.image_url ?? null;
         const Tag = c.href ? "a" : "div";
         return (
           <Tag class="featured__card" href={c.href || undefined}>
-            {src ? <img src={src} srcset={srcset ?? undefined} sizes="(min-width: 880px) 360px, 100vw" alt={c.title} loading="lazy" /> : null}
+            {src ? <img src={src} alt={c.title} loading="lazy" /> : null}
             <div class="featured__body">
               {c.tag ? <p class="featured__tag">{c.tag}</p> : null}
               <h3 class="featured__cardTitle">{c.title}</h3>

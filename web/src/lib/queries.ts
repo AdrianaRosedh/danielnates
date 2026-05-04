@@ -1,5 +1,11 @@
-import type { SanityClient } from "@sanity/client";
-import type { AstroCookies } from "astro";
+/**
+ * Public-page data fetchers — all backed by Supabase.
+ *
+ * Convention:
+ *   - All getters return null / [] gracefully if Supabase isn't configured
+ *     (so the build works in CI without env vars set).
+ *   - Public reads use the anon client; RLS limits SELECT to published rows.
+ */
 import type {
   Article,
   ArtPiece,
@@ -10,243 +16,167 @@ import type {
   Project,
   SiteSettings,
 } from "./types";
-import { sanity, getSanity, DRAFT_COOKIE } from "./sanity";
+import { getSupabase } from "./supabase";
 
-/** Use this from inside an Astro page. Picks the draft client if the cookie is set. */
-export function clientFor(cookies?: AstroCookies): SanityClient {
-  if (!cookies) return sanity;
-  return getSanity(cookies.get(DRAFT_COOKIE)?.value);
+const ARTICLE_COLS = "id, slug, title, date, excerpt_es, excerpt_en, cover_url, tags, body_es, body_en, voice, blocks, published, created_at, updated_at";
+const PROJECT_COLS = "id, slug, title, status, summary_es, summary_en, hero_image_url, hero_video_url, body_es, body_en, blocks, links, voice, published, created_at, updated_at";
+const ART_COLS = "id, slug, title, cover_url, year, medium, dimensions, statement_es, statement_en, voice, blocks, published, created_at, updated_at";
+const BRIEF_COLS = "id, date, image_url, line_es, line_en, place, voice, published, created_at, updated_at";
+
+/* ── Singletons ───────────────────────────────────────────────────── */
+
+export async function getDaniel(): Promise<Person | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data } = await sb.from("person").select("*").eq("id", "daniel").maybeSingle();
+  return (data ?? null) as Person | null;
 }
 
-/* ── Inline GROQ fragment for the page-builder shape ───────────────── */
-const blocksProjection = `
-  blocks[]{
-    _key,
-    _type,
-    // shared / repeated keys are flattened — Sanity returns whichever exist
-    eyebrow, title, subtitle, image, videoUrl, tone,
-    body, maxWidth,
-    caption, alt, layout,
-    images[]{..., asset->{...}},
-    poster, autoplay, loop,
-    text, attribution,
-    style,
-    url, aspect,
-    label, href, secondaryLabel, secondaryHref,
-    speed,
-    // recipe
-    meta, ingredients, steps,
-    // audio
-    audioUrl, transcript,
-    // pillars
-    kicker, pillars,
-    // split
-    orientation, heading,
-    // timeline / accordion / featuredCards / stats
-    entries, items, cards, stats,
-    // map
-    address, lat, lng, zoom, mapsUrl,
-    // code
-    language, code
-  }
-`;
+export async function getPressKit(): Promise<PressKit | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data } = await sb.from("press_kit").select("*").eq("id", "singleton").maybeSingle();
+  return (data ?? null) as PressKit | null;
+}
 
-/* ── Site / Person ─────────────────────────────────────────────────── */
-export const SITE_SETTINGS_QUERY = `
-*[_type == "siteSettings"][0]{
-  siteName,
-  description,
-  defaultOg,
-  navigation[],
-  footer
-}`;
+export async function getSiteSettings(): Promise<SiteSettings | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data } = await sb.from("site_settings").select("*").eq("id", "singleton").maybeSingle();
+  return (data ?? null) as SiteSettings | null;
+}
 
-export const PRESS_KIT_QUERY = `
-*[_type == "pressKit"][0]{
-  bioOneLine,
-  bioShort,
-  bioLong,
-  photos[]{..., asset->{...}},
-  recognitions,
-  mentions,
-  "pressPdf": pressPdf{asset->{url}},
-  pressEmail
-}`;
+/* ── Projects ─────────────────────────────────────────────────────── */
 
-export const DANIEL_QUERY = `
-*[_type == "person"] | order(_updatedAt desc)[0]{
-  _id,
-  name,
-  tagline,
-  subline,
-  portrait,
-  bioShort,
-  bioLong,
-  pillars,
-  voice,
-  social
-}`;
+export async function getProjects(): Promise<Project[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data } = await sb
+    .from("projects")
+    .select(PROJECT_COLS)
+    .eq("published", true)
+    .order("status", { ascending: true });
+  return ((data ?? []) as Project[]).sort((a, b) => statusOrder(a.status) - statusOrder(b.status));
+}
 
-/* ── Projects ──────────────────────────────────────────────────────── */
-export const PROJECTS_QUERY = `
-*[_type == "project"] | order(
-  select(
-    status == "primary" => 0,
-    status == "secondary" => 1,
-    status == "past" => 2,
-    3
-  ) asc
-){
-  _id,
-  title,
-  slug,
-  status,
-  summary,
-  heroMedia,
-  links
-}`;
+export async function getProject(slug: string): Promise<Project | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data } = await sb
+    .from("projects")
+    .select(PROJECT_COLS)
+    .eq("slug", slug)
+    .eq("published", true)
+    .maybeSingle();
+  return (data ?? null) as Project | null;
+}
 
-export const PROJECT_BY_SLUG = `
-*[_type == "project" && slug.current == $slug][0]{
-  _id,
-  title,
-  slug,
-  status,
-  summary,
-  body,
-  links,
-  heroMedia,
-  voice,
-  ${blocksProjection}
-}`;
+function statusOrder(s: Project["status"]): number {
+  if (s === "primary") return 0;
+  if (s === "secondary") return 1;
+  if (s === "past") return 2;
+  return 3;
+}
 
-export const PROJECT_SLUGS_QUERY = `*[_type == "project" && defined(slug.current)].slug.current`;
+/* ── Articles ─────────────────────────────────────────────────────── */
 
-/* ── Articles ──────────────────────────────────────────────────────── */
-export const ARTICLES_QUERY = `
-*[_type == "article"] | order(date desc){
-  _id,
-  title,
-  slug,
-  date,
-  excerpt,
-  cover,
-  tags
-}`;
+export async function getArticles(): Promise<Article[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data } = await sb
+    .from("articles")
+    .select(ARTICLE_COLS)
+    .eq("published", true)
+    .order("date", { ascending: false });
+  return (data ?? []) as Article[];
+}
 
-export const LATEST_ARTICLES_QUERY = `
-*[_type == "article"] | order(date desc)[0...$limit]{
-  _id,
-  title,
-  slug,
-  date,
-  excerpt,
-  cover
-}`;
+export async function getLatestArticles(limit = 3): Promise<Article[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data } = await sb
+    .from("articles")
+    .select(ARTICLE_COLS)
+    .eq("published", true)
+    .order("date", { ascending: false })
+    .limit(limit);
+  return (data ?? []) as Article[];
+}
 
-export const ARTICLE_BY_SLUG = `
-*[_type == "article" && slug.current == $slug][0]{
-  _id,
-  title,
-  slug,
-  date,
-  excerpt,
-  cover,
-  tags,
-  voice,
-  ${blocksProjection}
-}`;
+export async function getArticle(slug: string): Promise<Article | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data } = await sb
+    .from("articles")
+    .select(ARTICLE_COLS)
+    .eq("slug", slug)
+    .eq("published", true)
+    .maybeSingle();
+  return (data ?? null) as Article | null;
+}
 
-export const ARTICLE_SLUGS_QUERY = `*[_type == "article" && defined(slug.current)].slug.current`;
+/* ── Art ──────────────────────────────────────────────────────────── */
 
-/* ── Art ───────────────────────────────────────────────────────────── */
-export const ART_PIECES_QUERY = `
-*[_type == "artPiece"] | order(year desc, _createdAt desc){
-  _id,
-  title,
-  slug,
-  cover,
-  year,
-  medium
-}`;
+export async function getArtPieces(): Promise<ArtPiece[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data } = await sb
+    .from("art_pieces")
+    .select(ART_COLS)
+    .eq("published", true)
+    .order("year", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false });
+  return (data ?? []) as ArtPiece[];
+}
 
-export const ART_PIECE_BY_SLUG = `
-*[_type == "artPiece" && slug.current == $slug][0]{
-  _id,
-  title,
-  slug,
-  cover,
-  year,
-  medium,
-  dimensions,
-  statement,
-  voice,
-  ${blocksProjection}
-}`;
+export async function getArtPiece(slug: string): Promise<ArtPiece | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data } = await sb
+    .from("art_pieces")
+    .select(ART_COLS)
+    .eq("slug", slug)
+    .eq("published", true)
+    .maybeSingle();
+  return (data ?? null) as ArtPiece | null;
+}
 
-export const ART_SLUGS_QUERY = `*[_type == "artPiece" && defined(slug.current)].slug.current`;
+/* ── Daily Brief ──────────────────────────────────────────────────── */
 
-/* ── Daily Brief ───────────────────────────────────────────────────── */
-export const DAILY_BRIEFS_QUERY = `
-*[_type == "dailyBrief"] | order(date desc){
-  _id,
-  date,
-  image,
-  line,
-  place,
-  voice
-}`;
+export async function getDailyBriefs(limit = 120): Promise<DailyBrief[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data } = await sb
+    .from("daily_briefs")
+    .select(BRIEF_COLS)
+    .eq("published", true)
+    .order("date", { ascending: false })
+    .limit(limit);
+  return (data ?? []) as DailyBrief[];
+}
 
-export const LATEST_DAILY_BRIEF_QUERY = `
-*[_type == "dailyBrief"] | order(date desc)[0]{
-  _id,
-  date,
-  image,
-  line,
-  place,
-  voice
-}`;
+export async function getLatestDailyBrief(): Promise<DailyBrief | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data } = await sb
+    .from("daily_briefs")
+    .select(BRIEF_COLS)
+    .eq("published", true)
+    .order("date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return (data ?? null) as DailyBrief | null;
+}
 
-/* ── Field Notes ───────────────────────────────────────────────────── */
-export const FIELD_NOTES_QUERY = `
-*[_type == "fieldNote"] | order(date desc){
-  title,
-  date,
-  category,
-  body,
-  externalLink
-}`;
+/* ── Field Notes ──────────────────────────────────────────────────── */
 
-/* ── Typed helpers (accept optional client; default to published) ──── */
-type C = SanityClient | undefined;
-const C = (c?: C) => c ?? sanity;
-
-export const getSiteSettings = (c?: C) =>
-  C(c).fetch<SiteSettings | null>(SITE_SETTINGS_QUERY);
-export const getPressKit = (c?: C) =>
-  C(c).fetch<PressKit | null>(PRESS_KIT_QUERY);
-export const getDaniel = (c?: C) => C(c).fetch<Person | null>(DANIEL_QUERY);
-
-export const getProjects = (c?: C) => C(c).fetch<Project[]>(PROJECTS_QUERY);
-export const getProject = (slug: string, c?: C) =>
-  C(c).fetch<Project | null>(PROJECT_BY_SLUG, { slug });
-export const getProjectSlugs = (c?: C) => C(c).fetch<string[]>(PROJECT_SLUGS_QUERY);
-
-export const getArticles = (c?: C) => C(c).fetch<Article[]>(ARTICLES_QUERY);
-export const getLatestArticles = (limit = 3, c?: C) =>
-  C(c).fetch<Article[]>(LATEST_ARTICLES_QUERY, { limit });
-export const getArticle = (slug: string, c?: C) =>
-  C(c).fetch<Article | null>(ARTICLE_BY_SLUG, { slug });
-export const getArticleSlugs = (c?: C) => C(c).fetch<string[]>(ARTICLE_SLUGS_QUERY);
-
-export const getArtPieces = (c?: C) => C(c).fetch<ArtPiece[]>(ART_PIECES_QUERY);
-export const getArtPiece = (slug: string, c?: C) =>
-  C(c).fetch<ArtPiece | null>(ART_PIECE_BY_SLUG, { slug });
-export const getArtSlugs = (c?: C) => C(c).fetch<string[]>(ART_SLUGS_QUERY);
-
-export const getFieldNotes = (c?: C) => C(c).fetch<FieldNote[]>(FIELD_NOTES_QUERY);
-
-export const getDailyBriefs = (c?: C) =>
-  C(c).fetch<DailyBrief[]>(DAILY_BRIEFS_QUERY);
-export const getLatestDailyBrief = (c?: C) =>
-  C(c).fetch<DailyBrief | null>(LATEST_DAILY_BRIEF_QUERY);
+export async function getFieldNotes(): Promise<FieldNote[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data } = await sb
+    .from("field_notes")
+    .select("*")
+    .eq("published", true)
+    .order("date", { ascending: false });
+  return (data ?? []) as FieldNote[];
+}

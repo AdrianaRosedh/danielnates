@@ -1,6 +1,6 @@
 ---
 import type { Locale, PillarsBlock } from "../../lib/types";
-import { t } from "../../lib/i18n";
+import { t2 } from "../../lib/i18n";
 
 interface Props { block: PillarsBlock; locale?: Locale }
 const { block, locale: propLocale } = Astro.props as Props;
@@ -17,7 +17,7 @@ const pillars = block.pillars ?? [];
         <article class="pillar">
           <span class="pillar__num">{String(i + 1).padStart(2, "0")}</span>
           <h3 class="pillar__label">{p.label}</h3>
-          {t(p.copy, locale) ? <p class="pillar__copy">{t(p.copy, locale)}</p> : null}
+          {t2(p.copy_es, p.copy_en, locale) ? <p class="pillar__copy">{t2(p.copy_es, p.copy_en, locale)}</p> : null}
         </article>
       ))}
     </div>

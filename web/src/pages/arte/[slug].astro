@@ -1,11 +1,12 @@
 ---
+export const prerender = false;
+
 import BaseLayout from "../../components/layout/BaseLayout.astro";
 import TopDock from "../../components/layout/TopDock.astro";
 import BlockRenderer from "../../components/blocks/BlockRenderer.astro";
 
-import { clientFor, getArtPiece } from "../../lib/queries";
-import { img } from "../../lib/image";
-import { href, t, ui } from "../../lib/i18n";
+import { getArtPiece } from "../../lib/queries";
+import { href, t2, ui } from "../../lib/i18n";
 import type { Locale } from "../../lib/types";
 
 interface PageProps { lang?: Locale }
@@ -13,14 +14,11 @@ const { lang } = Astro.props as PageProps;
 const locale: Locale = lang ?? Astro.locals.locale ?? "es";
 
 const { slug } = Astro.params as { slug: string };
-const client = clientFor(Astro.cookies);
-const piece = await getArtPiece(slug, client);
-
+const piece = await getArtPiece(slug);
 if (!piece) return Astro.redirect(href("/404", locale));
 
-const title = piece.title ?? slug;
-const statement = t(piece.statement, locale);
-const cover = img(piece.cover, { width: 2000 });
+const title = piece.title;
+const statement = t2(piece.statement_es, piece.statement_en, locale);
 const meta = [piece.year, piece.medium, piece.dimensions].filter(Boolean).join(" · ");
 ---
 
@@ -31,16 +29,15 @@ const meta = [piece.year, piece.medium, piece.dimensions].filter(Boolean).join("
     <article class="artHeader reveal">
       <p class="kicker">{ui("art", locale)}{meta ? ` · ${meta}` : ""}</p>
       <h1 class="h1">{title}</h1>
-      {cover ? <img class="artHeader__cover" src={cover} alt={title} /> : null}
+      {piece.cover_url ? <img class="artHeader__cover" src={piece.cover_url} alt={title} /> : null}
       {statement ? <p class="sub" style="margin-top:18px;max-width:60ch;">{statement}</p> : null}
     </article>
 
-    <BlockRenderer blocks={piece.blocks} locale={locale} />
+    {piece.blocks?.length ? <BlockRenderer blocks={piece.blocks} locale={locale} /> : null}
   </div>
-
 </BaseLayout>
 
 <style>
   .artHeader{ margin: 14px 0 18px; }
-  .artHeader__cover{ width: 100%; height: auto; border-radius: var(--radius); margin-top: 22px; display: block; }
+  .artHeader__cover{ width: 100%; height: auto; border-radius: var(--r-3); margin-top: 22px; display: block; }
 </style>

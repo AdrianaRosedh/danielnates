@@ -1,6 +1,5 @@
 ---
 import type { GalleryBlock } from "../../lib/types";
-import { img, imgSrcset } from "../../lib/image";
 
 interface Props { block: GalleryBlock }
 const { block } = Astro.props as Props;
@@ -12,19 +11,10 @@ const images = block.images ?? [];
 {images.length ? (
   <section class={`gallery gallery--${layout} reveal-stagger`} aria-label={block.caption}>
     {images.map((im) => {
-      const src = img(im, { width: 1200 });
-      const srcset = imgSrcset(im);
       const alt = im.alt ?? im.caption ?? "";
-      return src ? (
+      return im.url ? (
         <figure class="gallery__item">
-          <img
-            src={src}
-            srcset={srcset ?? undefined}
-            sizes="(min-width: 1100px) 540px, 100vw"
-            alt={alt}
-            loading="lazy"
-            decoding="async"
-          />
+          <img src={im.url} alt={alt} loading="lazy" decoding="async" />
           {im.caption ? <figcaption>{im.caption}</figcaption> : null}
         </figure>
       ) : null;

@@ -1,5 +1,10 @@
-import type { BilingualBlocks, BilingualText, Locale } from "./types";
+import type { Locale } from "./types";
 import type { PortableTextBlock } from "@portabletext/types";
+
+/* Legacy aliases — Sanity-style bilingual objects {es, en}.
+   Kept for any leftover code that hasn't migrated yet. */
+interface BilingualText { es?: string | null; en?: string | null }
+interface BilingualBlocks { es?: PortableTextBlock[] | null; en?: PortableTextBlock[] | null }
 
 export const LOCALES = ["es", "en"] as const;
 export const DEFAULT_LOCALE: Locale = "es";
@@ -11,15 +16,27 @@ export function getLocaleFromUrl(url: URL | string): Locale {
 }
 
 /** Pick the right language for a bilingual text field, with graceful fallback. */
-export function t(field: BilingualText | undefined, locale: Locale): string {
+export function t(field: BilingualText | null | undefined, locale: Locale): string {
   if (!field) return "";
-  return field[locale] ?? field.es ?? field.en ?? "";
+  return (field[locale] ?? field.es ?? field.en ?? "") as string;
 }
 
 /** Pick the right language for a bilingual blocks field. */
-export function tb(field: BilingualBlocks | undefined, locale: Locale): PortableTextBlock[] {
+export function tb(field: BilingualBlocks | null | undefined, locale: Locale): PortableTextBlock[] {
   if (!field) return [];
-  return field[locale] ?? field.es ?? field.en ?? [];
+  return (field[locale] ?? field.es ?? field.en ?? []) as PortableTextBlock[];
+}
+
+/** Pick the right value from paired _es / _en columns (Supabase shape). */
+export function t2(es: string | null | undefined, en: string | null | undefined, locale: Locale): string {
+  if (locale === "es") return es ?? en ?? "";
+  return en ?? es ?? "";
+}
+
+/** Same, for paired Portable Text block columns. */
+export function tb2<T>(es: T[] | null | undefined, en: T[] | null | undefined, locale: Locale): T[] {
+  if (locale === "es") return es ?? en ?? [];
+  return en ?? es ?? [];
 }
 
 /** Build a localized href. ES routes have no prefix, EN gets /en. */

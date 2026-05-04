@@ -1,7 +1,6 @@
 ---
 import type { Article, Locale } from "../../lib/types";
-import { dateFormat, href, t, ui } from "../../lib/i18n";
-import { img } from "../../lib/image";
+import { dateFormat, href, t2, ui } from "../../lib/i18n";
 
 interface Props {
   articles?: Article[];
@@ -27,15 +26,15 @@ const list = articles.slice(0, 3);
 
     <div class="spread__grid">
       {list.map((a, i) => {
-        const cover = img(a.cover, { width: 1200 });
-        const url = href(`/diario/${a.slug?.current}`, locale);
+        const url = href(`/diario/${a.slug}`, locale);
+        const excerpt = t2(a.excerpt_es, a.excerpt_en, locale);
         return (
           <a class={`spread__card ${i === 0 ? "spread__card--lead" : ""}`} href={url}>
-            {cover ? <img src={cover} alt={a.title ?? ""} loading="lazy" /> : <div class="spread__noimg" aria-hidden="true"></div>}
+            {a.cover_url ? <img src={a.cover_url} alt={a.title} loading="lazy" /> : <div class="spread__noimg" aria-hidden="true"></div>}
             <div class="spread__body">
               <p class="spread__date">{dateFormat(a.date, locale)}</p>
               <h3 class="spread__cardTitle">{a.title}</h3>
-              {t(a.excerpt, locale) ? <p class="spread__excerpt">{t(a.excerpt, locale)}</p> : null}
+              {excerpt ? <p class="spread__excerpt">{excerpt}</p> : null}
             </div>
           </a>
         );

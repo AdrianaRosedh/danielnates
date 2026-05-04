@@ -1,5 +1,5 @@
 ---
-export const prerender = true;
+export const prerender = false;
 
 import BaseLayout from "../components/layout/BaseLayout.astro";
 import TopDock from "../components/layout/TopDock.astro";
@@ -12,7 +12,7 @@ import AtelierPreview from "../components/scenes/AtelierPreview.astro";
 import Closing from "../components/scenes/Closing.astro";
 
 import { getDaniel, getProjects, getLatestArticles, getArtPieces } from "../lib/queries";
-import { href, pressHref, t, ui } from "../lib/i18n";
+import { href, t2 } from "../lib/i18n";
 import type { Locale, Pillar } from "../lib/types";
 
 interface PageProps { lang?: Locale }
@@ -26,19 +26,13 @@ const [daniel, projects, articles, art] = await Promise.all([
   getArtPieces(),
 ]);
 
-const safeProjects = projects ?? [];
-const safeArticles = articles ?? [];
-const safeArt = art ?? [];
-
 const heroName = daniel?.name ?? "Daniel Nates";
 
-// The site is Daniel — chef + artist — not any single project.
-// His own framing (from press): cooking and drawing share a language.
-const heroLine = t(daniel?.tagline, locale) || (locale === "es"
+const heroLine = t2(daniel?.tagline_es, daniel?.tagline_en, locale) || (locale === "es"
   ? "Cocinar y dibujar — la misma lengua."
   : "To cook and to draw — the same language.");
 
-const heroSig = t(daniel?.subline, locale) || (locale === "es"
+const heroSig = t2(daniel?.subline_es, daniel?.subline_en, locale) || (locale === "es"
   ? "Cocinero en Olivea · Socio en Fritanguita · Dibujante."
   : "Chef at Olivea · Partner at Fritanguita · Draughtsman.");
 
@@ -46,45 +40,35 @@ const heroMeta = locale === "es"
   ? "Valle de Guadalupe · CDMX · MMXXVI"
   : "Valle de Guadalupe · Mexico City · MMXXVI";
 
-// Manifesto — four pillars: a principle, his slow side, his fast side,
-// and his other practice (drawing). Maíz isn't a theme; it's an ingredient.
+// Manifesto — four pillars (defaults if Daniel hasn't filled them in).
 const pillars: Pillar[] = (daniel?.pillars && daniel.pillars.length
   ? daniel.pillars
   : [
     {
       label: "Producto",
-      copy: {
-        es: "Ingrediente primero, técnica después. Lo que el campo o el mar permite, eso se cocina.",
-        en: "Ingredient first, technique second. What the field or the sea allows is what gets cooked.",
-      },
+      copy_es: "Ingrediente primero, técnica después. Lo que el campo o el mar permite, eso se cocina.",
+      copy_en: "Ingredient first, technique second. What the field or the sea allows is what gets cooked.",
     },
     {
       label: "Huerto",
-      copy: {
-        es: "En Olivea, la carta cambia con la temporada del huerto. La cocina escucha primero al campo.",
-        en: "At Olivea, the menu changes with the garden's season. The kitchen listens to the field first.",
-      },
+      copy_es: "En Olivea, la carta cambia con la temporada del huerto. La cocina escucha primero al campo.",
+      copy_en: "At Olivea, the menu changes with the garden's season. The kitchen listens to the field first.",
     },
     {
       label: "Calle",
-      copy: {
-        es: "En Fritanguita, la fritanga poblana en su forma más contemporánea. Hecha a mano, fuego rápido.",
-        en: "At Fritanguita, the poblano fritanga in its most contemporary form. Hand-made, fast fire.",
-      },
+      copy_es: "En Fritanguita, la fritanga poblana en su forma más contemporánea. Hecha a mano, fuego rápido.",
+      copy_en: "At Fritanguita, the poblano fritanga in its most contemporary form. Hand-made, fast fire.",
     },
     {
       label: "Imagen",
-      copy: {
-        es: "Dibujar y cocinar comparten lengua: composición, contraste, intención. El cocinero también hace imágenes.",
-        en: "To draw and to cook share a language: composition, contrast, intent. The cook also makes images.",
-      },
+      copy_es: "Dibujar y cocinar comparten lengua: composición, contraste, intención. El cocinero también hace imágenes.",
+      copy_en: "To draw and to cook share a language: composition, contrast, intent. The cook also makes images.",
     },
-  ]) as Pillar[];
+  ]);
 
-const olivea = safeProjects.find((p) => p?.slug?.current === "olivea");
-const frita  = safeProjects.find((p) => p?.slug?.current === "fritanguita");
-const maizal = safeProjects.find((p) => p?.slug?.current === "maizal");
-
+const olivea = projects.find((p) => p.slug === "olivea");
+const frita  = projects.find((p) => p.slug === "fritanguita");
+const maizal = projects.find((p) => p.slug === "maizal");
 ---
 
 <BaseLayout
@@ -101,7 +85,6 @@ const maizal = safeProjects.find((p) => p?.slug?.current === "maizal");
 >
   <TopDock locale={locale} />
 
-  {/* Beat 1 — Cold open */}
   <ColdOpen
     name={heroName}
     signature={heroSig}
@@ -111,30 +94,24 @@ const maizal = safeProjects.find((p) => p?.slug?.current === "maizal");
     locale={locale}
   />
 
-  {/* Beat 2 — The line. Daniel's voice, not a project's. */}
   <TheLine line={heroLine} attribution={heroName} />
 
-  {/* Beat 3 — Manifesto */}
   <Manifesto
     pillars={pillars}
     kicker={locale === "es" ? "Manifiesto" : "Manifesto"}
     locale={locale}
   />
 
-  {/* Beat 4 — The work. Each project is a different side of him:
-       Olivea = his slow, garden-led, deliberate side (where he lives).
-       Fritanguita = his fast, playful, street side (run with partners).
-       Maizal = where it began (Puebla, closed 2024). */}
   {olivea ? (
     <ChapterHero
       index="01"
       brand="olivea"
-      title={olivea.title ?? "Olivea"}
-      summary={t(olivea.summary, locale) || (locale === "es"
+      title={olivea.title}
+      summary={t2(olivea.summary_es, olivea.summary_en, locale) || (locale === "es"
         ? "Mi lado lento. La cocina al lado del huerto, en Valle de Guadalupe. Estrella Michelin y Estrella Verde."
         : "My slow side. The kitchen beside the garden, in Valle de Guadalupe. Michelin Star and Green Star.")}
-      videoUrl={olivea.heroMedia?.videoUrl ?? "/media/olivea/olivea.mp4"}
-      href={href(`/${olivea.slug?.current}`, locale)}
+      videoUrl={olivea.hero_video_url ?? "/media/olivea/olivea.mp4"}
+      href={href(`/${olivea.slug}`, locale)}
       align="left"
       locale={locale}
       voice={olivea.voice ?? null}
@@ -145,12 +122,12 @@ const maizal = safeProjects.find((p) => p?.slug?.current === "maizal");
     <ChapterHero
       index="02"
       brand="fritanguita"
-      title={frita.title ?? "Fritanguita"}
-      summary={t(frita.summary, locale) || (locale === "es"
+      title={frita.title}
+      summary={t2(frita.summary_es, frita.summary_en, locale) || (locale === "es"
         ? "Mi lado rápido. Fritanga poblana, maíz nativo nixtamalizado, en Roma Norte. Con Santiago Muñoz."
         : "My fast side. Poblano fritanga, native nixtamalized corn, in Roma Norte. With Santiago Muñoz.")}
-      videoUrl={frita.heroMedia?.videoUrl ?? "/media/fritanguita/fritanguita.mp4"}
-      href={href(`/${frita.slug?.current}`, locale)}
+      videoUrl={frita.hero_video_url ?? "/media/fritanguita/fritanguita.mp4"}
+      href={href(`/${frita.slug}`, locale)}
       align="right"
       locale={locale}
       voice={frita.voice ?? null}
@@ -161,25 +138,22 @@ const maizal = safeProjects.find((p) => p?.slug?.current === "maizal");
     <ChapterHero
       index="03"
       brand="maizal"
-      title={maizal.title ?? "Maizal"}
-      summary={t(maizal.summary, locale) || (locale === "es"
+      title={maizal.title}
+      summary={t2(maizal.summary_es, maizal.summary_en, locale) || (locale === "es"
         ? "Mi primer maestro. Ocho años en La Casona de los Sapos, Puebla. Lo que aprendí ahí sigue cocinando lo que hago hoy. 2017–2024."
         : "My first teacher. Eight years at La Casona de los Sapos, Puebla. What I learned there still cooks what I do today. 2017–2024.")}
-      videoUrl={maizal.heroMedia?.videoUrl ?? null}
-      href={href(`/${maizal.slug?.current}`, locale)}
+      videoUrl={maizal.hero_video_url ?? null}
+      href={href(`/${maizal.slug}`, locale)}
       align="left"
       locale={locale}
       voice={maizal.voice ?? null}
     />
   ) : null}
 
-  {/* Beat 5 — Words */}
-  <MagazineSpread articles={safeArticles} locale={locale} />
+  <MagazineSpread articles={articles} locale={locale} />
 
-  {/* Beat 6 — Atelier */}
-  <AtelierPreview pieces={safeArt} locale={locale} />
+  <AtelierPreview pieces={art} locale={locale} />
 
-  {/* Beat 7 — Closing */}
   <Closing locale={locale} daniel={daniel} />
 
 </BaseLayout>

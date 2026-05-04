@@ -1,6 +1,6 @@
 ---
 import type { AccordionBlock, Locale } from "../../lib/types";
-import { t, tb } from "../../lib/i18n";
+import { t2, tb2 } from "../../lib/i18n";
 import PortableText from "../content/PortableText.astro";
 
 interface Props { block: AccordionBlock; locale?: Locale }
@@ -15,8 +15,8 @@ const items = block.items ?? [];
   {items.length ? (
     <div class="accordion__list">
       {items.map((it) => {
-        const q = t(it.q, locale);
-        const a = tb(it.a, locale);
+        const q = t2(it.q_es, it.q_en, locale);
+        const a = tb2(it.a_es, it.a_en, locale);
         return q ? (
           <details class="accordion__item">
             <summary>
