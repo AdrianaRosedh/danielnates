@@ -5,7 +5,7 @@ import BaseLayout from "../components/layout/BaseLayout.astro";
 import TopDock from "../components/layout/TopDock.astro";
 import PortableText from "../components/content/PortableText.astro";
 
-import { getDaniel, getPressKit } from "../lib/queries";
+import { getDaniel, getPressKit, getPressMentions } from "../lib/queries";
 import { dateFormat, t2, tb2 } from "../lib/i18n";
 import type { Locale, PressMention, PressRecognition } from "../lib/types";
 
@@ -13,7 +13,7 @@ interface PageProps { lang?: Locale }
 const { lang } = Astro.props as PageProps;
 const locale: Locale = lang ?? Astro.locals.locale ?? "es";
 
-const [daniel, kit] = await Promise.all([getDaniel(), getPressKit()]);
+const [daniel, kit, dbMentions] = await Promise.all([getDaniel(), getPressKit(), getPressMentions()]);
 
 /* ── Real, researched defaults so this page is presentable from day 1 ── */
 const defaultBioOneLine = locale === "es"
@@ -87,7 +87,10 @@ const bioOneLine = t2(kit?.bio_one_line_es, kit?.bio_one_line_en, locale) || def
 const bioShort = t2(kit?.bio_short_es, kit?.bio_short_en, locale) || defaultBioShort;
 const bioLong = tb2(kit?.bio_long_es, kit?.bio_long_en, locale);
 const recognitions = kit?.recognitions?.length ? kit.recognitions : defaultRecognitions;
-const mentions = kit?.mentions?.length ? kit.mentions : defaultMentions;
+/* Mentions live in the press_mentions table (admin: /admin/press). Fall back
+ * to the researched defaults when the table is empty so the page is presentable
+ * from day one. */
+const mentions: PressMention[] = dbMentions.length ? dbMentions : defaultMentions;
 const photos = kit?.photos ?? [];
 const pressEmail = kit?.press_email || daniel?.social?.email || null;
 const pressPdfUrl = kit?.press_pdf_url ?? null;

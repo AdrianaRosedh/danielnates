@@ -180,3 +180,16 @@ export async function getFieldNotes(): Promise<FieldNote[]> {
     .order("date", { ascending: false });
   return (data ?? []) as FieldNote[];
 }
+
+/* ── Press Mentions ───────────────────────────────────────────────── */
+
+export async function getPressMentions(): Promise<import("./types").PressMention[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data } = await sb
+    .from("press_mentions")
+    .select("outlet, title, url, date, language")
+    .order("date", { ascending: false, nullsFirst: false })
+    .limit(500);
+  return (data ?? []) as import("./types").PressMention[];
+}

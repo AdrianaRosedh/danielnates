@@ -6,7 +6,7 @@ export const prerender = false;
 const SCALARS = [
   "bio_one_line_es", "bio_one_line_en",
   "bio_short_es", "bio_short_en",
-  "photos", "recognitions", "mentions",
+  "photos", "recognitions",
   "press_pdf_url", "press_email",
 ] as const;
 

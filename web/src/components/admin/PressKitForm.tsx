@@ -4,8 +4,11 @@ type Lang = "es" | "en";
 
 interface Photo { url: string; caption?: string | null; credit?: string | null }
 interface Recognition { year: string; label: string; org?: string; url?: string }
-interface Mention { outlet: string; title?: string | null; url: string; date?: string | null; language?: "es" | "en" | null }
 
+/* Mentions are managed in the dedicated /admin/press table, not here.
+ * The press_kit.mentions jsonb column stays in the schema but is not
+ * surfaced in this form to avoid two storage locations for the same
+ * conceptual data. */
 export interface PressKitValue {
   bio_one_line_es: string | null;
   bio_one_line_en: string | null;
@@ -15,7 +18,6 @@ export interface PressKitValue {
   bio_long_en: string | null;
   photos: Photo[];
   recognitions: Recognition[];
-  mentions: Mention[];
   press_pdf_url: string | null;
   press_email: string | null;
 }
@@ -32,7 +34,6 @@ export default function PressKitForm({ initial }: Props) {
     bio_long_en: initial?.bio_long_en ?? "",
     photos: initial?.photos ?? [],
     recognitions: initial?.recognitions ?? [],
-    mentions: initial?.mentions ?? [],
     press_pdf_url: initial?.press_pdf_url ?? null,
     press_email: initial?.press_email ?? "",
   });
@@ -95,14 +96,6 @@ export default function PressKitForm({ initial }: Props) {
     set("recognitions", v.recognitions.map((r, j) => j === i ? { ...r, [key]: val } : r));
   }
   function removeRecognition(i: number) { set("recognitions", v.recognitions.filter((_, j) => j !== i)); }
-
-  function addMention() {
-    set("mentions", [...v.mentions, { outlet: "", title: "", url: "", date: "", language: "es" }]);
-  }
-  function updateMention(i: number, key: keyof Mention, val: string) {
-    set("mentions", v.mentions.map((m, j) => j === i ? { ...m, [key]: val } : m));
-  }
-  function removeMention(i: number) { set("mentions", v.mentions.filter((_, j) => j !== i)); }
 
   async function save() {
     setSaving(true);
@@ -210,22 +203,9 @@ export default function PressKitForm({ initial }: Props) {
       ))}
       <button type="button" className="admin__btn" onClick={addRecognition}>+ Añadir reconocimiento</button>
 
-      {/* Mentions */}
-      <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22, marginTop: 40, marginBottom: 16 }}>Menciones de prensa</h2>
-      {v.mentions.map((m, i) => (
-        <div key={i} style={{ display: "grid", gridTemplateColumns: "180px 1fr 1fr 130px 70px auto", gap: 10, marginBottom: 10 }}>
-          <input className="admin__input" placeholder="Medio" value={m.outlet} onChange={(e) => updateMention(i, "outlet", e.target.value)} />
-          <input className="admin__input" placeholder="Título" value={m.title ?? ""} onChange={(e) => updateMention(i, "title", e.target.value)} />
-          <input className="admin__input" type="url" placeholder="URL" value={m.url} onChange={(e) => updateMention(i, "url", e.target.value)} />
-          <input className="admin__input" type="date" value={m.date ?? ""} onChange={(e) => updateMention(i, "date", e.target.value)} />
-          <select className="admin__select" value={m.language ?? "es"} onChange={(e) => updateMention(i, "language", e.target.value)}>
-            <option value="es">ES</option>
-            <option value="en">EN</option>
-          </select>
-          <button type="button" className="admin__btn admin__btn--danger" onClick={() => removeMention(i)} style={{ padding: "0 14px" }}>×</button>
-        </div>
-      ))}
-      <button type="button" className="admin__btn" onClick={addMention}>+ Añadir mención</button>
+      <p className="admin__hint" style={{ marginTop: 16 }}>
+        Las menciones de prensa se gestionan en <a href="/admin/press" style={{ color: "var(--bone)", borderBottom: "1px solid var(--line-2)" }}>Press menciones</a>.
+      </p>
 
       {/* PDF + email */}
       <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22, marginTop: 40, marginBottom: 16 }}>Kit descargable + contacto</h2>
