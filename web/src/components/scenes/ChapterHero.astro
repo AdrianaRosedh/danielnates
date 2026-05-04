@@ -57,7 +57,7 @@ const locale: Locale = propLocale ?? Astro.locals.locale ?? "es";
       <span class="chapterHero__dot" aria-hidden="true"></span>
       <span>{index ? `Capítulo ${index}` : "Capítulo"}</span>
     </p>
-    <TextReveal as="h2" mode="word" stagger={70} class="chapterHero__title">
+    <TextReveal as="h2" mode="word" class="chapterHero__title">
       {title}
     </TextReveal>
     {summary ? <p class="chapterHero__summary">{summary}</p> : null}

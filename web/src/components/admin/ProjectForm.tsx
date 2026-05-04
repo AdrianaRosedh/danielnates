@@ -148,7 +148,7 @@ export default function ProjectForm({ initial, isNew = false }: Props) {
             placeholder="olivea"
             required
           />
-          <p className="admin__hint">URL: /proyectos/{v.slug || "…"}</p>
+          <p className="admin__hint">URL: /{v.slug || "…"}</p>
         </div>
         <div className="admin__field">
           <label className="admin__label">Estado</label>
@@ -257,7 +257,7 @@ export default function ProjectForm({ initial, isNew = false }: Props) {
           {saving ? "Guardando…" : isNew ? "Crear proyecto" : "Guardar cambios"}
         </button>
         {!isNew && v.id ? (
-          <a className="admin__btn admin__btn--ghost" href={`/proyectos/${v.slug}`} target="_blank" rel="noreferrer">Ver el proyecto ↗</a>
+          <a className="admin__btn admin__btn--ghost" href={`/${v.slug}`} target="_blank" rel="noreferrer">Ver el proyecto ↗</a>
         ) : null}
         {!isNew && v.id ? (
           <button type="button" className="admin__btn admin__btn--danger" disabled={saving} onClick={destroy}>Eliminar</button>

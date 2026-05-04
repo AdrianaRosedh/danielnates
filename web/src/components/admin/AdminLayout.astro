@@ -10,7 +10,9 @@ interface Props {
 const { title = "Admin · Daniel Nates", active } = Astro.props as Props;
 const user = Astro.locals.user;
 
-type NavItem = { href: string; label: string; key?: Props["active"]; group?: string };
+type NavLink = { href: string; label: string; key?: Props["active"]; group?: undefined };
+type NavGroup = { group: string; href?: undefined; label?: undefined; key?: undefined };
+type NavItem = NavLink | NavGroup;
 const items: NavItem[] = [
   { href: "/admin", label: "Dashboard", key: "dashboard" },
   { group: "Singletons" },

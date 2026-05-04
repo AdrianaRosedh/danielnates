@@ -79,6 +79,7 @@ type UiKey =
   | "home"
   | "diary"
   | "art"
+  | "projects"
   | "fieldNotes"
   | "press"
   | "contact"
@@ -89,7 +90,6 @@ type UiKey =
   | "noArt"
   | "readMore"
   | "openInNewTab"
-  | "createInSanity"
   | "viewAll"
   | "languageSpanish"
   | "languageEnglish"
@@ -122,17 +122,17 @@ const messages: Record<Locale, Record<UiKey, string>> = {
     home: "Inicio",
     diary: "Diario",
     art: "Arte",
+    projects: "Proyectos",
     fieldNotes: "Field Notes",
     press: "Prensa",
     contact: "Contacto",
     explore: "Explorar",
     back: "Volver",
-    noEntries: "Sin entradas todavía. Crea artículos en Sanity → Diario.",
-    noProjects: "Sin proyectos todavía. Crea y publica proyectos en Sanity.",
-    noArt: "Sin piezas todavía. Crea entradas en Sanity → Arte.",
+    noEntries: "Sin entradas todavía.",
+    noProjects: "Sin proyectos todavía.",
+    noArt: "Sin piezas todavía.",
     readMore: "Leer más",
     openInNewTab: "Abrir en nueva pestaña",
-    createInSanity: "Crea contenido en Sanity",
     viewAll: "Ver todo",
     languageSpanish: "Español",
     languageEnglish: "English",
@@ -164,17 +164,17 @@ const messages: Record<Locale, Record<UiKey, string>> = {
     home: "Home",
     diary: "Journal",
     art: "Art",
+    projects: "Projects",
     fieldNotes: "Field Notes",
     press: "Press",
     contact: "Contact",
     explore: "Explore",
     back: "Back",
-    noEntries: "No entries yet. Create articles in Sanity → Journal.",
-    noProjects: "No projects yet. Create and publish projects in Sanity.",
-    noArt: "No pieces yet. Create entries in Sanity → Art.",
+    noEntries: "No entries yet.",
+    noProjects: "No projects yet.",
+    noArt: "No pieces yet.",
     readMore: "Read more",
     openInNewTab: "Open in new tab",
-    createInSanity: "Create content in Sanity",
     viewAll: "View all",
     languageSpanish: "Español",
     languageEnglish: "English",

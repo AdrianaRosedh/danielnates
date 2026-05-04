@@ -1,6 +1,6 @@
 ---
 import type { Locale, TimelineBlock } from "../../lib/types";
-import { t } from "../../lib/i18n";
+import { t2 } from "../../lib/i18n";
 
 interface Props { block: TimelineBlock; locale?: Locale }
 const { block, locale: propLocale } = Astro.props as Props;
@@ -18,7 +18,7 @@ const entries = block.entries ?? [];
           <span class="timeline__dot" aria-hidden="true"></span>
           <p class="timeline__year">{e.year}</p>
           <h3 class="timeline__label">{e.label}</h3>
-          {t(e.note, locale) ? <p class="timeline__note">{t(e.note, locale)}</p> : null}
+          {t2(e.note_es, e.note_en, locale) ? <p class="timeline__note">{t2(e.note_es, e.note_en, locale)}</p> : null}
         </li>
       ))}
     </ol>

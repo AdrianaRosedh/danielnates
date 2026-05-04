@@ -258,7 +258,7 @@
     const t = document.querySelector(href);
     if (!t) return;
     e.preventDefault();
-    if (window.__lenis) window.__lenis.scrollTo(t as Element, { offset: -16 });
+    if (window.__lenis) window.__lenis.scrollTo(t as HTMLElement, { offset: -16 });
     else (t as HTMLElement).scrollIntoView({ behavior: "smooth", block: "start" });
     history.pushState(null, "", href);
   }

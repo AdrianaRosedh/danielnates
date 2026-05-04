@@ -1,0 +1,113 @@
+---
+export const prerender = false;
+
+import BaseLayout from "../../components/layout/BaseLayout.astro";
+import TopDock from "../../components/layout/TopDock.astro";
+import { getProjects } from "../../lib/queries";
+import { href, t2, ui } from "../../lib/i18n";
+import type { Locale, Project, ProjectStatus } from "../../lib/types";
+
+interface PageProps { lang?: Locale }
+const { lang } = Astro.props as PageProps;
+const locale: Locale = lang ?? Astro.locals.locale ?? "es";
+
+const projects = await getProjects();
+
+const headline = locale === "es" ? "Lugares donde está mi cocina." : "Places where my cooking lives.";
+const lede = locale === "es"
+  ? "Olivea en el valle. Fritanguita en la ciudad. Lo que vino antes y lo que sigue."
+  : "Olivea in the valley. Fritanguita in the city. What came before and what comes next.";
+
+function statusLabel(status: ProjectStatus | null): string {
+  if (status === "primary") return ui("primaryProject", locale);
+  if (status === "secondary") return ui("secondaryProject", locale);
+  if (status === "past") return ui("pastProject", locale);
+  return "";
+}
+
+function summaryFor(p: Project): string {
+  return t2(p.summary_es, p.summary_en, locale);
+}
+---
+
+<BaseLayout
+  title={`${ui("projects", locale)} — Daniel Nates`}
+  description={lede}
+  locale={locale}
+>
+  <div class="shell">
+    <TopDock locale={locale} />
+
+    <section class="section reveal">
+      <p class="kicker">{ui("projects", locale)}</p>
+      <h1 class="h1" style="margin-bottom:12px;">{headline}</h1>
+      <p class="lede" style="margin-top: 14px;">{lede}</p>
+    </section>
+
+    {projects.length ? (
+      <section class="section">
+        <div class="projectsList reveal-stagger">
+          {projects.map((p) => (
+            <a class="projectsRow" href={href(`/${p.slug}`, locale)} data-status={p.status ?? "secondary"}>
+              {p.hero_image_url ? (
+                <img src={p.hero_image_url} alt={p.title} loading="lazy" />
+              ) : (
+                <div class="projectsRow__noimg" aria-hidden="true"></div>
+              )}
+              <div class="projectsRow__body">
+                <p class="projectsRow__status">{statusLabel(p.status)}</p>
+                <h3 class="projectsRow__title">{p.title}</h3>
+                {summaryFor(p) ? <p class="projectsRow__summary">{summaryFor(p)}</p> : null}
+              </div>
+              <span class="projectsRow__chev" aria-hidden="true">→</span>
+            </a>
+          ))}
+        </div>
+      </section>
+    ) : (
+      <section class="section reveal">
+        <p class="sub">{ui("noProjects", locale)}</p>
+      </section>
+    )}
+  </div>
+</BaseLayout>
+
+<style>
+  .projectsList{ display: grid; gap: 16px; }
+  .projectsRow{
+    display: grid;
+    grid-template-columns: 120px 1fr 32px;
+    gap: 18px;
+    align-items: center;
+    padding: 14px;
+    border-radius: var(--r-2);
+    border: 1px solid var(--line);
+    background: color-mix(in srgb, var(--text) 2%, transparent);
+    transition: border-color 600ms var(--ease-fluid), background 600ms var(--ease-fluid), transform 600ms var(--ease-fluid);
+  }
+  .projectsRow:hover{
+    border-color: var(--line-2);
+    background: color-mix(in srgb, var(--text) 5%, transparent);
+    transform: translateY(-1px);
+  }
+  .projectsRow:hover .projectsRow__chev{ transform: translateX(4px); color: var(--text); }
+  .projectsRow img{ width: 120px; height: 140px; object-fit: cover; border-radius: 12px; display: block; }
+  .projectsRow__noimg{ width: 120px; height: 140px; border-radius: 12px; background: rgba(244,239,230,.04); }
+  .projectsRow__body{ min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+  .projectsRow__status{
+    margin: 0;
+    font-size: 11px;
+    color: var(--text-3);
+    letter-spacing: .18em;
+    text-transform: uppercase;
+  }
+  .projectsRow__title{ margin: 0; font-size: 22px; letter-spacing: -0.01em; font-family: var(--font-display); }
+  .projectsRow__summary{ margin: 4px 0 0; font-size: 14px; color: var(--text-2); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .projectsRow__chev{ color: var(--text-3); font-size: 18px; transition: transform 600ms var(--ease-fluid), color 600ms var(--ease-fluid); }
+  .projectsRow[data-status="past"]{ opacity: .72; }
+  @media (min-width: 880px){
+    .projectsRow{ grid-template-columns: 200px 1fr 40px; padding: 18px; gap: 24px; }
+    .projectsRow img, .projectsRow__noimg{ width: 200px; height: 220px; }
+    .projectsRow__title{ font-size: 28px; }
+  }
+</style>

@@ -17,7 +17,7 @@ const locale: Locale = lang ?? Astro.locals.locale ?? "es";
 
 const { slug } = Astro.params as { slug: string };
 
-const RESERVED = new Set(["en", "diario", "arte", "contacto", "contact", "api", "404", "admin", "sobre", "prensa", "press", "dia", "day", "og.png"]);
+const RESERVED = new Set(["en", "diario", "arte", "contacto", "contact", "api", "404", "admin", "sobre", "prensa", "press", "dia", "day", "og.png", "proyectos", "projects"]);
 if (RESERVED.has(slug)) return Astro.redirect(href("/404", locale));
 
 const project = await getProject(slug);

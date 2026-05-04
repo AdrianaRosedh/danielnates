@@ -23,7 +23,7 @@ const locale: Locale = propLocale ?? Astro.locals.locale ?? "es";
           <li class="manifesto__item">
             <span class="manifesto__num">{String(i + 1).padStart(2, "0")}</span>
             <div class="manifesto__body">
-              <TextReveal as="h2" mode="word" stagger={60} class="manifesto__label">
+              <TextReveal as="h2" mode="word" class="manifesto__label">
                 {p.label}
               </TextReveal>
               {t2(p.copy_es, p.copy_en, locale) ? (

@@ -25,9 +25,9 @@ const categoryLabel: Record<string, Record<Locale, string>> = {
         <div class="noteRow">
           <div style="min-width:0;">
             <p class="noteTitle">{n?.title ?? "Nota"}</p>
-            {n?.externalLink ? (
+            {n?.external_link ? (
               <p class="sub" style="margin-top:6px;font-size:12px;">
-                <a href={n.externalLink} target="_blank" rel="noreferrer">{ui("readMore", locale)}</a>
+                <a href={n.external_link} target="_blank" rel="noreferrer">{ui("readMore", locale)}</a>
               </p>
             ) : null}
           </div>
