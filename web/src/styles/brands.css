@@ -1,29 +1,45 @@
 /* Brand colors only as accents — borders, dots, focus ring, single CTA.
-   Painterly, oxidized — they live alongside the bone parchment, not on top of it. */
+ * Painterly, oxidized — they live alongside the bone parchment, not
+ * on top of it.
+ *
+ * Default = sage (the photo's dominant green). Per-project pages set
+ * data-brand and override; everything else falls through to the default. */
 :root {
-  --brand-primary: var(--bone);
-  --brand-soft:    rgba(239, 230, 212, .06);
-  --brand-glow:    rgba(239, 230, 212, .18);
-  --brand-light:   var(--bone);
+  --brand-primary: var(--olivar);
+  --brand-soft:    rgba(94, 117, 73, .10);   /* --olivar at low opacity */
+  --brand-glow:    rgba(94, 117, 73, .26);
+  --brand-light:   #DDE2D2;                  /* sage-tinted bone */
 }
 
 [data-brand="olivea"] {
   --brand-primary: var(--olivar);
-  --brand-soft:    rgba(86, 102, 74, .12);
-  --brand-glow:    rgba(86, 102, 74, .30);
+  --brand-soft:    rgba(94, 117, 73, .12);
+  --brand-glow:    rgba(94, 117, 73, .30);
   --brand-light:   #DDE2D2;
 }
 
 [data-brand="fritanguita"] {
-  --brand-primary: var(--cinnabar);
-  --brand-soft:    rgba(181, 64, 42, .10);
-  --brand-glow:    rgba(181, 64, 42, .30);
-  --brand-light:   #EED5C9;
+  /* Fritanguita's identity is GREEN (the team's aprons in the bar
+     window photo, the green/teal stroke in the portrait illustrations).
+     Was previously cinnabar/red — corrected. */
+  --brand-primary: #2E6B3F;
+  --brand-soft:    rgba(46, 107, 63, .12);
+  --brand-glow:    rgba(46, 107, 63, .30);
+  --brand-light:   #C6DDC9;
 }
 
 [data-brand="maizal"] {
   --brand-primary: var(--clay);
-  --brand-soft:    rgba(164, 135, 103, .10);
-  --brand-glow:    rgba(164, 135, 103, .28);
-  --brand-light:   #E4D4BE;
+  --brand-soft:    rgba(139, 111, 84, .12);
+  --brand-glow:    rgba(139, 111, 84, .28);
+  --brand-light:   #D9C4A8;
+}
+
+[data-brand="daniel"] {
+  /* Daniel's "neutral" identity — sage as the lead, not bone, so
+     the same natural family carries everywhere. */
+  --brand-primary: var(--olivar);
+  --brand-soft:    rgba(94, 117, 73, .08);
+  --brand-glow:    rgba(94, 117, 73, .22);
+  --brand-light:   var(--bone);
 }

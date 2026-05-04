@@ -30,8 +30,10 @@ const here = Astro.url.pathname;
 type AppId = "daniel" | "fritanguita";
 interface AppDef { id: AppId; label: string; tagline: string; accent: string }
 const APPS: AppDef[] = [
-  { id: "daniel",      label: "Daniel Nates",  tagline: t("Chef · Dibujante", "Chef · Draughtsman"),     accent: "#EFE6D4" },
-  { id: "fritanguita", label: "Fritanguita",   tagline: t("Roma Norte · CDMX", "Roma Norte · Mexico City"), accent: "#3FAA67" },
+  /* Accents pulled from the natural palette: sage olivar for Daniel
+     (the kale beds at Olivea), deeper Fritanguita green (their aprons). */
+  { id: "daniel",      label: "Daniel Nates",  tagline: t("Chef · Dibujante", "Chef · Draughtsman"),     accent: "#5E7549" },
+  { id: "fritanguita", label: "Fritanguita",   tagline: t("Roma Norte · CDMX", "Roma Norte · Mexico City"), accent: "#2E6B3F" },
 ];
 
 const appId: AppId = (Astro.locals.adminApp as AppId) ?? "daniel";

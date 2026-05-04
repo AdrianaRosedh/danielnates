@@ -6,20 +6,27 @@
    Brand colors only as ACCENTS. Never as backgrounds.
    ───────────────────────────────────────────────────────────────────── */
 :root{
-  /* Core palette — painterly, Morandi-inspired sophistication */
-  --ink:        #0C0D0A;   /* deeper, warmer ink (was #0E0F0C) */
-  --ink-2:      #12130E;   /* a half-step warmer for surfaces */
-  --bone:       #EFE6D4;   /* warmer parchment (was #F4EFE6) — feels painted */
-  --bone-2:     #E5DCC8;   /* shade for card surfaces on bone */
+  /* Core palette — keyed to the garden hero photo (Daniel kneeling
+     in the kale at Olivea). Dominant naturals are sage greens, a
+     misty mountain blue-gray, warm clay earth, and a soft cream sky.
+     Dark tones stay ink-dominant; the naturals show as accents. */
+  --ink:        #0C0D0A;   /* deepest dark — almost the photo's shadow */
+  --ink-2:      #12130E;   /* one step warmer for surfaces */
+  --ink-3:      #181A14;   /* surface elevation */
+  --bone:       #EFE6D4;   /* warm cream — the sky */
+  --bone-2:     #E5DCC8;   /* card surface on bone scenes */
   --paper:      #F4ECDA;   /* lifted parchment */
 
-  /* Brand accents — muted, oxidized, sophisticated.
-     These are the colors of Morandi still-life and Mexican modernist paint. */
-  --olivar:     #56664A;   /* Olivea — deepened sage, gallery wall green */
-  --cinnabar:   #B5402A;   /* Fritanguita — oxidized Mexican red */
-  --clay:       #A48767;   /* Maizal — warm earth, terra cotta */
-  --ochre:      #C49A5C;   /* warm gold accent for art-world moments */
-  --ember:      #C04524;   /* CTA — less neon, more painted */
+  /* Naturals from the photo. Used as ACCENTS — never as full backgrounds. */
+  --moss:       #3D4A37;   /* Daniel's shirt — deepest forest green */
+  --olivar:     #5E7549;   /* foreground kale — sage with sun on it */
+  --sage-soft:  #8A9C77;   /* muted leaf highlight */
+  --mist:       #5D6663;   /* mountain blue-gray, cool counterweight */
+  --clay:       #8B6F54;   /* turned soil — warm, earthy */
+  --ochre:      #C49A5C;   /* warm gold — for editorial moments */
+  --ember:      #B5402A;   /* oxidized Mexican red, painterly CTA */
+  --plum:       #6A5564;   /* purple-kale tinge — used very sparingly */
+  --cinnabar:   #B5402A;   /* alias of ember for back-compat */
   --graphite:   #2A2A26;   /* warmest near-black for layered ink surfaces */
 
   /* Default scene = ink (cinematic) */
@@ -30,7 +37,7 @@
   --text-3:     rgba(244, 239, 230, .50);
   --line:       rgba(244, 239, 230, .12);
   --line-2:     rgba(244, 239, 230, .22);
-  --brand:      var(--bone); /* default brand = neutral; per-section overrides */
+  --brand:      var(--olivar); /* default accent = sage; per-section can override */
 
   /* Type */
   --font-display: "Instrument Serif", "Iowan Old Style", "Apple Garamond", "Baskerville", "Times New Roman", serif;
@@ -208,13 +215,13 @@ h3, .h3{
   max-width: 60ch;
 }
 
-::selection{ background: var(--ember); color: var(--bone); }
+::selection{ background: var(--olivar); color: var(--bone); }
 
-/* ── Modern scrollbar — thin, monochrome, fades in on hover ───────── */
+/* ── Modern scrollbar — thin, sage-tinted, fades in on hover ──────── */
 /* Firefox */
 html{
   scrollbar-width: thin;
-  scrollbar-color: rgba(239, 230, 212, .14) transparent;
+  scrollbar-color: rgba(94, 117, 73, .28) transparent;
 }
 /* WebKit / Blink */
 ::-webkit-scrollbar{
@@ -224,21 +231,21 @@ html{
 }
 ::-webkit-scrollbar-track{ background: transparent; }
 ::-webkit-scrollbar-thumb{
-  background: rgba(239, 230, 212, .14);
+  background: rgba(94, 117, 73, .28);   /* --olivar tint */
   border-radius: 999px;
   transition: background 600ms var(--ease-fluid);
 }
 ::-webkit-scrollbar-thumb:hover{
-  background: rgba(239, 230, 212, .32);
+  background: rgba(94, 117, 73, .48);
 }
 ::-webkit-scrollbar-corner{ background: transparent; }
 
-/* On bone scenes, invert the thumb to dark */
+/* On bone scenes, deepen the thumb to moss */
 .scene--bone ::-webkit-scrollbar-thumb,
 [data-scene="bone"] ::-webkit-scrollbar-thumb{
-  background: rgba(12, 13, 10, .14);
+  background: rgba(61, 74, 55, .25);    /* --moss tint */
 }
 .scene--bone ::-webkit-scrollbar-thumb:hover,
 [data-scene="bone"] ::-webkit-scrollbar-thumb:hover{
-  background: rgba(12, 13, 10, .32);
+  background: rgba(61, 74, 55, .50);
 }
