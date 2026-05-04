@@ -101,6 +101,10 @@ if (!enabled) return null;
         document.documentElement.style.removeProperty('overflow');
         document.body && (document.body.style.overflow = '');
         delete document.documentElement.dataset.entranceActive;
+        // Tell AnimationDirector to take its skip path — otherwise it
+        // would find [data-entrance] still in the DOM (we fade it for
+        // 380ms) and re-lock scroll for its 4.6s timeline.
+        document.documentElement.dataset.entranceSkip = '1';
         var el = document.querySelector('[data-entrance]');
         if (el) {
           el.style.transition = 'opacity 320ms ease, transform 320ms ease';
