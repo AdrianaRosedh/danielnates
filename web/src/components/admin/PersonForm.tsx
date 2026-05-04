@@ -4,6 +4,7 @@ type Lang = "es" | "en";
 
 interface VoiceShape { es?: string | null; en?: string | null; caption?: string | null }
 interface SocialShape { olivea_instagram?: string | null; fritanguita_instagram?: string | null; email?: string | null }
+interface PillarShape { label: string; copy_es?: string | null; copy_en?: string | null }
 
 export interface PersonValue {
   name: string | null;
@@ -16,6 +17,7 @@ export interface PersonValue {
   bio_short_en: string | null;
   bio_long_es: string | null;        // textarea — saved as portable-text blocks
   bio_long_en: string | null;
+  pillars: PillarShape[];
   social: SocialShape;
   voice: VoiceShape;
 }
@@ -36,6 +38,7 @@ export default function PersonForm({ initial }: Props) {
     bio_short_en: initial?.bio_short_en ?? "",
     bio_long_es: initial?.bio_long_es ?? "",
     bio_long_en: initial?.bio_long_en ?? "",
+    pillars: initial?.pillars ?? [],
     social: initial?.social ?? { olivea_instagram: "", fritanguita_instagram: "", email: "" },
     voice: initial?.voice ?? { es: "", en: "", caption: "" },
   });
@@ -51,6 +54,12 @@ export default function PersonForm({ initial }: Props) {
     setV((s) => ({ ...s, social: { ...s.social, [k]: val } }));
   const setVoice = <K extends keyof VoiceShape>(k: K, val: VoiceShape[K]) =>
     setV((s) => ({ ...s, voice: { ...s.voice, [k]: val } }));
+  const updatePillar = (i: number, k: keyof PillarShape, val: string) =>
+    setV((s) => ({ ...s, pillars: s.pillars.map((p, j) => (j === i ? { ...p, [k]: val } : p)) }));
+  const addPillar = () =>
+    setV((s) => ({ ...s, pillars: [...s.pillars, { label: "", copy_es: "", copy_en: "" }] }));
+  const removePillar = (i: number) =>
+    setV((s) => ({ ...s, pillars: s.pillars.filter((_, j) => j !== i) }));
 
   async function uploadPortrait(file: File) {
     setUploading(true);
@@ -252,7 +261,36 @@ export default function PersonForm({ initial }: Props) {
         />
       </div>
 
-      <div className="admin__row--actions">
+      {/* Pillars — appear in the Manifesto scene on the home page */}
+      <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22, marginTop: 40, marginBottom: 8 }}>Manifiesto · Pilares</h2>
+      <p className="admin__hint" style={{ marginBottom: 16 }}>
+        Aparecen como los cuatro pilares del manifiesto en el inicio. Si está vacío, se usan los valores por defecto.
+      </p>
+      {v.pillars.map((p, i) => (
+        <div key={i} style={{ border: "1px solid var(--line-2)", borderRadius: 8, padding: 14, marginBottom: 12, background: "rgba(244,239,230,.02)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <span style={{ fontSize: 11, color: "var(--text-3)", letterSpacing: ".14em" }}>#{i + 1}</span>
+            <button type="button" className="admin__btn admin__btn--danger" onClick={() => removePillar(i)} style={{ padding: "0 10px", height: 28, fontSize: 12 }}>Eliminar</button>
+          </div>
+          <div className="admin__field">
+            <label className="admin__label">Etiqueta</label>
+            <input className="admin__input" value={p.label} onChange={(e) => updatePillar(i, "label", e.target.value)} placeholder="Producto" />
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div className="admin__field">
+              <label className="admin__label">Copy · ES</label>
+              <textarea className="admin__textarea" rows={3} value={p.copy_es ?? ""} onChange={(e) => updatePillar(i, "copy_es", e.target.value)} placeholder="Una frase, presente, sin adornos." />
+            </div>
+            <div className="admin__field">
+              <label className="admin__label">Copy · EN</label>
+              <textarea className="admin__textarea" rows={3} value={p.copy_en ?? ""} onChange={(e) => updatePillar(i, "copy_en", e.target.value)} placeholder="One sentence, present, no flourishes." />
+            </div>
+          </div>
+        </div>
+      ))}
+      <button type="button" className="admin__btn" onClick={addPillar}>+ Añadir pilar</button>
+
+      <div className="admin__row--actions" style={{ marginTop: 32 }}>
         <button
           type="button"
           className="admin__btn admin__btn--primary"
