@@ -2,8 +2,11 @@
 export const prerender = false;
 import AdminLayout from "../../../components/admin/AdminLayout.astro";
 import { getSupabaseServer } from "../../../lib/supabase";
+import { txFor, type AdminLang } from "../../../lib/admin-i18n";
 
 const supabase = getSupabaseServer(Astro.cookies);
+const lang: AdminLang = Astro.locals.adminLang ?? "es";
+const t = txFor(lang);
 
 let rows: Array<{
   id: string;
@@ -27,16 +30,19 @@ if (supabase) {
 }
 ---
 
-<AdminLayout title="Arte · Admin" active="art">
+<AdminLayout title={t("Arte · Admin", "Art · Admin")} active="art">
   <header class="admin__head">
     <div>
-      <p class="admin__crumb">Contenido</p>
-      <h1 class="admin__title">Arte</h1>
+      <p class="admin__crumb">{t("Contenido", "Content")}</p>
+      <h1 class="admin__title">{t("Arte", "Art")}</h1>
       <p class="admin__lede" style="margin-top: 8px; max-width: 60ch; color: var(--text-2); font-family: var(--font-display); font-size: 16px; line-height: 1.5;">
-        Lo que la mano hace cuando no está cocinando. Cada pieza tiene su propia página.
+        {t(
+          "Lo que la mano hace cuando no está cocinando. Cada pieza tiene su propia página.",
+          "What the hand does when it isn't cooking. Each piece has its own page."
+        )}
       </p>
     </div>
-    <a class="admin__btn admin__btn--primary" href="/admin/art/new">+ Nueva pieza</a>
+    <a class="admin__btn admin__btn--primary" href="/admin/art/new">+ {t("Nueva pieza", "New piece")}</a>
   </header>
 
   {rows.length ? (
@@ -52,7 +58,7 @@ if (supabase) {
               </div>
             )}
             <span class={`card__pill${p.published ? " card__pill--published" : ""}`}>
-              {p.published ? "Publicado" : "Borrador"}
+              {p.published ? t("Publicado", "Published") : t("Borrador", "Draft")}
             </span>
           </div>
           <div class="card__body">
@@ -60,7 +66,7 @@ if (supabase) {
             <h3 class="card__title">{p.title}</h3>
             {p.dimensions ? <p class="card__meta">{p.dimensions}</p> : null}
             <p class="card__foot">
-              <span>Editar</span>
+              <span>{t("Editar", "Edit")}</span>
               <span aria-hidden="true">→</span>
             </p>
           </div>
@@ -68,7 +74,7 @@ if (supabase) {
       ))}
       <a class="card card--add" href="/admin/art/new">
         <span class="card--add__plus">+</span>
-        <span class="card--add__label">Nueva pieza</span>
+        <span class="card--add__label">{t("Nueva pieza", "New piece")}</span>
       </a>
     </section>
   ) : (
@@ -78,9 +84,12 @@ if (supabase) {
           <rect x="2.5" y="2.5" width="11" height="11" rx="1"/><line x1="2.5" y1="11" x2="13.5" y2="11"/><circle cx="5.5" cy="6" r="1"/>
         </svg>
       </span>
-      <h3 class="empty__title">Aún no hay piezas</h3>
-      <p class="empty__sub">Cada pieza acepta una imagen, año, medio, dimensiones y un statement bilingüe. Crea la primera para empezar.</p>
-      <a class="admin__btn admin__btn--primary" href="/admin/art/new" style="margin-top: 8px;">+ Crear la primera</a>
+      <h3 class="empty__title">{t("Aún no hay piezas", "No pieces yet")}</h3>
+      <p class="empty__sub">{t(
+        "Cada pieza acepta una imagen, año, medio, dimensiones y un statement bilingüe. Crea la primera para empezar.",
+        "Each piece takes an image, year, medium, dimensions and a bilingual statement. Create the first to begin."
+      )}</p>
+      <a class="admin__btn admin__btn--primary" href="/admin/art/new" style="margin-top: 8px;">+ {t("Crear la primera", "Create the first")}</a>
     </div>
   )}
 </AdminLayout>

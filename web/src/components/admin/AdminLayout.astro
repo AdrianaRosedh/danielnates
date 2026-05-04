@@ -2,6 +2,7 @@
 import "../../styles/fonts.css";
 import "../../styles/tokens.css";
 import "../../styles/admin.css";
+import { txFor, type AdminLang } from "../../lib/admin-i18n";
 
 interface Props {
   title?: string;
@@ -11,17 +12,23 @@ const { title = "Admin · Daniel Nates", active } = Astro.props as Props;
 const user = Astro.locals.user;
 const scope = Astro.locals.adminScope ?? "all";
 const isFullAdmin = scope === "all";
+const lang: AdminLang = Astro.locals.adminLang ?? "es";
+const t = txFor(lang);
+const here = Astro.url.pathname;
 
 /* App identity — visualises which "world" the user is in. The accent
  * tints the brand mark, the hover/active states, and the small dot
- * next to each nav item. Scoped users only ever see their app. */
-type AppId = "daniel" | "fritanguita" | "olivea" | "maizal";
+ * next to each nav item. Scoped users only ever see their app.
+ *
+ * Olivea + Maizal aren't apps because they don't have their own admin
+ * surfaces — they live as project rows under Daniel's portfolio. Only
+ * Fritanguita gets its own app context (since the team will eventually
+ * have their own login + their own .com). */
+type AppId = "daniel" | "fritanguita";
 interface AppDef { id: AppId; label: string; tagline: string; accent: string; href: string }
 const APPS: AppDef[] = [
-  { id: "daniel",      label: "Daniel Nates",  tagline: "Cocinero · Dibujante",         accent: "#EFE6D4", href: "/admin" },
-  { id: "fritanguita", label: "Fritanguita",   tagline: "Roma Norte · CDMX",            accent: "#3FAA67", href: "/admin/projects" },
-  { id: "olivea",      label: "Olivea",        tagline: "Valle de Guadalupe",           accent: "#7C8B5E", href: "/admin/projects" },
-  { id: "maizal",      label: "Maizal",        tagline: "Puebla · 2017–2024",           accent: "#A8896E", href: "/admin/projects" },
+  { id: "daniel",      label: "Daniel Nates",  tagline: "Chef · Draughtsman",   accent: "#EFE6D4", href: "/admin" },
+  { id: "fritanguita", label: "Fritanguita",   tagline: "Roma Norte · CDMX",    accent: "#3FAA67", href: "/admin/projects" },
 ];
 
 const currentApp: AppDef = isFullAdmin
@@ -37,39 +44,39 @@ type NavLink = { href: string; label: string; key?: Props["active"]; icon: strin
 type NavSection = { section: string; items: NavLink[] };
 
 const danielNav: NavSection[] = [
-  { section: "Inicio", items: [
+  { section: t("Inicio", "Home"), items: [
       { href: "/admin", label: "Dashboard", key: "dashboard", icon: "home" },
   ]},
-  { section: "Identidad", items: [
-      { href: "/admin/site",      label: "Ajustes del sitio", key: "site",      icon: "tune" },
-      { href: "/admin/daniel",    label: "Daniel",            key: "daniel",    icon: "person" },
-      { href: "/admin/press-kit", label: "Prensa · kit",      key: "press_kit", icon: "kit" },
+  { section: t("Identidad", "Identity"), items: [
+      { href: "/admin/site",      label: t("Ajustes del sitio", "Site settings"), key: "site",      icon: "tune" },
+      { href: "/admin/daniel",    label: "Daniel",                                key: "daniel",    icon: "person" },
+      { href: "/admin/press-kit", label: t("Prensa · kit", "Press · kit"),        key: "press_kit", icon: "kit" },
   ]},
-  { section: "Diario", items: [
-      { href: "/admin/daily",       label: "Día · brief",     key: "daily",       icon: "sun" },
-      { href: "/admin/articles",    label: "Artículos",       key: "articles",    icon: "doc" },
-      { href: "/admin/field-notes", label: "Field Notes",     key: "field_notes", icon: "note" },
+  { section: t("Diario", "Journal"), items: [
+      { href: "/admin/daily",       label: t("Día · brief", "Day · brief"),       key: "daily",       icon: "sun" },
+      { href: "/admin/articles",    label: t("Artículos", "Articles"),            key: "articles",    icon: "doc" },
+      { href: "/admin/field-notes", label: "Field Notes",                          key: "field_notes", icon: "note" },
   ]},
-  { section: "Arte", items: [
-      { href: "/admin/art",         label: "Piezas",           key: "art",        icon: "art" },
+  { section: t("Arte", "Art"), items: [
+      { href: "/admin/art",         label: t("Piezas", "Pieces"),                 key: "art",        icon: "art" },
   ]},
-  { section: "Proyectos", items: [
-      { href: "/admin/projects",    label: "Todos",            key: "projects",   icon: "stack" },
+  { section: t("Proyectos", "Projects"), items: [
+      { href: "/admin/projects",    label: t("Todos", "All"),                     key: "projects",   icon: "stack" },
   ]},
-  { section: "Prensa", items: [
-      { href: "/admin/press",       label: "Menciones",        key: "press",      icon: "quote" },
+  { section: t("Prensa", "Press"), items: [
+      { href: "/admin/press",       label: t("Menciones", "Mentions"),            key: "press",      icon: "quote" },
   ]},
   { section: "Inbox", items: [
-      { href: "/admin/messages",    label: "Contacto",         key: "messages",   icon: "mail" },
+      { href: "/admin/messages",    label: t("Contacto", "Contact"),              key: "messages",   icon: "mail" },
   ]},
 ];
 
 const scopedNav: NavSection[] = [
-  { section: "Inicio",  items: [
+  { section: t("Inicio", "Home"), items: [
       { href: "/admin", label: "Dashboard", key: "dashboard", icon: "home" },
   ]},
-  { section: "Tu página", items: [
-      { href: "/admin/projects", label: "Editar página",  key: "projects", icon: "stack" },
+  { section: t("Tu página", "Your page"), items: [
+      { href: "/admin/projects", label: t("Editar página", "Edit page"),  key: "projects", icon: "stack" },
   ]},
 ];
 
@@ -152,16 +159,22 @@ const iconSvg = (key: string) =>
         ))}
       </nav>
 
-      {/* Footer: who you are + scope + utilities */}
+      {/* Footer: who you are + scope + lang toggle + utilities */}
       <div class="adminnav__foot">
         <p class="adminnav__footEmail">{user?.email}</p>
         <p class="adminnav__footScope">
           <span class="adminnav__scopeDot" aria-hidden="true"></span>
-          {isFullAdmin ? "Acceso completo" : `Acceso · ${scope}`}
+          {isFullAdmin ? t("Acceso completo", "Full access") : t(`Acceso · ${scope}`, `Access · ${scope}`)}
         </p>
+
+        <div class="langtoggle" role="group" aria-label={t("Idioma del admin", "Admin language")}>
+          <a class={`langtoggle__pill${lang === "es" ? " is-active" : ""}`} href={`/api/admin/lang?lang=es&from=${encodeURIComponent(here)}`}>ES</a>
+          <a class={`langtoggle__pill${lang === "en" ? " is-active" : ""}`} href={`/api/admin/lang?lang=en&from=${encodeURIComponent(here)}`}>EN</a>
+        </div>
+
         <div class="adminnav__footLinks">
-          <a class="adminnav__util" href="/" target="_blank" rel="noreferrer">Ver el sitio ↗</a>
-          <a class="adminnav__util" href="/admin/logout">Cerrar sesión</a>
+          <a class="adminnav__util" href="/" target="_blank" rel="noreferrer">{t("Ver el sitio", "View site")} ↗</a>
+          <a class="adminnav__util" href="/admin/logout">{t("Cerrar sesión", "Sign out")}</a>
         </div>
       </div>
     </aside>

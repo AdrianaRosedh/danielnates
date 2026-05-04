@@ -2,8 +2,11 @@
 export const prerender = false;
 import AdminLayout from "../../../components/admin/AdminLayout.astro";
 import { getSupabaseServer } from "../../../lib/supabase";
+import { txFor, type AdminLang } from "../../../lib/admin-i18n";
 
 const supabase = getSupabaseServer(Astro.cookies);
+const lang: AdminLang = Astro.locals.adminLang ?? "es";
+const t = txFor(lang);
 
 let rows: Array<{
   id: string;
@@ -27,23 +30,26 @@ if (supabase) {
 
 function fmt(d: string) {
   try {
-    return new Date(d + "T00:00:00").toLocaleDateString("es-ES", {
+    return new Date(d + "T00:00:00").toLocaleDateString(lang === "en" ? "en-US" : "es-ES", {
       day: "numeric", month: "short", year: "numeric",
     });
   } catch { return d; }
 }
 ---
 
-<AdminLayout title="Diario · Admin" active="articles">
+<AdminLayout title={t("Diario · Admin", "Journal · Admin")} active="articles">
   <header class="admin__head">
     <div>
-      <p class="admin__crumb">Contenido</p>
-      <h1 class="admin__title">Diario</h1>
+      <p class="admin__crumb">{t("Contenido", "Content")}</p>
+      <h1 class="admin__title">{t("Diario", "Journal")}</h1>
       <p class="admin__lede" style="margin-top: 8px; max-width: 60ch; color: var(--text-2); font-family: var(--font-display); font-size: 16px; line-height: 1.5;">
-        Notas, ensayos, lecturas. Publicado aparece en /diario.
+        {t(
+          "Notas, ensayos, lecturas. Publicado aparece en /diario.",
+          "Notes, essays, readings. Published items appear at /diario."
+        )}
       </p>
     </div>
-    <a class="admin__btn admin__btn--primary" href="/admin/articles/new">+ Nueva entrada</a>
+    <a class="admin__btn admin__btn--primary" href="/admin/articles/new">+ {t("Nueva entrada", "New entry")}</a>
   </header>
 
   {rows.length ? (
@@ -59,17 +65,17 @@ function fmt(d: string) {
               </div>
             )}
             <span class={`card__pill${a.published ? " card__pill--published" : ""}`}>
-              {a.published ? "Publicado" : "Borrador"}
+              {a.published ? t("Publicado", "Published") : t("Borrador", "Draft")}
             </span>
           </div>
           <div class="card__body">
             <p class="card__kicker">{fmt(a.date)}</p>
             <h3 class="card__title">{a.title}</h3>
             {(a.excerpt_es ?? a.excerpt_en) ? (
-              <p class="card__meta">{a.excerpt_es ?? a.excerpt_en}</p>
+              <p class="card__meta">{lang === "en" ? (a.excerpt_en ?? a.excerpt_es) : (a.excerpt_es ?? a.excerpt_en)}</p>
             ) : null}
             <p class="card__foot">
-              <span>Editar</span>
+              <span>{t("Editar", "Edit")}</span>
               <span aria-hidden="true">→</span>
             </p>
           </div>
@@ -77,7 +83,7 @@ function fmt(d: string) {
       ))}
       <a class="card card--add" href="/admin/articles/new">
         <span class="card--add__plus">+</span>
-        <span class="card--add__label">Nueva entrada</span>
+        <span class="card--add__label">{t("Nueva entrada", "New entry")}</span>
       </a>
     </section>
   ) : (
@@ -87,9 +93,12 @@ function fmt(d: string) {
           <path d="M3 2 H10 L13 5 V14 H3 Z"/><line x1="5" y1="6" x2="11" y2="6"/><line x1="5" y1="9" x2="11" y2="9"/><line x1="5" y1="12" x2="9" y2="12"/>
         </svg>
       </span>
-      <h3 class="empty__title">Aún no hay entradas</h3>
-      <p class="empty__sub">Cada entrada acepta título, fecha, portada, extracto bilingüe y cuerpo. Crea la primera.</p>
-      <a class="admin__btn admin__btn--primary" href="/admin/articles/new" style="margin-top: 8px;">+ Crear la primera</a>
+      <h3 class="empty__title">{t("Aún no hay entradas", "No entries yet")}</h3>
+      <p class="empty__sub">{t(
+        "Cada entrada acepta título, fecha, portada, extracto bilingüe y cuerpo. Crea la primera.",
+        "Each entry takes a title, date, cover, bilingual excerpt and body. Create the first."
+      )}</p>
+      <a class="admin__btn admin__btn--primary" href="/admin/articles/new" style="margin-top: 8px;">+ {t("Crear la primera", "Create the first")}</a>
     </div>
   )}
 </AdminLayout>

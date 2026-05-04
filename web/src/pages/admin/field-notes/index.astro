@@ -2,8 +2,11 @@
 export const prerender = false;
 import AdminLayout from "../../../components/admin/AdminLayout.astro";
 import { getSupabaseServer } from "../../../lib/supabase";
+import { txFor, type AdminLang } from "../../../lib/admin-i18n";
 
 const supabase = getSupabaseServer(Astro.cookies);
+const lang: AdminLang = Astro.locals.adminLang ?? "es";
+const t = txFor(lang);
 
 let rows: Array<{
   id: string;
@@ -24,28 +27,28 @@ if (supabase) {
 }
 
 function fmt(d: string) {
-  try { return new Date(d + "T00:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" }); }
+  try { return new Date(d + "T00:00:00").toLocaleDateString(lang === "en" ? "en-US" : "es-ES", { day: "numeric", month: "short", year: "numeric" }); }
   catch { return d; }
 }
 
-const CATEGORY_LABEL: Record<string, string> = {
-  ingredient: "Ingrediente",
-  territory: "Territorio",
-  technique: "Técnica",
-  influence: "Influencia",
-};
+const CATEGORY_LABEL: Record<string, string> = lang === "en"
+  ? { ingredient: "Ingredient", territory: "Territory", technique: "Technique", influence: "Influence" }
+  : { ingredient: "Ingrediente", territory: "Territorio", technique: "Técnica",  influence: "Influencia" };
 ---
 
 <AdminLayout title="Field Notes · Admin" active="field_notes">
   <header class="admin__head">
     <div>
-      <p class="admin__crumb">Contenido</p>
+      <p class="admin__crumb">{t("Contenido", "Content")}</p>
       <h1 class="admin__title">Field Notes</h1>
       <p class="admin__lede" style="margin-top: 8px; max-width: 60ch; color: var(--text-2); font-family: var(--font-display); font-size: 16px; line-height: 1.5;">
-        Apuntes rápidos del cuaderno — ingredientes, territorios, técnicas, influencias.
+        {t(
+          "Apuntes rápidos del cuaderno — ingredientes, territorios, técnicas, influencias.",
+          "Quick notes from the sketchbook — ingredients, territories, techniques, influences."
+        )}
       </p>
     </div>
-    <a class="admin__btn admin__btn--primary" href="/admin/field-notes/new">+ Nueva nota</a>
+    <a class="admin__btn admin__btn--primary" href="/admin/field-notes/new">+ {t("Nueva nota", "New note")}</a>
   </header>
 
   {rows.length ? (
@@ -54,17 +57,17 @@ const CATEGORY_LABEL: Record<string, string> = {
         <a class="card" href={`/admin/field-notes/${n.id}`}>
           <div class="card__media card__media--placeholder" style="aspect-ratio: 16 / 9;">
             <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family: var(--font-display); font-style: italic; font-size: 36px; color: rgba(244,239,230,.22); letter-spacing: -0.01em; padding: 24px; text-align: center;">
-              {n.category ? CATEGORY_LABEL[n.category] ?? n.category : "Nota"}
+              {n.category ? CATEGORY_LABEL[n.category] ?? n.category : t("Nota", "Note")}
             </div>
             <span class={`card__pill${n.published ? " card__pill--published" : ""}`}>
-              {n.published ? "Publicado" : "Borrador"}
+              {n.published ? t("Publicado", "Published") : t("Borrador", "Draft")}
             </span>
           </div>
           <div class="card__body">
-            <p class="card__kicker">{fmt(n.date)}{n.external_link ? " · enlace ↗" : ""}</p>
+            <p class="card__kicker">{fmt(n.date)}{n.external_link ? ` · ${t("enlace", "link")} ↗` : ""}</p>
             <h3 class="card__title">{n.title}</h3>
             <p class="card__foot">
-              <span>Editar</span>
+              <span>{t("Editar", "Edit")}</span>
               <span aria-hidden="true">→</span>
             </p>
           </div>
@@ -72,7 +75,7 @@ const CATEGORY_LABEL: Record<string, string> = {
       ))}
       <a class="card card--add" href="/admin/field-notes/new">
         <span class="card--add__plus">+</span>
-        <span class="card--add__label">Nueva nota</span>
+        <span class="card--add__label">{t("Nueva nota", "New note")}</span>
       </a>
     </section>
   ) : (
@@ -82,9 +85,12 @@ const CATEGORY_LABEL: Record<string, string> = {
           <path d="M3 2 H13 V14 L10.5 12 L8 14 L5.5 12 L3 14 Z"/>
         </svg>
       </span>
-      <h3 class="empty__title">Aún no hay notas</h3>
-      <p class="empty__sub">Cada nota lleva título, fecha, una categoría (ingrediente, territorio, técnica, influencia) y cuerpo bilingüe.</p>
-      <a class="admin__btn admin__btn--primary" href="/admin/field-notes/new" style="margin-top: 8px;">+ Crear la primera</a>
+      <h3 class="empty__title">{t("Aún no hay notas", "No notes yet")}</h3>
+      <p class="empty__sub">{t(
+        "Cada nota lleva título, fecha, una categoría (ingrediente, territorio, técnica, influencia) y cuerpo bilingüe.",
+        "Each note has a title, date, a category (ingredient, territory, technique, influence) and bilingual body."
+      )}</p>
+      <a class="admin__btn admin__btn--primary" href="/admin/field-notes/new" style="margin-top: 8px;">+ {t("Crear la primera", "Create the first")}</a>
     </div>
   )}
 </AdminLayout>

@@ -614,6 +614,34 @@
 }
 .adminnav__util:hover{ color: var(--bone); background: rgba(244,239,230,.04); }
 
+/* Language toggle (ES / EN) — pair of pills in the sidebar foot. */
+.langtoggle{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(244,239,230,.02);
+  margin: 2px 0 4px;
+}
+.langtoggle__pill{
+  text-align: center;
+  padding: 6px 0;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .22em;
+  color: var(--text-3);
+  border-radius: 999px;
+  transition: color 300ms var(--ease-fluid), background 300ms var(--ease-fluid);
+}
+.langtoggle__pill:hover{ color: var(--bone); }
+.langtoggle__pill.is-active{
+  background: var(--ink);
+  color: var(--bone);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+}
+
 /* ──────────────────────────────────────────────────────────────────
    CARD GRID — image-forward list view used by Projects, Art, Articles.
    ────────────────────────────────────────────────────────────────── */

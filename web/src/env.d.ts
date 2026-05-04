@@ -7,6 +7,9 @@ declare namespace App {
     /** Admin scope: 'all' for full admin, or a project slug for
      *  scoped access. Only set on /admin/* routes for logged-in users. */
     adminScope?: string;
+    /** Admin chrome language ('es' | 'en'). Independent of the public
+     *  site locale. Persisted via the dn_admin_lang cookie. */
+    adminLang?: "es" | "en";
   }
 }
 

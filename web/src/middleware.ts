@@ -1,11 +1,17 @@
 import type { MiddlewareHandler } from "astro";
 import { getLocaleFromUrl } from "./lib/i18n";
 import { getAdminScopeFor, getUserFromRequest } from "./lib/supabase";
+import { getAdminLang } from "./lib/admin-i18n";
 
 export const onRequest: MiddlewareHandler = async (context, next) => {
   context.locals.locale = getLocaleFromUrl(context.url);
 
   const path = context.url.pathname;
+
+  // Resolve admin chrome language for any admin/* request (cheap cookie read).
+  if (path.startsWith("/admin") || path.startsWith("/api/admin")) {
+    context.locals.adminLang = getAdminLang(context.cookies);
+  }
 
   // Gate /admin/* — but allow login + auth callback
   if (path.startsWith("/admin") && !path.startsWith("/admin/login") && !path.startsWith("/admin/auth")) {

@@ -2,10 +2,13 @@
 export const prerender = false;
 import AdminLayout from "../../../components/admin/AdminLayout.astro";
 import { getSupabaseServer } from "../../../lib/supabase";
+import { txFor, type AdminLang } from "../../../lib/admin-i18n";
 
 const supabase = getSupabaseServer(Astro.cookies);
 const scope = Astro.locals.adminScope ?? "all";
 const isFullAdmin = scope === "all";
+const lang: AdminLang = Astro.locals.adminLang ?? "es";
+const t = txFor(lang);
 
 let rows: Array<{
   id: string;
@@ -32,27 +35,30 @@ if (supabase) {
 
 function statusLabel(s: string | null) {
   switch (s) {
-    case "primary": return "Principal";
-    case "secondary": return "Secundario";
-    case "past": return "Pasado";
-    default: return "—";
+    case "primary":   return t("Principal", "Primary");
+    case "secondary": return t("Secundario", "Secondary");
+    case "past":      return t("Pasado", "Past");
+    default:          return "—";
   }
 }
 ---
 
-<AdminLayout title="Proyectos · Admin" active="projects">
+<AdminLayout title={t("Proyectos · Admin", "Projects · Admin")} active="projects">
   <header class="admin__head">
     <div>
-      <p class="admin__crumb">{isFullAdmin ? "Contenido" : "Tu página"}</p>
-      <h1 class="admin__title">{isFullAdmin ? "Proyectos" : "Editar página"}</h1>
+      <p class="admin__crumb">{isFullAdmin ? t("Contenido", "Content") : t("Tu página", "Your page")}</p>
+      <h1 class="admin__title">{isFullAdmin ? t("Proyectos", "Projects") : t("Editar página", "Edit page")}</h1>
       {isFullAdmin ? (
         <p class="admin__lede" style="margin-top: 8px; max-width: 60ch; color: var(--text-2); font-family: var(--font-display); font-size: 16px; line-height: 1.5;">
-          Cada proyecto se muestra como una página propia. Para editar el orden de los bloques, abrir cualquier tarjeta.
+          {t(
+            "Cada proyecto se muestra como una página propia. Para editar el orden de los bloques, abrir cualquier tarjeta.",
+            "Each project shows as its own page. To edit the block order, open any card."
+          )}
         </p>
       ) : null}
     </div>
     {isFullAdmin ? (
-      <a class="admin__btn admin__btn--primary" href="/admin/projects/new">+ Nuevo proyecto</a>
+      <a class="admin__btn admin__btn--primary" href="/admin/projects/new">+ {t("Nuevo proyecto", "New project")}</a>
     ) : null}
   </header>
 
@@ -69,18 +75,18 @@ function statusLabel(s: string | null) {
               </div>
             )}
             <span class={`card__pill${p.published ? " card__pill--published" : ""}`}>
-              {p.published ? "Publicado" : "Borrador"}
+              {p.published ? t("Publicado", "Published") : t("Borrador", "Draft")}
             </span>
           </div>
           <div class="card__body">
             <p class="card__kicker">/{p.slug} · {statusLabel(p.status)}</p>
             <h3 class="card__title">{p.title}</h3>
             {(p.summary_es ?? p.summary_en) ? (
-              <p class="card__meta">{p.summary_es ?? p.summary_en}</p>
+              <p class="card__meta">{lang === "en" ? (p.summary_en ?? p.summary_es) : (p.summary_es ?? p.summary_en)}</p>
             ) : null}
             <p class="card__foot">
-              <span>Editar</span>
-              <span>{new Date(p.updated_at).toLocaleDateString("es-ES", { day: "numeric", month: "short" })}</span>
+              <span>{t("Editar", "Edit")}</span>
+              <span>{new Date(p.updated_at).toLocaleDateString(lang === "en" ? "en-US" : "es-ES", { day: "numeric", month: "short" })}</span>
             </p>
           </div>
         </a>
@@ -88,7 +94,7 @@ function statusLabel(s: string | null) {
       {isFullAdmin ? (
         <a class="card card--add" href="/admin/projects/new">
           <span class="card--add__plus">+</span>
-          <span class="card--add__label">Nuevo proyecto</span>
+          <span class="card--add__label">{t("Nuevo proyecto", "New project")}</span>
         </a>
       ) : null}
     </section>
@@ -99,14 +105,17 @@ function statusLabel(s: string | null) {
           <rect x="2.5" y="3" width="11" height="3" rx="0.5"/><rect x="2.5" y="7" width="11" height="3" rx="0.5"/><rect x="2.5" y="11" width="11" height="2.5" rx="0.5"/>
         </svg>
       </span>
-      <h3 class="empty__title">{isFullAdmin ? "Aún no hay proyectos" : "Tu proyecto aún no existe"}</h3>
+      <h3 class="empty__title">{isFullAdmin ? t("Aún no hay proyectos", "No projects yet") : t("Tu proyecto aún no existe", "Your project doesn't exist yet")}</h3>
       <p class="empty__sub">
         {isFullAdmin
-          ? "Olivea, Fritanguita y Maizal vienen sembrados — si no los ves, revisa que la migración se haya aplicado a este Supabase."
-          : `Pídele a un admin con acceso completo que cree el proyecto "${scope}".`}
+          ? t(
+              "Olivea, Fritanguita y Maizal vienen sembrados — si no los ves, revisa que la migración se haya aplicado a este Supabase.",
+              "Olivea, Fritanguita and Maizal are seeded — if you don't see them, verify the migration was applied to this Supabase."
+            )
+          : t(`Pídele a un admin con acceso completo que cree el proyecto "${scope}".`, `Ask a full admin to create the "${scope}" project.`)}
       </p>
       {isFullAdmin ? (
-        <a class="admin__btn admin__btn--primary" href="/admin/projects/new" style="margin-top: 8px;">+ Crear el primero</a>
+        <a class="admin__btn admin__btn--primary" href="/admin/projects/new" style="margin-top: 8px;">+ {t("Crear el primero", "Create the first")}</a>
       ) : null}
     </div>
   )}
