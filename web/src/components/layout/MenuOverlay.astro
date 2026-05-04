@@ -1,5 +1,5 @@
 ---
-import { aboutHref, dayHref, href, pressHref, switchLocale, ui } from "../../lib/i18n";
+import { aboutHref, dayHref, href, pressHref, projectsHref, switchLocale, ui } from "../../lib/i18n";
 import type { Locale, Person } from "../../lib/types";
 
 interface Props {
@@ -19,6 +19,7 @@ const primary = [
   { label: locale === "es" ? "Día" : "Day", href: dayHref(locale) },
   { label: locale === "es" ? "Diario" : "Journal", href: href("/diario", locale) },
   { label: locale === "es" ? "Arte" : "Art", href: href("/arte", locale) },
+  { label: locale === "es" ? "Proyectos" : "Projects", href: projectsHref(locale) },
   { label: locale === "es" ? "Prensa" : "Press", href: pressHref(locale) },
   { label: locale === "es" ? "Contacto" : "Contact", href: href("/contacto", locale) },
 ];

@@ -74,6 +74,11 @@ export function aboutHref(locale: Locale): string {
   return locale === "es" ? "/sobre" : "/en/about";
 }
 
+/** Projects directory has different slugs per locale. */
+export function projectsHref(locale: Locale): string {
+  return locale === "es" ? "/proyectos" : "/en/projects";
+}
+
 /* ── UI strings (everything that isn't authored in Sanity) ─────────── */
 type UiKey =
   | "home"
