@@ -28,6 +28,20 @@ export function textToBlocks(text: string | null | undefined) {
     }));
 }
 
+/** Inverse of textToBlocks: flatten Portable Text blocks back to plain text
+ *  (paragraphs separated by blank lines). Lossy for inline marks/links. */
+export function blocksToText(blocks: unknown): string {
+  if (!Array.isArray(blocks)) return "";
+  return blocks
+    .map((b) => {
+      const block = b as { _type?: string; children?: { text?: string }[] };
+      if (block?._type !== "block" || !Array.isArray(block.children)) return "";
+      return block.children.map((c) => c?.text ?? "").join("");
+    })
+    .filter(Boolean)
+    .join("\n\n");
+}
+
 export function jsonOk(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,

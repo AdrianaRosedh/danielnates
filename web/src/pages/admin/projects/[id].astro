@@ -1,0 +1,44 @@
+---
+export const prerender = false;
+import AdminLayout from "../../../components/admin/AdminLayout.astro";
+import ProjectForm from "../../../components/admin/ProjectForm";
+import { getSupabaseServer } from "../../../lib/supabase";
+import type { Project } from "../../../lib/types";
+
+const { id } = Astro.params;
+const supabase = getSupabaseServer(Astro.cookies);
+
+let project: Project | null = null;
+if (supabase && id) {
+  const { data } = await supabase.from("projects").select("*").eq("id", id).single();
+  project = data as Project | null;
+}
+
+if (!project) {
+  return Astro.redirect("/admin/projects");
+}
+---
+
+<AdminLayout title={`${project.title ?? "Proyecto"} · Admin`} active="projects">
+  <header class="admin__head">
+    <div>
+      <p class="admin__crumb"><a href="/admin/projects" style="color: inherit;">Proyectos</a> · {project.slug}</p>
+      <h1 class="admin__title">{project.title}</h1>
+    </div>
+  </header>
+
+  <ProjectForm client:load initial={{
+    id: project.id,
+    slug: project.slug,
+    title: project.title,
+    status: project.status,
+    summary_es: project.summary_es,
+    summary_en: project.summary_en,
+    hero_image_url: project.hero_image_url,
+    hero_video_url: project.hero_video_url,
+    blocks: project.blocks ?? [],
+    links: project.links ?? [],
+    voice: project.voice ?? { es: "", en: "", caption: "" },
+    published: project.published,
+  }} />
+</AdminLayout>

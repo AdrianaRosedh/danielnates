@@ -1,0 +1,72 @@
+---
+export const prerender = false;
+import AdminLayout from "../../../components/admin/AdminLayout.astro";
+import { getSupabaseServer } from "../../../lib/supabase";
+
+const supabase = getSupabaseServer(Astro.cookies);
+
+let rows: Array<{
+  id: string;
+  slug: string;
+  title: string;
+  status: string | null;
+  hero_image_url: string | null;
+  published: boolean;
+  updated_at: string;
+}> = [];
+
+if (supabase) {
+  const { data } = await supabase
+    .from("projects")
+    .select("id, slug, title, status, hero_image_url, published, updated_at")
+    .order("updated_at", { ascending: false })
+    .limit(200);
+  rows = (data ?? []) as typeof rows;
+}
+
+function statusLabel(s: string | null) {
+  switch (s) {
+    case "primary": return "Principal";
+    case "secondary": return "Secundario";
+    case "past": return "Pasado";
+    default: return "—";
+  }
+}
+---
+
+<AdminLayout title="Proyectos · Admin" active="projects">
+  <header class="admin__head">
+    <div>
+      <p class="admin__crumb">Contenido</p>
+      <h1 class="admin__title">Proyectos</h1>
+    </div>
+    <a class="admin__btn admin__btn--primary" href="/admin/projects/new">+ Nuevo proyecto</a>
+  </header>
+
+  {rows.length ? (
+    <div class="admin__list">
+      {rows.map((p) => (
+        <a class="admin__row" href={`/admin/projects/${p.id}`}>
+          {p.hero_image_url ? (
+            <img src={p.hero_image_url} alt="" />
+          ) : (
+            <div style="width: 64px; height: 80px; background: rgba(244,239,230,.04); border-radius: 6px;"></div>
+          )}
+          <div class="admin__rowMain">
+            <h3>{p.title}</h3>
+            <p>/{p.slug} · {statusLabel(p.status)}</p>
+          </div>
+          <span class={`admin__pill${p.published ? " admin__pill--published" : ""}`}>
+            {p.published ? "Publicado" : "Borrador"}
+          </span>
+          <span class="admin__rowMeta">{new Date(p.updated_at).toLocaleDateString("es-ES", { day: "numeric", month: "short" })}</span>
+        </a>
+      ))}
+    </div>
+  ) : (
+    <div class="admin__list" style="padding: 40px; text-align: center;">
+      <p style="margin: 0; color: var(--text-2);">Aún no hay proyectos.</p>
+      <a class="admin__btn admin__btn--primary" href="/admin/projects/new" style="margin-top: 16px;">Crear el primero</a>
+    </div>
+  )}
+</AdminLayout>

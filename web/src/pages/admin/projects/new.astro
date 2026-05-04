@@ -1,0 +1,15 @@
+---
+export const prerender = false;
+import AdminLayout from "../../../components/admin/AdminLayout.astro";
+import ProjectForm from "../../../components/admin/ProjectForm";
+---
+
+<AdminLayout title="Nuevo proyecto · Admin" active="projects">
+  <header class="admin__head">
+    <div>
+      <p class="admin__crumb"><a href="/admin/projects" style="color: inherit;">Proyectos</a> · Nuevo</p>
+      <h1 class="admin__title">Nuevo proyecto</h1>
+    </div>
+  </header>
+  <ProjectForm client:load isNew />
+</AdminLayout>
