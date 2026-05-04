@@ -1,0 +1,59 @@
+---
+export const prerender = false;
+import "../../styles/fonts.css";
+import "../../styles/tokens.css";
+import "../../styles/admin.css";
+import { getUserFromRequest } from "../../lib/supabase";
+
+// If already signed in, bounce to dashboard.
+const existing = await getUserFromRequest(Astro.cookies);
+if (existing) return Astro.redirect("/admin");
+
+const next = Astro.url.searchParams.get("next") ?? "/admin";
+const sentTo = Astro.url.searchParams.get("sent");
+const error = Astro.url.searchParams.get("error");
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Iniciar sesión · Daniel Nates Admin</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="admin__login">
+    <div class="admin__loginCard">
+      <h1 class="admin__loginTitle">Daniel Nates</h1>
+      <p class="admin__loginSub">
+        Admin. Ingresa con tu correo — te llegará un enlace mágico.
+      </p>
+
+      {sentTo ? (
+        <p class="admin__msg admin__msg--ok">
+          Enlace enviado a <strong>{sentTo}</strong>. Revisa tu bandeja.
+        </p>
+      ) : (
+        <form action="/api/admin/auth/magic" method="post">
+          <input type="hidden" name="next" value={next} />
+          <div class="admin__field">
+            <label class="admin__label" for="email">Correo</label>
+            <input
+              class="admin__input"
+              id="email"
+              name="email"
+              type="email"
+              required
+              autocomplete="email"
+              placeholder="tú@ejemplo.com"
+            />
+          </div>
+          {error ? <p class="admin__msg admin__msg--err">{error}</p> : null}
+          <button class="admin__btn admin__btn--primary" type="submit" style="width: 100%; justify-content: center;">
+            Enviar enlace
+          </button>
+        </form>
+      )}
+    </div>
+  </body>
+</html>

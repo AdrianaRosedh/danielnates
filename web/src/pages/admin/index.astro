@@ -1,0 +1,104 @@
+---
+export const prerender = false;
+import AdminLayout from "../../components/admin/AdminLayout.astro";
+import { getSupabaseFromRequest } from "../../lib/supabase";
+
+const supabase = getSupabaseFromRequest(Astro.cookies);
+type CountResult = { count: number };
+async function count(table: string): Promise<number> {
+  if (!supabase) return 0;
+  const { count } = await supabase.from(table).select("*", { count: "exact", head: true });
+  return count ?? 0;
+}
+
+const [briefs, articles, art, projects, fieldNotes, mentions, messages] = await Promise.all([
+  count("daily_briefs"),
+  count("articles"),
+  count("art_pieces"),
+  count("projects"),
+  count("field_notes"),
+  count("press_mentions"),
+  count("contact_messages"),
+]);
+
+const tiles = [
+  { href: "/admin/daily", label: "Brief diario", count: briefs, hint: "Una imagen, una línea, hoy." },
+  { href: "/admin/articles", label: "Diario", count: articles, hint: "Notas, ensayos." },
+  { href: "/admin/art", label: "Arte", count: art, hint: "Lo que la mano hace." },
+  { href: "/admin/projects", label: "Proyectos", count: projects, hint: "Olivea, Fritanguita, Maizal." },
+  { href: "/admin/field-notes", label: "Field Notes", count: fieldNotes, hint: "Apuntes rápidos." },
+  { href: "/admin/press", label: "Press menciones", count: mentions, hint: "Lo que escriben sobre Daniel." },
+  { href: "/admin/messages", label: "Mensajes", count: messages, hint: "Contacto recibido." },
+];
+---
+
+<AdminLayout title="Admin · Dashboard" active="dashboard">
+  <header class="admin__head">
+    <div>
+      <p class="admin__crumb">Daniel Nates</p>
+      <h1 class="admin__title">Dashboard</h1>
+    </div>
+    <a class="admin__btn admin__btn--primary" href="/admin/daily/new">+ Nuevo brief diario</a>
+  </header>
+
+  <div class="dash">
+    {tiles.map((t) => (
+      <a class="dash__tile" href={t.href}>
+        <p class="dash__count">{t.count}</p>
+        <p class="dash__label">{t.label}</p>
+        <p class="dash__hint">{t.hint}</p>
+      </a>
+    ))}
+  </div>
+</AdminLayout>
+
+<style>
+  .dash{
+    display: grid;
+    gap: 14px;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 720px){ .dash{ grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 1100px){ .dash{ grid-template-columns: repeat(3, 1fr); } }
+
+  .dash__tile{
+    display: block;
+    padding: 28px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: #0E0F0C;
+    color: var(--bone);
+    transition:
+      border-color 600ms var(--ease-fluid),
+      transform 600ms var(--ease-fluid),
+      background 600ms var(--ease-fluid);
+  }
+  .dash__tile:hover{
+    border-color: var(--line-2);
+    background: #11120E;
+    transform: translateY(-2px);
+  }
+  .dash__count{
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 64px;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    color: var(--bone);
+  }
+  .dash__label{
+    margin: 14px 0 4px;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--text-2);
+  }
+  .dash__hint{
+    margin: 0;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 14px;
+    color: var(--text-3);
+  }
+</style>

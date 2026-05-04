@@ -3,6 +3,7 @@
 declare namespace App {
   interface Locals {
     locale: "es" | "en";
+    user?: import("@supabase/supabase-js").User;
   }
 }
 

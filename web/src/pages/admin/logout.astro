@@ -1,0 +1,8 @@
+---
+export const prerender = false;
+const headers = new Headers({ Location: "/admin/login" });
+const expire = "Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0";
+headers.append("Set-Cookie", `sb-access-token=; ${expire}`);
+headers.append("Set-Cookie", `sb-refresh-token=; ${expire}`);
+return new Response(null, { status: 303, headers });
+---

@@ -1,0 +1,16 @@
+---
+export const prerender = false;
+import AdminLayout from "../../../components/admin/AdminLayout.astro";
+import DailyBriefForm from "../../../components/admin/DailyBriefForm.tsx";
+---
+
+<AdminLayout title="Nuevo brief · Admin" active="daily">
+  <header class="admin__head">
+    <div>
+      <p class="admin__crumb"><a href="/admin/daily" style="color: var(--text-3);">Brief diario</a> · Nuevo</p>
+      <h1 class="admin__title">Una imagen, una línea.</h1>
+    </div>
+  </header>
+
+  <DailyBriefForm client:load isNew={true} />
+</AdminLayout>

@@ -1,23 +1,44 @@
 ---
-export const prerender = true;
+export const prerender = false;
 
 import BaseLayout from "../components/layout/BaseLayout.astro";
 import TopDock from "../components/layout/TopDock.astro";
-import { getDailyBriefs } from "../lib/queries";
-import { dateFormat, t } from "../lib/i18n";
-import { img, imgSrcset } from "../lib/image";
+import { getSupabase } from "../lib/supabase";
+import { dateFormat } from "../lib/i18n";
 import type { Locale } from "../lib/types";
 
 interface PageProps { lang?: Locale }
 const { lang } = Astro.props as PageProps;
 const locale: Locale = lang ?? Astro.locals.locale ?? "es";
 
-const briefs = (await getDailyBriefs()) ?? [];
+interface Brief {
+  id: string;
+  date: string;
+  image_url: string | null;
+  line_es: string | null;
+  line_en: string | null;
+  place: string | null;
+}
+
+const supabase = getSupabase();
+let briefs: Brief[] = [];
+if (supabase) {
+  const { data } = await supabase
+    .from("daily_briefs")
+    .select("id, date, image_url, line_es, line_en, place")
+    .eq("published", true)
+    .order("date", { ascending: false })
+    .limit(120);
+  briefs = (data ?? []) as Brief[];
+}
 
 const headline = locale === "es" ? "Un día, una nota." : "One day, one note.";
 const lede = locale === "es"
   ? "Una imagen y una línea, casi cada día. Lo que la cocina, el huerto o el cuaderno me dejaron."
   : "One image and one line, almost every day. What the kitchen, the garden, or the sketchbook left me.";
+
+const localizedLine = (b: Brief) =>
+  locale === "es" ? (b.line_es ?? b.line_en ?? "") : (b.line_en ?? b.line_es ?? "");
 ---
 
 <BaseLayout
@@ -32,9 +53,9 @@ const lede = locale === "es"
     meta: locale === "es" ? `${briefs.length} entradas` : `${briefs.length} entries`,
   }}
 >
-  <div class="shell">
-    <TopDock locale={locale} />
+  <TopDock locale={locale} />
 
+  <div class="shell">
     <section class="section reveal">
       <p class="kicker">{locale === "es" ? "Brief diario" : "Daily brief"}</p>
       <h1 class="h1" style="margin-bottom: 18px;">{headline}</h1>
@@ -45,20 +66,12 @@ const lede = locale === "es"
       <section class="section">
         <ol class="dia__grid reveal-stagger">
           {briefs.map((b) => {
-            const cover = img(b.image, { width: 900 });
-            const srcset = imgSrcset(b.image);
-            const line = t(b.line, locale);
+            const line = localizedLine(b);
             return (
               <li class="dia__cell">
                 <article class="dia__card">
-                  {cover ? (
-                    <img
-                      src={cover}
-                      srcset={srcset ?? undefined}
-                      sizes="(min-width: 1100px) 360px, (min-width: 720px) 50vw, 100vw"
-                      alt={line || b.date}
-                      loading="lazy"
-                    />
+                  {b.image_url ? (
+                    <img src={b.image_url} alt={line || b.date} loading="lazy" />
                   ) : (
                     <div class="dia__noimg" aria-hidden="true"></div>
                   )}
@@ -77,8 +90,8 @@ const lede = locale === "es"
       <section class="section reveal">
         <p class="lede" style="max-width: 60ch;">
           {locale === "es"
-            ? "Aún no hay entradas. Crea la primera en Sanity → Brief diario."
-            : "No entries yet. Create the first in Sanity → Brief diario."}
+            ? "Aún no hay entradas. Crea la primera en /admin/daily/new."
+            : "No entries yet. Create the first at /admin/daily/new."}
         </p>
       </section>
     )}
@@ -102,7 +115,7 @@ const lede = locale === "es"
     border-radius: var(--r-2);
     overflow: hidden;
     background: color-mix(in srgb, var(--text) 2%, transparent);
-    transition: border-color .25s, transform .35s;
+    transition: border-color 600ms var(--ease-fluid), transform 600ms var(--ease-fluid);
   }
   .dia__card:hover{
     border-color: color-mix(in srgb, var(--text) 18%, transparent);

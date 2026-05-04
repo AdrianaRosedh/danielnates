@@ -1,0 +1,40 @@
+---
+export const prerender = false;
+import AdminLayout from "../../../components/admin/AdminLayout.astro";
+import DailyBriefForm from "../../../components/admin/DailyBriefForm.tsx";
+import { getSupabaseFromRequest } from "../../../lib/supabase";
+
+const { id } = Astro.params as { id: string };
+const supabase = getSupabaseFromRequest(Astro.cookies);
+
+let brief: Record<string, any> | null = null;
+if (supabase) {
+  const { data } = await supabase
+    .from("daily_briefs")
+    .select("*")
+    .eq("id", id)
+    .single();
+  brief = data;
+}
+
+if (!brief) return Astro.redirect("/admin/daily");
+
+function fmt(d: string) {
+  try {
+    return new Date(d + "T00:00:00").toLocaleDateString("es-ES", {
+      day: "numeric", month: "long", year: "numeric",
+    });
+  } catch { return d; }
+}
+---
+
+<AdminLayout title={`Brief ${brief.date} · Admin`} active="daily">
+  <header class="admin__head">
+    <div>
+      <p class="admin__crumb"><a href="/admin/daily" style="color: var(--text-3);">Brief diario</a></p>
+      <h1 class="admin__title">{fmt(brief.date)}</h1>
+    </div>
+  </header>
+
+  <DailyBriefForm client:load initial={brief} />
+</AdminLayout>

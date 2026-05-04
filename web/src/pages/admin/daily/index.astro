@@ -1,0 +1,71 @@
+---
+export const prerender = false;
+import AdminLayout from "../../../components/admin/AdminLayout.astro";
+import { getSupabaseFromRequest } from "../../../lib/supabase";
+
+const supabase = getSupabaseFromRequest(Astro.cookies);
+
+let briefs: Array<{
+  id: string;
+  date: string;
+  line_es: string | null;
+  line_en: string | null;
+  image_url: string | null;
+  place: string | null;
+  published: boolean;
+}> = [];
+
+if (supabase) {
+  const { data } = await supabase
+    .from("daily_briefs")
+    .select("id, date, line_es, line_en, image_url, place, published")
+    .order("date", { ascending: false })
+    .limit(200);
+  briefs = (data ?? []) as typeof briefs;
+}
+
+function fmt(d: string) {
+  try {
+    return new Date(d + "T00:00:00").toLocaleDateString("es-ES", {
+      day: "numeric", month: "long", year: "numeric",
+    });
+  } catch { return d; }
+}
+---
+
+<AdminLayout title="Brief diario · Admin" active="daily">
+  <header class="admin__head">
+    <div>
+      <p class="admin__crumb">Contenido</p>
+      <h1 class="admin__title">Brief diario</h1>
+    </div>
+    <a class="admin__btn admin__btn--primary" href="/admin/daily/new">+ Nuevo</a>
+  </header>
+
+  {briefs.length ? (
+    <div class="admin__list">
+      {briefs.map((b) => (
+        <a class="admin__row" href={`/admin/daily/${b.id}`}>
+          {b.image_url ? (
+            <img src={b.image_url} alt="" loading="lazy" />
+          ) : (
+            <div style="width: 64px; height: 80px; background: rgba(244,239,230,.04); border-radius: 6px;"></div>
+          )}
+          <div class="admin__rowMain">
+            <h3>{b.line_es ?? b.line_en ?? "(sin línea)"}</h3>
+            <p>{b.place ?? "—"}</p>
+          </div>
+          <span class={`admin__pill${b.published ? " admin__pill--published" : ""}`}>
+            {b.published ? "Publicado" : "Borrador"}
+          </span>
+          <span class="admin__rowMeta">{fmt(b.date)}</span>
+        </a>
+      ))}
+    </div>
+  ) : (
+    <div class="admin__list" style="padding: 40px; text-align: center;">
+      <p style="margin: 0; color: var(--text-2);">Aún no hay briefs.</p>
+      <a class="admin__btn admin__btn--primary" href="/admin/daily/new" style="margin-top: 16px;">Crear el primero</a>
+    </div>
+  )}
+</AdminLayout>
