@@ -1,0 +1,27 @@
+---
+export const prerender = false;
+import AdminLayout from "../../../components/admin/AdminLayout.astro";
+import ArtPieceForm from "../../../components/admin/ArtPieceForm.tsx";
+import { getSupabaseServer } from "../../../lib/supabase";
+
+const { id } = Astro.params as { id: string };
+const supabase = getSupabaseServer(Astro.cookies);
+
+let piece: Record<string, any> | null = null;
+if (supabase) {
+  const { data } = await supabase.from("art_pieces").select("*").eq("id", id).single();
+  piece = data;
+}
+if (!piece) return Astro.redirect("/admin/art");
+---
+
+<AdminLayout title={`${piece.title} · Admin`} active="art">
+  <header class="admin__head">
+    <div>
+      <p class="admin__crumb"><a href="/admin/art" style="color: var(--text-3);">Arte</a></p>
+      <h1 class="admin__title">{piece.title}</h1>
+    </div>
+  </header>
+
+  <ArtPieceForm client:load initial={piece} />
+</AdminLayout>

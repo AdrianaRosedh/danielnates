@@ -1,0 +1,16 @@
+---
+export const prerender = false;
+import AdminLayout from "../../../components/admin/AdminLayout.astro";
+import ArtPieceForm from "../../../components/admin/ArtPieceForm.tsx";
+---
+
+<AdminLayout title="Nueva pieza · Admin" active="art">
+  <header class="admin__head">
+    <div>
+      <p class="admin__crumb"><a href="/admin/art" style="color: var(--text-3);">Arte</a> · Nueva</p>
+      <h1 class="admin__title">Nueva pieza</h1>
+    </div>
+  </header>
+
+  <ArtPieceForm client:load isNew={true} />
+</AdminLayout>

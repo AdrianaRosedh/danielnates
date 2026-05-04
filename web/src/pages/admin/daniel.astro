@@ -1,0 +1,40 @@
+---
+export const prerender = false;
+import AdminLayout from "../../components/admin/AdminLayout.astro";
+import PersonForm from "../../components/admin/PersonForm.tsx";
+import { getSupabaseServer } from "../../lib/supabase";
+
+const supabase = getSupabaseServer(Astro.cookies);
+
+let row: Record<string, any> | null = null;
+if (supabase) {
+  const { data } = await supabase.from("person").select("*").eq("id", "daniel").maybeSingle();
+  row = data;
+}
+
+// Convert jsonb body fields → textarea-friendly strings.
+function blocksToText(blocks: unknown): string {
+  if (typeof blocks === "string") return blocks;
+  if (!Array.isArray(blocks)) return "";
+  return (blocks as Array<{ children?: Array<{ text?: string }> }>)
+    .map((b) => (b.children ?? []).map((c) => c.text ?? "").join(""))
+    .join("\n\n");
+}
+
+const initial = row ? {
+  ...row,
+  bio_long_es: blocksToText(row.bio_long_es),
+  bio_long_en: blocksToText(row.bio_long_en),
+} : undefined;
+---
+
+<AdminLayout title="Daniel · Admin" active="daniel">
+  <header class="admin__head">
+    <div>
+      <p class="admin__crumb">Singletons</p>
+      <h1 class="admin__title">Daniel</h1>
+    </div>
+  </header>
+
+  <PersonForm client:load initial={initial} />
+</AdminLayout>

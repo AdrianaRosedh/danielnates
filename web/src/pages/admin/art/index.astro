@@ -1,0 +1,64 @@
+---
+export const prerender = false;
+import AdminLayout from "../../../components/admin/AdminLayout.astro";
+import { getSupabaseServer } from "../../../lib/supabase";
+
+const supabase = getSupabaseServer(Astro.cookies);
+
+let rows: Array<{
+  id: string;
+  slug: string;
+  title: string;
+  cover_url: string | null;
+  year: number | null;
+  medium: string | null;
+  published: boolean;
+}> = [];
+
+if (supabase) {
+  const { data } = await supabase
+    .from("art_pieces")
+    .select("id, slug, title, cover_url, year, medium, published")
+    .order("year", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
+    .limit(200);
+  rows = (data ?? []) as typeof rows;
+}
+---
+
+<AdminLayout title="Arte · Admin" active="art">
+  <header class="admin__head">
+    <div>
+      <p class="admin__crumb">Contenido</p>
+      <h1 class="admin__title">Arte</h1>
+    </div>
+    <a class="admin__btn admin__btn--primary" href="/admin/art/new">+ Nueva pieza</a>
+  </header>
+
+  {rows.length ? (
+    <div class="admin__list">
+      {rows.map((p) => (
+        <a class="admin__row" href={`/admin/art/${p.id}`}>
+          {p.cover_url ? (
+            <img src={p.cover_url} alt="" loading="lazy" />
+          ) : (
+            <div style="width: 64px; height: 80px; background: rgba(244,239,230,.04); border-radius: 6px;"></div>
+          )}
+          <div class="admin__rowMain">
+            <h3>{p.title}</h3>
+            <p>{[p.year, p.medium].filter(Boolean).join(" · ") || p.slug}</p>
+          </div>
+          <span class={`admin__pill${p.published ? " admin__pill--published" : ""}`}>
+            {p.published ? "Publicado" : "Borrador"}
+          </span>
+          <span class="admin__rowMeta">{p.year ?? "—"}</span>
+        </a>
+      ))}
+    </div>
+  ) : (
+    <div class="admin__list" style="padding: 40px; text-align: center;">
+      <p style="margin: 0; color: var(--text-2);">Aún no hay piezas.</p>
+      <a class="admin__btn admin__btn--primary" href="/admin/art/new" style="margin-top: 16px;">Crear la primera</a>
+    </div>
+  )}
+</AdminLayout>
