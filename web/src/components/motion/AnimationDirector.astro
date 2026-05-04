@@ -353,18 +353,19 @@
 
   /* ── Boot ─────────────────────────────────────────────────────── */
   async function init() {
-    // Run entrance first; everything else waits for the curtain
     if (reduce) {
       const el = document.querySelector("[data-entrance]");
       if (el) try { (el as HTMLElement).remove(); } catch {}
       delete document.documentElement.dataset.entranceActive;
     }
 
-    if (!reduce) {
-      bootLenis();
-      await runEntrance();
-    }
-
+    // Wire up reveals + scroll triggers BEFORE awaiting the entrance.
+    // Otherwise when the curtain dismisses (either by timeline or by
+    // user gesture), the page underneath shows TextReveal targets in
+    // their initial autoAlpha:0 state for a frame — looks like FOUC.
+    // The entrance covers the page during these calls, so the user
+    // doesn't see them happening; by the time the curtain lifts, the
+    // hero text is already revealed.
     setupReveals();
     setupHeroes();
     setupDockChrome();
@@ -373,6 +374,14 @@
     setupVoice();
     setupMenu();
     ScrollTrigger.refresh();
+
+    if (!reduce) {
+      bootLenis();
+      await runEntrance();
+      // Refresh once more in case anything resized while the curtain
+      // was showing (font load, image decode, etc.).
+      ScrollTrigger.refresh();
+    }
   }
 
   /* ── Menu overlay (open / close) ──────────────────────────────── */

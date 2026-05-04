@@ -12,6 +12,7 @@ if (existing) return Astro.redirect("/admin");
 const next = Astro.url.searchParams.get("next") ?? "/admin";
 const sentTo = Astro.url.searchParams.get("sent");
 const error = Astro.url.searchParams.get("error");
+const isDev = import.meta.env.DEV;
 ---
 
 <!doctype html>
@@ -54,6 +55,24 @@ const error = Astro.url.searchParams.get("error");
           </button>
         </form>
       )}
+
+      {isDev ? (
+        <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line);">
+          <p style="margin: 0 0 10px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-3);">
+            Dev (localhost)
+          </p>
+          <a
+            class="admin__btn"
+            href="/api/admin/auth/dev"
+            style="width: 100%; justify-content: center;"
+          >
+            Entrar como rose@roseiies.com
+          </a>
+          <p class="admin__hint" style="margin-top: 8px;">
+            Atajo solo disponible en localhost — emite una sesión real sin email.
+          </p>
+        </div>
+      ) : null}
     </div>
   </body>
 </html>

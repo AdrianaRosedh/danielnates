@@ -75,11 +75,15 @@ export function getSupabaseServer(cookies: AstroCookies): SupabaseClient | null 
         return out;
       },
       setAll(list) {
+        // PROD defaults to secure; DEV (http://localhost) cannot use
+        // Secure or browsers silently drop the cookie — which is what
+        // caused the post-magic-link redirect loop.
+        const isDev = !!import.meta.env.DEV;
         for (const { name, value, options } of list) {
           const o = options as CookieOptions | undefined;
           cookies.set(name, value, {
             httpOnly: o?.httpOnly ?? true,
-            secure: o?.secure ?? true,
+            secure: o?.secure ?? !isDev,
             sameSite: (o?.sameSite as "lax" | "strict" | "none" | undefined) ?? "lax",
             path: o?.path ?? "/",
             maxAge: o?.maxAge,
