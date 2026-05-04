@@ -1,0 +1,42 @@
+---
+export const prerender = false;
+import AdminLayout from "../../../components/admin/AdminLayout.astro";
+import ArticleForm from "../../../components/admin/ArticleForm.tsx";
+import { getSupabaseServer } from "../../../lib/supabase";
+
+const { id } = Astro.params as { id: string };
+const supabase = getSupabaseServer(Astro.cookies);
+
+let article: Record<string, any> | null = null;
+if (supabase) {
+  const { data } = await supabase.from("articles").select("*").eq("id", id).single();
+  article = data;
+}
+if (!article) return Astro.redirect("/admin/articles");
+
+// Translate jsonb body fields → simple string for the v1 textarea editor.
+function blocksToText(blocks: unknown): string {
+  if (typeof blocks === "string") return blocks;
+  if (!Array.isArray(blocks)) return "";
+  return (blocks as Array<{ children?: Array<{ text?: string }> }>)
+    .map((b) => (b.children ?? []).map((c) => c.text ?? "").join(""))
+    .join("\n\n");
+}
+
+const initial = {
+  ...article,
+  body_es: blocksToText(article.body_es),
+  body_en: blocksToText(article.body_en),
+};
+---
+
+<AdminLayout title={`${article.title} · Admin`} active="articles">
+  <header class="admin__head">
+    <div>
+      <p class="admin__crumb"><a href="/admin/articles" style="color: var(--text-3);">Diario</a></p>
+      <h1 class="admin__title">{article.title}</h1>
+    </div>
+  </header>
+
+  <ArticleForm client:load initial={initial} />
+</AdminLayout>

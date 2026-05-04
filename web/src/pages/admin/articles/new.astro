@@ -1,0 +1,16 @@
+---
+export const prerender = false;
+import AdminLayout from "../../../components/admin/AdminLayout.astro";
+import ArticleForm from "../../../components/admin/ArticleForm.tsx";
+---
+
+<AdminLayout title="Nueva entrada · Admin" active="articles">
+  <header class="admin__head">
+    <div>
+      <p class="admin__crumb"><a href="/admin/articles" style="color: var(--text-3);">Diario</a> · Nueva</p>
+      <h1 class="admin__title">Nueva entrada</h1>
+    </div>
+  </header>
+
+  <ArticleForm client:load isNew={true} />
+</AdminLayout>

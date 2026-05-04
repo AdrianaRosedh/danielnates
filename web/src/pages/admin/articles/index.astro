@@ -1,0 +1,72 @@
+---
+export const prerender = false;
+import AdminLayout from "../../../components/admin/AdminLayout.astro";
+import { getSupabaseServer } from "../../../lib/supabase";
+
+const supabase = getSupabaseServer(Astro.cookies);
+
+let rows: Array<{
+  id: string;
+  slug: string;
+  title: string;
+  date: string;
+  cover_url: string | null;
+  excerpt_es: string | null;
+  excerpt_en: string | null;
+  published: boolean;
+}> = [];
+
+if (supabase) {
+  const { data } = await supabase
+    .from("articles")
+    .select("id, slug, title, date, cover_url, excerpt_es, excerpt_en, published")
+    .order("date", { ascending: false })
+    .limit(200);
+  rows = (data ?? []) as typeof rows;
+}
+
+function fmt(d: string) {
+  try {
+    return new Date(d + "T00:00:00").toLocaleDateString("es-ES", {
+      day: "numeric", month: "long", year: "numeric",
+    });
+  } catch { return d; }
+}
+---
+
+<AdminLayout title="Diario · Admin" active="articles">
+  <header class="admin__head">
+    <div>
+      <p class="admin__crumb">Contenido</p>
+      <h1 class="admin__title">Diario</h1>
+    </div>
+    <a class="admin__btn admin__btn--primary" href="/admin/articles/new">+ Nueva entrada</a>
+  </header>
+
+  {rows.length ? (
+    <div class="admin__list">
+      {rows.map((a) => (
+        <a class="admin__row" href={`/admin/articles/${a.id}`}>
+          {a.cover_url ? (
+            <img src={a.cover_url} alt="" loading="lazy" />
+          ) : (
+            <div style="width: 64px; height: 80px; background: rgba(244,239,230,.04); border-radius: 6px;"></div>
+          )}
+          <div class="admin__rowMain">
+            <h3>{a.title}</h3>
+            <p>{a.excerpt_es ?? a.excerpt_en ?? a.slug}</p>
+          </div>
+          <span class={`admin__pill${a.published ? " admin__pill--published" : ""}`}>
+            {a.published ? "Publicado" : "Borrador"}
+          </span>
+          <span class="admin__rowMeta">{fmt(a.date)}</span>
+        </a>
+      ))}
+    </div>
+  ) : (
+    <div class="admin__list" style="padding: 40px; text-align: center;">
+      <p style="margin: 0; color: var(--text-2);">Aún no hay entradas.</p>
+      <a class="admin__btn admin__btn--primary" href="/admin/articles/new" style="margin-top: 16px;">Crear la primera</a>
+    </div>
+  )}
+</AdminLayout>

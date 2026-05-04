@@ -1,31 +1,48 @@
 ---
-export const prerender = true;
+export const prerender = false;
 
 import BaseLayout from "../../components/layout/BaseLayout.astro";
 import TopDock from "../../components/layout/TopDock.astro";
-import { getArticles } from "../../lib/queries";
-import { img } from "../../lib/image";
-import { dateFormat, href, t, ui } from "../../lib/i18n";
+import { getSupabase } from "../../lib/supabase";
+import { dateFormat, href, ui } from "../../lib/i18n";
 import type { Locale } from "../../lib/types";
 
 interface PageProps { lang?: Locale }
 const { lang } = Astro.props as PageProps;
 const locale: Locale = lang ?? Astro.locals.locale ?? "es";
 
-const articles = (await getArticles()) ?? [];
-const headline = locale === "es"
-  ? "Lo que voy escribiendo."
-  : "What I keep writing.";
+interface Article {
+  id: string;
+  slug: string;
+  title: string;
+  date: string;
+  cover_url: string | null;
+  excerpt_es: string | null;
+  excerpt_en: string | null;
+}
+
+const supabase = getSupabase();
+let articles: Article[] = [];
+if (supabase) {
+  const { data } = await supabase
+    .from("articles")
+    .select("id, slug, title, date, cover_url, excerpt_es, excerpt_en")
+    .eq("published", true)
+    .order("date", { ascending: false })
+    .limit(120);
+  articles = (data ?? []) as Article[];
+}
+
+const headline = locale === "es" ? "Lo que voy escribiendo." : "What I keep writing.";
 const lede = locale === "es"
   ? "Notas desde la cocina y el cuaderno. Ingredientes, ideas, lecturas."
   : "Notes from the kitchen and the sketchbook. Ingredients, ideas, readings.";
+
+const localizedExcerpt = (a: Article) =>
+  locale === "es" ? (a.excerpt_es ?? a.excerpt_en ?? "") : (a.excerpt_en ?? a.excerpt_es ?? "");
 ---
 
-<BaseLayout
-  title={`${ui("diary", locale)} — Daniel Nates`}
-  description={lede}
-  locale={locale}
->
+<BaseLayout title={`${ui("diary", locale)} — Daniel Nates`} description={lede} locale={locale}>
   <div class="shell">
     <TopDock locale={locale} />
 
@@ -38,19 +55,20 @@ const lede = locale === "es"
     {articles.length ? (
       <section class="section">
         <div class="articleList reveal-stagger">
-          {articles.map((a) => {
-            const cover = img(a.cover, { width: 800 });
-            return (
-              <a class="articleRow" href={href(`/diario/${a.slug?.current}`, locale)}>
-                {cover ? <img src={cover} alt={a.title ?? ""} loading="lazy" /> : <div class="articleRow__noimg" aria-hidden="true"></div>}
-                <div class="articleRow__body">
-                  <p class="articleRow__date">{dateFormat(a.date, locale)}</p>
-                  <h3 class="articleRow__title">{a.title ?? "Sin título"}</h3>
-                  {t(a.excerpt, locale) ? <p class="articleRow__excerpt">{t(a.excerpt, locale)}</p> : null}
-                </div>
-              </a>
-            );
-          })}
+          {articles.map((a) => (
+            <a class="articleRow" href={href(`/diario/${a.slug}`, locale)}>
+              {a.cover_url ? (
+                <img src={a.cover_url} alt={a.title} loading="lazy" />
+              ) : (
+                <div class="articleRow__noimg" aria-hidden="true"></div>
+              )}
+              <div class="articleRow__body">
+                <p class="articleRow__date">{dateFormat(a.date, locale)}</p>
+                <h3 class="articleRow__title">{a.title}</h3>
+                {localizedExcerpt(a) ? <p class="articleRow__excerpt">{localizedExcerpt(a)}</p> : null}
+              </div>
+            </a>
+          ))}
         </div>
       </section>
     ) : (
@@ -59,7 +77,6 @@ const lede = locale === "es"
       </section>
     )}
   </div>
-
 </BaseLayout>
 
 <style>
@@ -69,22 +86,22 @@ const lede = locale === "es"
     grid-template-columns: 96px 1fr;
     gap: 14px;
     padding: 12px;
-    border-radius: var(--radius2);
-    border: 1px solid rgba(255,255,255,.10);
-    background: rgba(255,255,255,.02);
-    transition: border-color .2s, background .2s, transform .2s;
+    border-radius: var(--r-2);
+    border: 1px solid var(--line);
+    background: color-mix(in srgb, var(--text) 2%, transparent);
+    transition: border-color 600ms var(--ease-fluid), background 600ms var(--ease-fluid), transform 600ms var(--ease-fluid);
   }
   .articleRow:hover{
-    border-color: color-mix(in srgb, var(--brand-primary) 45%, rgba(255,255,255,.14));
-    background: rgba(255,255,255,.04);
+    border-color: var(--line-2);
+    background: color-mix(in srgb, var(--text) 5%, transparent);
     transform: translateY(-1px);
   }
   .articleRow img{ width: 96px; height: 96px; object-fit: cover; border-radius: 12px; display: block; }
-  .articleRow__noimg{ width: 96px; height: 96px; border-radius: 12px; background: rgba(255,255,255,.04); }
+  .articleRow__noimg{ width: 96px; height: 96px; border-radius: 12px; background: rgba(244,239,230,.04); }
   .articleRow__body{ min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-  .articleRow__date{ margin: 0; font-size: 11px; color: var(--muted2); letter-spacing: .12em; text-transform: uppercase; }
-  .articleRow__title{ margin: 2px 0 0; font-size: 17px; letter-spacing: -0.01em; }
-  .articleRow__excerpt{ margin: 4px 0 0; font-size: 13px; color: var(--muted); line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .articleRow__date{ margin: 0; font-size: 11px; color: var(--text-3); letter-spacing: .12em; text-transform: uppercase; }
+  .articleRow__title{ margin: 2px 0 0; font-size: 17px; letter-spacing: -0.01em; font-family: var(--font-display); }
+  .articleRow__excerpt{ margin: 4px 0 0; font-size: 13px; color: var(--text-2); line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   @media (min-width: 880px){
     .articleRow{ grid-template-columns: 140px 1fr; padding: 14px; }
     .articleRow img, .articleRow__noimg{ width: 140px; height: 140px; }

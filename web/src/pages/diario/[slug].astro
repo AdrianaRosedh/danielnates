@@ -1,26 +1,54 @@
 ---
+export const prerender = false;
+
 import BaseLayout from "../../components/layout/BaseLayout.astro";
 import TopDock from "../../components/layout/TopDock.astro";
+import PortableText from "../../components/content/PortableText.astro";
 import BlockRenderer from "../../components/blocks/BlockRenderer.astro";
 
-import { clientFor, getArticle } from "../../lib/queries";
-import { img } from "../../lib/image";
-import { dateFormat, href, t, ui } from "../../lib/i18n";
+import { getSupabase } from "../../lib/supabase";
+import { dateFormat, href, ui } from "../../lib/i18n";
 import type { Locale } from "../../lib/types";
+import type { PortableTextBlock } from "@portabletext/types";
 
 interface PageProps { lang?: Locale }
 const { lang } = Astro.props as PageProps;
 const locale: Locale = lang ?? Astro.locals.locale ?? "es";
 
 const { slug } = Astro.params as { slug: string };
-const client = clientFor(Astro.cookies);
-const article = await getArticle(slug, client);
+const supabase = getSupabase();
+
+interface Article {
+  id: string;
+  slug: string;
+  title: string;
+  date: string;
+  cover_url: string | null;
+  excerpt_es: string | null;
+  excerpt_en: string | null;
+  body_es: PortableTextBlock[] | null;
+  body_en: PortableTextBlock[] | null;
+  blocks: unknown[] | null;
+}
+
+let article: Article | null = null;
+if (supabase) {
+  const { data } = await supabase
+    .from("articles")
+    .select("*")
+    .eq("slug", slug)
+    .eq("published", true)
+    .single();
+  article = data as Article | null;
+}
 
 if (!article) return Astro.redirect(href("/404", locale));
 
-const title = article.title ?? slug;
-const excerpt = t(article.excerpt, locale);
-const cover = img(article.cover, { width: 2000 });
+const title = article.title;
+const excerpt = locale === "es"
+  ? (article.excerpt_es ?? article.excerpt_en ?? "")
+  : (article.excerpt_en ?? article.excerpt_es ?? "");
+const body = (locale === "es" ? article.body_es : article.body_en) ?? [];
 ---
 
 <BaseLayout title={`${title} — ${ui("diary", locale)}`} description={excerpt} locale={locale}>
@@ -31,15 +59,15 @@ const cover = img(article.cover, { width: 2000 });
       <p class="kicker">{ui("diary", locale)} · {dateFormat(article.date, locale)}</p>
       <h1 class="h1">{title}</h1>
       {excerpt ? <p class="sub" style="margin-top:14px;">{excerpt}</p> : null}
-      {cover ? <img class="articleHeader__cover" src={cover} alt={title} /> : null}
+      {article.cover_url ? <img class="articleHeader__cover" src={article.cover_url} alt={title} /> : null}
     </article>
 
-    <BlockRenderer blocks={article.blocks} locale={locale} />
+    {body.length ? <PortableText value={body} /> : null}
+    {article.blocks?.length ? <BlockRenderer blocks={article.blocks as any} locale={locale} /> : null}
   </div>
-
 </BaseLayout>
 
 <style>
   .articleHeader{ margin: 14px 0 18px; }
-  .articleHeader__cover{ width: 100%; height: auto; border-radius: var(--radius); margin-top: 22px; display: block; }
+  .articleHeader__cover{ width: 100%; height: auto; border-radius: var(--r-3); margin-top: 22px; display: block; }
 </style>
