@@ -116,6 +116,7 @@ create table if not exists public.projects (
   blocks          jsonb,                     -- page-builder blocks array
   links           jsonb,                     -- array of {label, href}
   voice           jsonb,
+  framing         jsonb,                     -- {kicker_es,kicker_en,intro_es,intro_en,meta_es,meta_en}
   published       boolean not null default false,
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now()

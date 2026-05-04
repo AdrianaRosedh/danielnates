@@ -32,8 +32,13 @@ const hasBlocks = (project.blocks?.length ?? 0) > 0;
 const legacy = tb2(project.body_es, project.body_en, locale);
 const hasLegacyBody = legacy.length > 0;
 
-type ProjectFraming = { kicker: string; intro: string; meta?: string };
-const framings: Record<string, Record<Locale, ProjectFraming>> = {
+type ProjectFramingView = { kicker: string; intro: string; meta?: string };
+
+/* Prefer DB framing (admin-editable), then fall back to the legacy
+ * hardcoded dict for the original three projects. The migration in
+ * supabase/migrations/20260503_projects_framing.sql backfills these
+ * three rows; this fallback is belt-and-suspenders for fresh DBs. */
+const fallbackFramings: Record<string, Record<Locale, ProjectFramingView>> = {
   olivea: {
     es: { kicker: "Capítulo 01 · Lo lento", intro: "Aquí cocino con lo que el huerto deja esa mañana. Valle de Guadalupe.", meta: "Estrella Michelin · Estrella Verde Michelin" },
     en: { kicker: "Chapter 01 · The slow", intro: "Here I cook with what the garden leaves that morning. Valle de Guadalupe.", meta: "Michelin Star · Michelin Green Star" },
@@ -47,7 +52,16 @@ const framings: Record<string, Record<Locale, ProjectFraming>> = {
     en: { kicker: "Chapter 03 · The first teacher", intro: "Eight years at La Casona de los Sapos. What I learned there still cooks what I do.", meta: "Puebla · 2017–2024 · Closed" },
   },
 };
-const framing = framings[brand]?.[locale] ?? null;
+
+const f = project.framing;
+let framing: ProjectFramingView | null = null;
+if (f) {
+  const kicker = (locale === "es" ? f.kicker_es : f.kicker_en) ?? "";
+  const intro  = (locale === "es" ? f.intro_es  : f.intro_en)  ?? "";
+  const meta   = (locale === "es" ? f.meta_es   : f.meta_en)   ?? "";
+  if (kicker || intro || meta) framing = { kicker, intro, meta: meta || undefined };
+}
+if (!framing) framing = fallbackFramings[brand]?.[locale] ?? null;
 ---
 
 <BaseLayout

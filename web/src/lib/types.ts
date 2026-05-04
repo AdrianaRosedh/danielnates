@@ -136,6 +136,16 @@ export interface PressKit {
 
 export type ProjectStatus = "primary" | "secondary" | "past";
 
+/** Per-project editorial framing shown above the hero on the detail page. */
+export interface ProjectFraming {
+  kicker_es?: string | null;
+  kicker_en?: string | null;
+  intro_es?: string | null;
+  intro_en?: string | null;
+  meta_es?: string | null;
+  meta_en?: string | null;
+}
+
 export interface Project {
   id: string;
   slug: string;
@@ -150,6 +160,7 @@ export interface Project {
   blocks: PageBlock[] | null;
   links: { label: string; href: string }[] | null;
   voice: VoiceTrack | null;
+  framing: ProjectFraming | null;
   published: boolean;
   created_at: string;
   updated_at: string;

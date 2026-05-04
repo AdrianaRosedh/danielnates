@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import BlocksField from "./BlocksField";
-import type { PageBlock, ProjectStatus, VoiceTrack } from "../../lib/types";
+import type { PageBlock, ProjectFraming, ProjectStatus, VoiceTrack } from "../../lib/types";
 
 type Lang = "es" | "en";
 
@@ -16,6 +16,7 @@ export interface ProjectValue {
   blocks: PageBlock[];
   links: { label: string; href: string }[];
   voice: VoiceTrack;
+  framing: ProjectFraming;
   published: boolean;
 }
 
@@ -49,6 +50,7 @@ export default function ProjectForm({ initial, isNew = false }: Props) {
     blocks: initial?.blocks ?? [],
     links: initial?.links ?? [],
     voice: initial?.voice ?? { es: "", en: "", caption: "" },
+    framing: initial?.framing ?? { kicker_es: "", kicker_en: "", intro_es: "", intro_en: "", meta_es: "", meta_en: "" },
     published: initial?.published ?? false,
   });
   const [lang, setLang] = useState<Lang>("es");
@@ -215,6 +217,41 @@ export default function ProjectForm({ initial, isNew = false }: Props) {
           value={(lang === "es" ? v.summary_es : v.summary_en) ?? ""}
           onChange={(e) => set(lang === "es" ? "summary_es" : "summary_en", e.target.value)}
           placeholder={lang === "es" ? "Una o dos frases que sitúen el proyecto." : "One or two sentences placing the project."}
+        />
+      </div>
+
+      {/* Framing — appears above the hero on the public detail page */}
+      <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22, marginTop: 32, marginBottom: 8 }}>Marco editorial</h2>
+      <p className="admin__hint" style={{ marginBottom: 12 }}>
+        Aparece encima del hero. Si está vacío, el proyecto se muestra sin esta sección. Idioma: <strong>{lang.toUpperCase()}</strong>
+      </p>
+      <div className="admin__field">
+        <label className="admin__label">Kicker ({lang.toUpperCase()})</label>
+        <input
+          className="admin__input"
+          value={(lang === "es" ? v.framing.kicker_es : v.framing.kicker_en) ?? ""}
+          onChange={(e) => set("framing", { ...v.framing, [lang === "es" ? "kicker_es" : "kicker_en"]: e.target.value })}
+          placeholder={lang === "es" ? "Capítulo 04 · Lo nuevo" : "Chapter 04 · The new"}
+        />
+      </div>
+      <div className="admin__field">
+        <label className="admin__label">Intro ({lang.toUpperCase()})</label>
+        <textarea
+          className="admin__textarea"
+          rows={2}
+          maxLength={240}
+          value={(lang === "es" ? v.framing.intro_es : v.framing.intro_en) ?? ""}
+          onChange={(e) => set("framing", { ...v.framing, [lang === "es" ? "intro_es" : "intro_en"]: e.target.value })}
+          placeholder={lang === "es" ? "Una frase corta y precisa, en presente." : "One short, precise sentence, in present tense."}
+        />
+      </div>
+      <div className="admin__field">
+        <label className="admin__label">Meta ({lang.toUpperCase()})</label>
+        <input
+          className="admin__input"
+          value={(lang === "es" ? v.framing.meta_es : v.framing.meta_en) ?? ""}
+          onChange={(e) => set("framing", { ...v.framing, [lang === "es" ? "meta_es" : "meta_en"]: e.target.value })}
+          placeholder={lang === "es" ? "Lugar · Fechas · Reconocimientos" : "Place · Dates · Recognitions"}
         />
       </div>
 

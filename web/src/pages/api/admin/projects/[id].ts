@@ -10,7 +10,7 @@ const SCALARS = [
   "published",
 ] as const;
 
-const JSON_FIELDS = ["blocks", "links", "voice"] as const;
+const JSON_FIELDS = ["blocks", "links", "voice", "framing"] as const;
 
 export const PATCH: APIRoute = async ({ params, request, cookies }) => {
   const auth = await requireAdmin(cookies);

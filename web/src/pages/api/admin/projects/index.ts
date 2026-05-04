@@ -25,6 +25,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     blocks: Array.isArray(body.blocks) ? body.blocks : [],
     links: Array.isArray(body.links) ? body.links : [],
     voice: (body.voice && typeof body.voice === "object") ? body.voice : null,
+    framing: (body.framing && typeof body.framing === "object") ? body.framing : null,
     published: Boolean(body.published ?? false),
   };
 

@@ -19,7 +19,7 @@ import type {
 import { getSupabase } from "./supabase";
 
 const ARTICLE_COLS = "id, slug, title, date, excerpt_es, excerpt_en, cover_url, tags, body_es, body_en, voice, blocks, published, created_at, updated_at";
-const PROJECT_COLS = "id, slug, title, status, summary_es, summary_en, hero_image_url, hero_video_url, body_es, body_en, blocks, links, voice, published, created_at, updated_at";
+const PROJECT_COLS = "id, slug, title, status, summary_es, summary_en, hero_image_url, hero_video_url, body_es, body_en, blocks, links, voice, framing, published, created_at, updated_at";
 const ART_COLS = "id, slug, title, cover_url, year, medium, dimensions, statement_es, statement_en, voice, blocks, published, created_at, updated_at";
 const BRIEF_COLS = "id, date, image_url, line_es, line_en, place, voice, published, created_at, updated_at";
 
