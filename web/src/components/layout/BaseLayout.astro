@@ -5,6 +5,7 @@ import CinematicEntrance from "../motion/CinematicEntrance.astro";
 import AnimationDirector from "../motion/AnimationDirector.astro";
 import MenuOverlay from "./MenuOverlay.astro";
 import { getDaniel } from "../../lib/queries";
+import { switchLocale } from "../../lib/i18n";
 
 const daniel = await getDaniel();
 
@@ -89,9 +90,9 @@ const ogImage = `${SITE}/og.png?${ogParams.toString()}`;
     {description && <meta name="twitter:description" content={description} />}
     <meta name="twitter:image" content={ogImage} />
 
-    {/* Alternate locale */}
-    <link rel="alternate" hreflang="es" href={new URL(Astro.url.pathname.replace(/^\/en/, "") || "/", SITE).toString()} />
-    <link rel="alternate" hreflang="en" href={new URL(Astro.url.pathname.startsWith("/en") ? Astro.url.pathname : `/en${Astro.url.pathname}`, SITE).toString()} />
+    {/* Alternate locale — translates asymmetric routes (sobre↔about, etc.) */}
+    <link rel="alternate" hreflang="es" href={new URL(switchLocale(Astro.url.pathname, "es"), SITE).toString()} />
+    <link rel="alternate" hreflang="en" href={new URL(switchLocale(Astro.url.pathname, "en"), SITE).toString()} />
 
     <ClientRouter />
 

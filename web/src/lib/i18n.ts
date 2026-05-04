@@ -54,9 +54,30 @@ export function stripLocale(pathname: string): string {
   return pathname || "/";
 }
 
-/** Switch the locale on a given pathname. */
+/* Asymmetric routes: bare ES slug ↔ bare EN slug. Symmetric routes
+ * (diario, arte, contacto, project root slugs) are not in the table — they
+ * fall through unchanged. */
+const ES_TO_EN_SLUG: Record<string, string> = {
+  "/sobre": "/about",
+  "/prensa": "/press",
+  "/dia": "/day",
+  "/proyectos": "/projects",
+};
+const EN_TO_ES_SLUG: Record<string, string> = Object.fromEntries(
+  Object.entries(ES_TO_EN_SLUG).map(([es, en]) => [en, es]),
+);
+
+/** Translate a locale-stripped bare path to its equivalent under `target`.
+ *  Pass-through if the route uses the same slug in both locales. */
+function translateBare(bare: string, target: Locale): string {
+  if (target === "en") return ES_TO_EN_SLUG[bare] ?? bare;
+  return EN_TO_ES_SLUG[bare] ?? bare;
+}
+
+/** Switch the locale on a given pathname, translating asymmetric slugs. */
 export function switchLocale(pathname: string, target: Locale): string {
-  return href(stripLocale(pathname), target);
+  const bare = stripLocale(pathname);
+  return href(translateBare(bare, target), target);
 }
 
 /** Press page has different slugs per locale. */
