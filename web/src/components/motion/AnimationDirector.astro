@@ -318,6 +318,30 @@
     return r[n - 1] ?? String(n);
   }
 
+  /* ── Service scene — clay → ember color bleed (the hot moment) ── */
+  /* A pinned 200vh section whose background is built from color-mix
+   * driven by --scene-p. As the viewer scrolls past, the room
+   * visibly oxidizes from clay-tinted ink to ember-tinted ink — the
+   * type stays still, the color does the emotional work. */
+  function setupService() {
+    const scenes = document.querySelectorAll<HTMLElement>("[data-service]");
+    scenes.forEach((scene) => {
+      gsap.fromTo(scene,
+        { "--scene-p": 0 },
+        {
+          "--scene-p": 1,
+          ease: "none",
+          scrollTrigger: {
+            trigger: scene,
+            start: "top top",
+            end: "bottom top",
+            scrub: 1,
+          },
+        } as gsap.TweenVars,
+      );
+    });
+  }
+
   /* ── Frame scenes — single-photo meditative moments ───────────── */
   /* Each [data-frame] is a 200vh tall scene with a sticky [data-frame-plate]
    * inside. The plate starts small and softly faded, scales up to 100% as
@@ -539,6 +563,7 @@
     setupHeroes();
     setupNotebook();
     setupFrames();
+    setupService();
     setupDockChrome();
     setupAnchors();
     setupCardSpotlight();

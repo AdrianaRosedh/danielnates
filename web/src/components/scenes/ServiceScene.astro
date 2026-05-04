@@ -1,0 +1,183 @@
+---
+/**
+ * ServiceScene — the hot moment of the landing.
+ *
+ * A pinned 200vh section. As the viewer scrolls, a CSS variable
+ * (--scene-p, 0..1) is tweened by AnimationDirector with scrub.
+ * The section's background is built from color-mix() functions that
+ * depend on --scene-p — so the room visibly OXIDIZES from earth
+ * (clay) to ember as the quote is read.
+ *
+ * The pulled quote does its existing word-stagger reveal (TextReveal
+ * mode="word") on top of this drifting room. Color does the
+ * emotional work — type does the meaning.
+ *
+ * This is the ONLY place --ember appears as more than a hairline.
+ *
+ *   <ServiceScene
+ *     index="III"
+ *     quote="El cuchillo y el lápiz hacen lo mismo: marcar."
+ *     attribution="Daniel Nates · Olivea · MMXXVI"
+ *   />
+ */
+
+import TextReveal from "../motion/TextReveal.astro";
+import type { Locale } from "../../lib/types";
+
+interface Props {
+  index?: string;
+  quote?: string;
+  attribution?: string;
+  locale?: Locale;
+}
+
+const {
+  index = "III",
+  quote,
+  attribution,
+  locale: propLocale,
+} = Astro.props as Props;
+const locale: Locale = propLocale ?? Astro.locals.locale ?? "es";
+
+const finalQuote = quote ?? (locale === "es"
+  ? "El cuchillo y el lápiz hacen lo mismo: marcar."
+  : "The knife and the pencil do the same thing: make a mark.");
+
+const finalAttr = attribution ?? (locale === "es"
+  ? "Daniel Nates · Olivea · MMXXVI"
+  : "Daniel Nates · Olivea · MMXXVI");
+
+const eyebrow = locale === "es" ? "El Servicio" : "Service";
+---
+
+<section class="service scene--ink" data-scene="ink" data-service>
+
+  <div class="service__pin" data-service-pin>
+
+    {/* Eyebrow + chapter mark */}
+    <header class="service__chrome">
+      <span class="service__index">{index}</span>
+      <span class="service__rule" aria-hidden="true"></span>
+      <span class="service__eyebrow">{eyebrow}</span>
+    </header>
+
+    {/* The quote — word-stagger reveal happens via the existing
+        TextReveal pipeline. The room drifts from clay to ember
+        underneath it. */}
+    <blockquote class="service__quote">
+      <TextReveal as="p" mode="word" class="service__line">{finalQuote}</TextReveal>
+      <footer class="service__attr">
+        <span class="service__attrDot" aria-hidden="true"></span>
+        <span>{finalAttr}</span>
+      </footer>
+    </blockquote>
+
+  </div>
+</section>
+
+<style>
+  .service{
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    /* 200vh runway so the color drift takes time to read. */
+    min-height: 200vh;
+    /* The drift is built from color-mix on a CSS var. AnimationDirector
+       tweens --scene-p from 0 to 1 with scrub. Top stop = clay-tinted
+       ink, bottom stop = ember-tinted ink. */
+    --scene-p: 0;
+    background:
+      linear-gradient(180deg,
+        color-mix(in srgb, var(--clay)  calc(var(--scene-p) * 26%), var(--ink-2)) 0%,
+        color-mix(in srgb, var(--ember) calc(var(--scene-p) * 22%), var(--ink-2)) 100%);
+    color: var(--bone);
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* The pin holds the whole composition in the centre while the scroll
+     drives the color shift. Sticky inside the 200vh shell. */
+  .service__pin{
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    padding: clamp(80px, 12vh, 132px) clamp(28px, 8vw, 132px);
+    max-width: 1200px;
+    margin: 0 auto;
+    gap: clamp(36px, 6vh, 88px);
+  }
+
+  /* Chrome — ordinal mark + eyebrow, sage chapter-mark grammar
+     consistent with Manifesto / Frame. */
+  .service__chrome{
+    display: inline-flex;
+    align-items: center;
+    gap: clamp(14px, 2vw, 22px);
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--ochre) 80%, var(--bone));
+  }
+  .service__index{
+    font-feature-settings: "tnum";
+    color: var(--ochre);
+  }
+  .service__rule{
+    width: 28px;
+    height: 1px;
+    background: color-mix(in srgb, var(--ochre) 70%, transparent);
+  }
+  .service__eyebrow{ color: rgba(239,230,212,.78); }
+
+  /* The quote itself — display italic, big, narrow column for
+     readability + emphasis. Color shifts toward bone-warmed-with-
+     ochre as --scene-p climbs. */
+  .service__quote{
+    margin: 0;
+    max-width: 22ch;
+  }
+  .service__line{
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 400;
+    font-size: clamp(36px, 6vw, 84px);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    color: color-mix(in srgb,
+      var(--bone),
+      var(--ochre) calc(var(--scene-p) * 18%));
+    margin: 0;
+  }
+  .service__attr{
+    margin-top: clamp(28px, 4vh, 56px);
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+    font-feature-settings: "tnum";
+    color: rgba(239,230,212,.55);
+  }
+  .service__attrDot{
+    width: 7px; height: 7px;
+    border-radius: 999px;
+    background: color-mix(in srgb,
+      var(--ochre),
+      var(--ember) calc(var(--scene-p) * 100%));
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--ember) calc(var(--scene-p) * 24%), transparent);
+    transition: box-shadow 200ms var(--ease-fluid);
+  }
+
+  /* Reduced motion — present the quote at the warmer end of the
+     gradient and skip the color drift. */
+  @media (prefers-reduced-motion: reduce){
+    .service{ --scene-p: 1; min-height: 100vh; }
+  }
+</style>

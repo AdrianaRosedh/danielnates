@@ -6,6 +6,8 @@ import TopDock from "../components/layout/TopDock.astro";
 import ColdOpen from "../components/scenes/ColdOpen.astro";
 import NotebookScene from "../components/scenes/NotebookScene.astro";
 import FrameScene from "../components/scenes/FrameScene.astro";
+import ServiceScene from "../components/scenes/ServiceScene.astro";
+import LedgerBrief from "../components/scenes/LedgerBrief.astro";
 import Closing from "../components/scenes/Closing.astro";
 
 import { getDaniel } from "../lib/queries";
@@ -16,21 +18,23 @@ interface PageProps { lang?: Locale }
 const { lang } = Astro.props as PageProps;
 const locale: Locale = lang ?? Astro.locals.locale ?? "es";
 
-/* Landing page composition — six chapters, four scenes (two of the
- * chapters live INSIDE NotebookScene as spreads).
+/* Landing page composition — six chapters, six scenes.
  *
- *   0 · Aparición   — ColdOpen        (ink, garden photo at full presence)
- *   I · El Cuaderno — NotebookScene   (CREAM, horizontal page-turn signature)
- * II · El Huerto    — FrameScene moss (moss-tinted ink, inverse parallax rest)
- *  V · Coda         — Closing         (mist→ink gradient, the film ends)
+ *   0 · Aparición    — ColdOpen        (ink, garden photo at full presence)
+ *   I · El Cuaderno  — NotebookScene   (CREAM, horizontal page-turn signature)
+ *  II · El Huerto    — FrameScene moss (moss-tinted ink, inverse parallax rest)
+ * III · El Servicio  — ServiceScene    (clay → ember scrub'd color bleed, pulled quote)
+ *  IV · La Mesa      — LedgerBrief     (CREAM, ledger of what's open right now)
+ *   V · Coda         — Closing         (mist → ink gradient, the film ends)
+ *
+ * Color rhythm: ink → CREAM → moss-ink → clay-ember → CREAM → mist-ink.
+ * Six distinctly-coloured rooms — the all-black problem solved
+ * structurally, not cosmetically.
  *
  * Manifesto, three ChapterHeros, MagazineSpread, AtelierPreview and
- * TheLine all moved off the landing page — they're a survey of
- * everything Daniel does, but the landing should make ONE argument:
- * the same hand cooks and draws. The Notebook IS that argument.
- *
- * The chapter pages (/olivea, /fritanguita, /maizal, /diario, /arte,
- * /sobre, /prensa, /proyectos, /contacto) are unchanged. */
+ * TheLine all live on dedicated pages, not the landing — the landing
+ * makes ONE argument: the same hand cooks and draws. The Notebook IS
+ * that argument; everything else supports it. */
 
 const daniel = await getDaniel();
 
@@ -93,6 +97,25 @@ const heroMeta = locale === "es"
       : "When the kitchen listens to the field first."}
     place="Olivea · Valle de Guadalupe · MMXXVI"
     ratio="16/9"
+    locale={locale}
+  />
+
+  {/* III · El Servicio — the hot moment. Pinned 200vh. The room
+      visibly oxidizes from clay-tinted ink to ember-tinted ink as
+      you scroll past. The pulled quote stays still; color does the
+      emotional work. The ONLY place ember appears as more than a
+      hairline. */}
+  <ServiceScene
+    index="III"
+    locale={locale}
+  />
+
+  {/* IV · La Mesa — practical. Cream surface, ledger of three rows
+      (Olivea / Fritanguita / Maizal) with current state + CTA.
+      Brand-color marks reveal on hover. Returns the eye to cream
+      after the heat. */}
+  <LedgerBrief
+    index="IV"
     locale={locale}
   />
 

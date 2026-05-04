@@ -1,0 +1,292 @@
+---
+/**
+ * LedgerBrief — the practical chapter. Cream surface, three ledger
+ * rows, one per active project. Each row is a ship's-log entry:
+ *   project name | current state | CTA
+ *
+ * Hover state on each row reveals a brand-color mark on the left —
+ * visitors get a tactile sense of which "world" they're entering
+ * before they click.
+ *
+ * Reads as a printed document, not a marketing strip. Returns the
+ * eye to cream after the heat of ServiceScene.
+ *
+ * Defaults to the three known projects; pass `entries` to override.
+ */
+
+import type { Locale } from "../../lib/types";
+import { href } from "../../lib/i18n";
+
+interface Entry {
+  brand: "olivea" | "fritanguita" | "maizal";
+  project: string;
+  state: string;
+  href: string;
+  cta: string;
+}
+
+interface Props {
+  index?: string;
+  title?: string;
+  entries?: Entry[];
+  locale?: Locale;
+}
+
+const {
+  index = "IV",
+  title,
+  entries,
+  locale: propLocale,
+} = Astro.props as Props;
+const locale: Locale = propLocale ?? Astro.locals.locale ?? "es";
+
+const finalTitle = title ?? (locale === "es" ? "La Mesa" : "The Table");
+
+const finalEntries: Entry[] = entries ?? [
+  {
+    brand: "olivea",
+    project: "Olivea",
+    state: locale === "es"
+      ? "Carta del huerto · Valle de Guadalupe"
+      : "Garden menu · Valle de Guadalupe",
+    href: href("/olivea", locale),
+    cta: locale === "es" ? "Capítulo Olivea" : "Chapter Olivea",
+  },
+  {
+    brand: "fritanguita",
+    project: "Fritanguita",
+    state: locale === "es"
+      ? "Roma Norte · CDMX · con Santiago Muñoz"
+      : "Roma Norte · CDMX · with Santiago Muñoz",
+    href: href("/fritanguita", locale),
+    cta: locale === "es" ? "Capítulo Fritanguita" : "Chapter Fritanguita",
+  },
+  {
+    brand: "maizal",
+    project: "Maizal",
+    state: locale === "es"
+      ? "Puebla · 2017–2024 · archivo"
+      : "Puebla · 2017–2024 · archive",
+    href: href("/maizal", locale),
+    cta: locale === "es" ? "Capítulo Maizal" : "Chapter Maizal",
+  },
+];
+
+const eyebrow = locale === "es" ? "La Mesa" : "The Table";
+const lede = locale === "es"
+  ? "Lo que está pasando ahora — y dónde."
+  : "What's happening right now — and where.";
+---
+
+<section class="ledger scene--bone" data-scene="bone" data-ledger>
+
+  <div class="ledger__inner">
+
+    {/* Chrome — chapter mark + eyebrow + lede in cream-page grammar */}
+    <header class="ledger__chrome">
+      <div class="ledger__head">
+        <span class="ledger__index">{index}</span>
+        <span class="ledger__rule" aria-hidden="true"></span>
+        <span class="ledger__eyebrow">{eyebrow}</span>
+      </div>
+      <h2 class="ledger__title">{finalTitle}</h2>
+      <p class="ledger__lede">{lede}</p>
+    </header>
+
+    {/* The three rows — read as ledger entries, hover reveals
+        a brand-color mark on the left. */}
+    <ul class="ledger__list" role="list">
+      {finalEntries.map((entry) => (
+        <li class="ledger__item">
+          <a class="ledger__row" href={entry.href} data-brand={entry.brand}>
+            <span class="ledger__mark" aria-hidden="true"></span>
+            <span class="ledger__project">{entry.project}</span>
+            <span class="ledger__state">{entry.state}</span>
+            <span class="ledger__cta">
+              <span>{entry.cta}</span>
+              <span aria-hidden="true">→</span>
+            </span>
+          </a>
+        </li>
+      ))}
+    </ul>
+
+  </div>
+</section>
+
+<style>
+  .ledger{
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    background:
+      radial-gradient(60% 50% at 50% 0%,
+        color-mix(in srgb, var(--paper) 50%, var(--bone)),
+        var(--bone) 70%),
+      var(--bone);
+    color: var(--ink);
+    padding: clamp(80px, 12vw, 180px) clamp(20px, 5vw, 80px);
+  }
+
+  .ledger__inner{
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  /* Chrome */
+  .ledger__chrome{ margin-bottom: clamp(48px, 8vw, 96px); }
+  .ledger__head{
+    display: inline-flex;
+    align-items: center;
+    gap: clamp(12px, 1.6vw, 22px);
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+    color: var(--moss);
+    margin-bottom: clamp(20px, 3vw, 36px);
+  }
+  .ledger__index{ font-feature-settings: "tnum"; }
+  .ledger__rule{
+    width: 28px;
+    height: 1px;
+    background: color-mix(in srgb, var(--moss) 60%, transparent);
+  }
+  .ledger__eyebrow{ color: rgba(14,15,12,.55); }
+
+  .ledger__title{
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(48px, 8vw, 120px);
+    line-height: .95;
+    letter-spacing: -0.025em;
+    color: var(--ink);
+  }
+  .ledger__lede{
+    margin: clamp(16px, 2vw, 24px) 0 0;
+    max-width: 56ch;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: clamp(18px, 1.6vw, 24px);
+    line-height: 1.4;
+    color: rgba(14,15,12,.65);
+  }
+
+  /* The list */
+  .ledger__list{
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    /* Top hairline = first entry's top border */
+    border-top: 1px solid color-mix(in srgb, var(--moss) 22%, rgba(14,15,12,.10));
+  }
+  .ledger__item{
+    border-bottom: 1px solid color-mix(in srgb, var(--moss) 22%, rgba(14,15,12,.10));
+  }
+
+  /* The row — grid of [mark | project | state | cta]. Sage hairline
+     between rows, cream lift + brand mark reveal on hover. */
+  .ledger__row{
+    display: grid;
+    grid-template-columns: 32px clamp(160px, 22vw, 260px) 1fr auto;
+    align-items: baseline;
+    gap: clamp(16px, 3vw, 36px);
+    padding: clamp(28px, 4vw, 56px) clamp(8px, 1vw, 16px);
+    color: var(--ink);
+    transition:
+      background 600ms var(--ease-fluid),
+      padding-left 600ms var(--ease-fluid),
+      color 600ms var(--ease-fluid);
+  }
+  .ledger__row:hover{
+    background: color-mix(in srgb, var(--paper) 40%, transparent);
+    padding-left: clamp(16px, 2vw, 24px);
+  }
+  .ledger__row:hover .ledger__mark{
+    transform: scale(1);
+    opacity: 1;
+  }
+  .ledger__row:hover .ledger__cta{
+    color: var(--ink);
+    border-bottom-color: var(--ink);
+  }
+  .ledger__row:hover .ledger__cta span:last-child{
+    transform: translateX(4px);
+  }
+
+  /* Brand mark — accent dot whose color comes from the brands.css
+     per-project palette. Hidden by default; reveals on hover. */
+  .ledger__mark{
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    transform: scale(.4);
+    opacity: 0;
+    transition:
+      transform 600ms var(--ease-fluid),
+      opacity 600ms var(--ease-fluid);
+  }
+  [data-brand="olivea"] .ledger__mark{
+    background: var(--olivar);
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--olivar) 18%, transparent);
+  }
+  [data-brand="fritanguita"] .ledger__mark{
+    background: #2E6B3F;
+    box-shadow: 0 0 0 5px color-mix(in srgb, #2E6B3F 18%, transparent);
+  }
+  [data-brand="maizal"] .ledger__mark{
+    background: var(--clay);
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--clay) 18%, transparent);
+  }
+
+  .ledger__project{
+    font-family: var(--font-display);
+    font-size: clamp(28px, 3.2vw, 44px);
+    line-height: 1.1;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+  }
+  .ledger__state{
+    font-family: var(--font-sans);
+    font-size: clamp(13px, 1vw, 15px);
+    color: rgba(14,15,12,.65);
+    line-height: 1.5;
+  }
+  .ledger__cta{
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--moss);
+    border-bottom: 1px solid color-mix(in srgb, var(--moss) 50%, transparent);
+    padding-bottom: 1px;
+    transition:
+      color 400ms var(--ease-fluid),
+      border-color 400ms var(--ease-fluid);
+  }
+  .ledger__cta span:last-child{
+    transition: transform 600ms var(--ease-fluid);
+    display: inline-block;
+  }
+
+  /* Tighten on small screens — drop state into its own row. */
+  @media (max-width: 880px){
+    .ledger__row{
+      grid-template-columns: 16px 1fr;
+      grid-template-areas:
+        "mark project"
+        ".    state"
+        ".    cta";
+      gap: 6px 16px;
+      padding: clamp(24px, 5vw, 40px) clamp(8px, 2vw, 16px);
+    }
+    .ledger__mark{ grid-area: mark; align-self: center; }
+    .ledger__project{ grid-area: project; font-size: clamp(24px, 7vw, 32px); }
+    .ledger__state{ grid-area: state; margin-top: 6px; }
+    .ledger__cta{ grid-area: cta; margin-top: 14px; }
+  }
+</style>
