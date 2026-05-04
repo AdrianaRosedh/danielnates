@@ -13,6 +13,8 @@ let rows: Array<{
   title: string;
   status: string | null;
   hero_image_url: string | null;
+  summary_es: string | null;
+  summary_en: string | null;
   published: boolean;
   updated_at: string;
 }> = [];
@@ -20,10 +22,9 @@ let rows: Array<{
 if (supabase) {
   let q = supabase
     .from("projects")
-    .select("id, slug, title, status, hero_image_url, published, updated_at")
+    .select("id, slug, title, status, hero_image_url, summary_es, summary_en, published, updated_at")
     .order("updated_at", { ascending: false })
     .limit(200);
-  // Scoped users (e.g. Fritanguita team) only see their project.
   if (!isFullAdmin) q = q.eq("slug", scope);
   const { data } = await q;
   rows = (data ?? []) as typeof rows;
@@ -42,8 +43,13 @@ function statusLabel(s: string | null) {
 <AdminLayout title="Proyectos · Admin" active="projects">
   <header class="admin__head">
     <div>
-      <p class="admin__crumb">Contenido</p>
-      <h1 class="admin__title">Proyectos</h1>
+      <p class="admin__crumb">{isFullAdmin ? "Contenido" : "Tu página"}</p>
+      <h1 class="admin__title">{isFullAdmin ? "Proyectos" : "Editar página"}</h1>
+      {isFullAdmin ? (
+        <p class="admin__lede" style="margin-top: 8px; max-width: 60ch; color: var(--text-2); font-family: var(--font-display); font-size: 16px; line-height: 1.5;">
+          Cada proyecto se muestra como una página propia. Para editar el orden de los bloques, abrir cualquier tarjeta.
+        </p>
+      ) : null}
     </div>
     {isFullAdmin ? (
       <a class="admin__btn admin__btn--primary" href="/admin/projects/new">+ Nuevo proyecto</a>
@@ -51,32 +57,56 @@ function statusLabel(s: string | null) {
   </header>
 
   {rows.length ? (
-    <div class="admin__list">
+    <section class="cardgrid" style="margin-top: 32px;">
       {rows.map((p) => (
-        <a class="admin__row" href={`/admin/projects/${p.id}`}>
-          {p.hero_image_url ? (
-            <img src={p.hero_image_url} alt="" />
-          ) : (
-            <div style="width: 64px; height: 80px; background: rgba(244,239,230,.04); border-radius: 6px;"></div>
-          )}
-          <div class="admin__rowMain">
-            <h3>{p.title}</h3>
-            <p>/{p.slug} · {statusLabel(p.status)}</p>
+        <a class="card" href={`/admin/projects/${p.id}`}>
+          <div class={`card__media${p.hero_image_url ? "" : " card__media--placeholder"}`}>
+            {p.hero_image_url ? (
+              <img src={p.hero_image_url} alt={p.title} loading="lazy" />
+            ) : (
+              <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family: var(--font-display); font-size: 80px; color: rgba(244,239,230,.18); letter-spacing: -0.04em;">
+                {p.title.charAt(0)}
+              </div>
+            )}
+            <span class={`card__pill${p.published ? " card__pill--published" : ""}`}>
+              {p.published ? "Publicado" : "Borrador"}
+            </span>
           </div>
-          <span class={`admin__pill${p.published ? " admin__pill--published" : ""}`}>
-            {p.published ? "Publicado" : "Borrador"}
-          </span>
-          <span class="admin__rowMeta">{new Date(p.updated_at).toLocaleDateString("es-ES", { day: "numeric", month: "short" })}</span>
+          <div class="card__body">
+            <p class="card__kicker">/{p.slug} · {statusLabel(p.status)}</p>
+            <h3 class="card__title">{p.title}</h3>
+            {(p.summary_es ?? p.summary_en) ? (
+              <p class="card__meta">{p.summary_es ?? p.summary_en}</p>
+            ) : null}
+            <p class="card__foot">
+              <span>Editar</span>
+              <span>{new Date(p.updated_at).toLocaleDateString("es-ES", { day: "numeric", month: "short" })}</span>
+            </p>
+          </div>
         </a>
       ))}
-    </div>
+      {isFullAdmin ? (
+        <a class="card card--add" href="/admin/projects/new">
+          <span class="card--add__plus">+</span>
+          <span class="card--add__label">Nuevo proyecto</span>
+        </a>
+      ) : null}
+    </section>
   ) : (
-    <div class="admin__list" style="padding: 40px; text-align: center;">
-      <p style="margin: 0; color: var(--text-2);">
-        {isFullAdmin ? "Aún no hay proyectos." : `Tu proyecto (${scope}) aún no existe — pídele a un admin que lo cree.`}
+    <div class="empty" style="margin-top: 32px;">
+      <span class="empty__mark" aria-hidden="true">
+        <svg viewBox="0 0 16 16" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2.5" y="3" width="11" height="3" rx="0.5"/><rect x="2.5" y="7" width="11" height="3" rx="0.5"/><rect x="2.5" y="11" width="11" height="2.5" rx="0.5"/>
+        </svg>
+      </span>
+      <h3 class="empty__title">{isFullAdmin ? "Aún no hay proyectos" : "Tu proyecto aún no existe"}</h3>
+      <p class="empty__sub">
+        {isFullAdmin
+          ? "Olivea, Fritanguita y Maizal vienen sembrados — si no los ves, revisa que la migración se haya aplicado a este Supabase."
+          : `Pídele a un admin con acceso completo que cree el proyecto "${scope}".`}
       </p>
       {isFullAdmin ? (
-        <a class="admin__btn admin__btn--primary" href="/admin/projects/new" style="margin-top: 16px;">Crear el primero</a>
+        <a class="admin__btn admin__btn--primary" href="/admin/projects/new" style="margin-top: 8px;">+ Crear el primero</a>
       ) : null}
     </div>
   )}

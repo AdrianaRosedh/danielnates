@@ -4,100 +4,102 @@ import AdminLayout from "../../components/admin/AdminLayout.astro";
 import { getSupabaseFromRequest } from "../../lib/supabase";
 
 const supabase = getSupabaseFromRequest(Astro.cookies);
+const scope = Astro.locals.adminScope ?? "all";
+const isFullAdmin = scope === "all";
+
+interface Tile {
+  href: string;
+  label: string;
+  hint: string;
+  count: number;
+  cover?: string | null;
+  /* For visually empty content types we use a typographic plate. */
+  glyph?: string;
+  scope: "all" | "scoped";
+}
+
 async function count(table: string): Promise<number> {
   if (!supabase) return 0;
   const { count } = await supabase.from(table).select("*", { count: "exact", head: true });
   return count ?? 0;
 }
 
-const [briefs, articles, art, projects, fieldNotes, mentions, messages] = await Promise.all([
-  count("daily_briefs"),
-  count("articles"),
-  count("art_pieces"),
-  count("projects"),
-  count("field_notes"),
-  count("press_mentions"),
-  count("contact_messages"),
-]);
+async function latestCover(table: string, col: string, extra?: { eq?: [string, string] }): Promise<string | null> {
+  if (!supabase) return null;
+  let q = supabase.from(table).select(`${col}`).not(col, "is", null).order("created_at", { ascending: false }).limit(1);
+  if (extra?.eq) q = q.eq(extra.eq[0], extra.eq[1]);
+  const { data } = await q.maybeSingle();
+  return ((data as Record<string, unknown> | null)?.[col] as string | null) ?? null;
+}
 
-const tiles = [
-  { href: "/admin/daily", label: "Brief diario", count: briefs, hint: "Una imagen, una línea, hoy." },
-  { href: "/admin/articles", label: "Diario", count: articles, hint: "Notas, ensayos." },
-  { href: "/admin/art", label: "Arte", count: art, hint: "Lo que la mano hace." },
-  { href: "/admin/projects", label: "Proyectos", count: projects, hint: "Olivea, Fritanguita, Maizal." },
-  { href: "/admin/field-notes", label: "Field Notes", count: fieldNotes, hint: "Apuntes rápidos." },
-  { href: "/admin/press", label: "Press menciones", count: mentions, hint: "Lo que escriben sobre Daniel." },
-  { href: "/admin/messages", label: "Mensajes", count: messages, hint: "Contacto recibido." },
+async function projectCount(): Promise<number> {
+  if (!supabase) return 0;
+  let q = supabase.from("projects").select("*", { count: "exact", head: true });
+  if (!isFullAdmin) q = q.eq("slug", scope);
+  const { count } = await q;
+  return count ?? 0;
+}
+async function projectCover(): Promise<string | null> {
+  if (!supabase) return null;
+  let q = supabase.from("projects").select("hero_image_url").not("hero_image_url", "is", null).order("updated_at", { ascending: false }).limit(1);
+  if (!isFullAdmin) q = q.eq("slug", scope);
+  const { data } = await q.maybeSingle();
+  return ((data as { hero_image_url: string | null } | null)?.hero_image_url) ?? null;
+}
+
+const tiles: Tile[] = isFullAdmin ? [
+  { href: "/admin/daily",       label: "Día · brief",   hint: "Una imagen, una línea — hoy.",                count: await count("daily_briefs"),  cover: await latestCover("daily_briefs", "image_url"), scope: "all" },
+  { href: "/admin/articles",    label: "Artículos",     hint: "Notas, ensayos, lecturas.",                   count: await count("articles"),      cover: await latestCover("articles", "cover_url"),     scope: "all" },
+  { href: "/admin/art",         label: "Arte",          hint: "Lo que la mano hace cuando no cocina.",       count: await count("art_pieces"),    cover: await latestCover("art_pieces", "cover_url"),   scope: "all" },
+  { href: "/admin/projects",    label: "Proyectos",     hint: "Olivea, Fritanguita, Maizal.",                count: await projectCount(),         cover: await projectCover(),                            scope: "all" },
+  { href: "/admin/field-notes", label: "Field Notes",   hint: "Apuntes rápidos del cuaderno.",               count: await count("field_notes"),   glyph: "FN", scope: "all" },
+  { href: "/admin/press",       label: "Press menciones", hint: "Lo que escriben sobre Daniel.",            count: await count("press_mentions"), glyph: "PR", scope: "all" },
+  { href: "/admin/messages",    label: "Mensajes",      hint: "Contacto recibido.",                          count: await count("contact_messages"), glyph: "✉",  scope: "all" },
+] : [
+  { href: "/admin/projects",    label: "Tu página",     hint: `Editar la página de ${scope}.`,               count: await projectCount(),         cover: await projectCover(),                            scope: "scoped" },
 ];
+
+const headline = isFullAdmin
+  ? "Todo lo que aparece en danielnates.com vive aquí."
+  : `Bienvenido. Tu acceso edita la página de ${scope}.`;
 ---
 
 <AdminLayout title="Admin · Dashboard" active="dashboard">
   <header class="admin__head">
     <div>
-      <p class="admin__crumb">Daniel Nates</p>
+      <p class="admin__crumb">{isFullAdmin ? "Daniel Nates" : "Equipo"}</p>
       <h1 class="admin__title">Dashboard</h1>
+      <p class="admin__lede" style="margin-top: 8px; max-width: 60ch; color: var(--text-2); font-family: var(--font-display); font-size: 16px; line-height: 1.5;">
+        {headline}
+      </p>
     </div>
-    <a class="admin__btn admin__btn--primary" href="/admin/daily/new">+ Nuevo brief diario</a>
+    {isFullAdmin ? (
+      <a class="admin__btn admin__btn--primary" href="/admin/daily/new">+ Brief de hoy</a>
+    ) : null}
   </header>
 
-  <div class="dash">
+  <section class="cardgrid" style="margin-top: 32px;">
     {tiles.map((t) => (
-      <a class="dash__tile" href={t.href}>
-        <p class="dash__count">{t.count}</p>
-        <p class="dash__label">{t.label}</p>
-        <p class="dash__hint">{t.hint}</p>
+      <a class="card" href={t.href} aria-label={`${t.label} — ${t.count} ${t.count === 1 ? "elemento" : "elementos"}`}>
+        <div class={`card__media${t.cover ? "" : " card__media--placeholder"}`}>
+          {t.cover ? (
+            <img src={t.cover} alt="" loading="lazy" />
+          ) : (
+            <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family: var(--font-display); font-size: 64px; color: rgba(244,239,230,.18); letter-spacing: -0.04em;">
+              {t.glyph ?? t.label.charAt(0)}
+            </div>
+          )}
+        </div>
+        <div class="card__body">
+          <p class="card__kicker">{t.count} {t.count === 1 ? "elemento" : "elementos"}</p>
+          <h3 class="card__title">{t.label}</h3>
+          <p class="card__meta">{t.hint}</p>
+          <p class="card__foot">
+            <span>Abrir</span>
+            <span aria-hidden="true">→</span>
+          </p>
+        </div>
       </a>
     ))}
-  </div>
+  </section>
 </AdminLayout>
-
-<style>
-  .dash{
-    display: grid;
-    gap: 14px;
-    grid-template-columns: 1fr;
-  }
-  @media (min-width: 720px){ .dash{ grid-template-columns: repeat(2, 1fr); } }
-  @media (min-width: 1100px){ .dash{ grid-template-columns: repeat(3, 1fr); } }
-
-  .dash__tile{
-    display: block;
-    padding: 28px;
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    background: #0E0F0C;
-    color: var(--bone);
-    transition:
-      border-color 600ms var(--ease-fluid),
-      transform 600ms var(--ease-fluid),
-      background 600ms var(--ease-fluid);
-  }
-  .dash__tile:hover{
-    border-color: var(--line-2);
-    background: #11120E;
-    transform: translateY(-2px);
-  }
-  .dash__count{
-    margin: 0;
-    font-family: var(--font-display);
-    font-size: 64px;
-    line-height: 1;
-    letter-spacing: -0.03em;
-    color: var(--bone);
-  }
-  .dash__label{
-    margin: 14px 0 4px;
-    font-family: var(--font-sans);
-    font-size: 11px;
-    letter-spacing: .22em;
-    text-transform: uppercase;
-    color: var(--text-2);
-  }
-  .dash__hint{
-    margin: 0;
-    font-family: var(--font-display);
-    font-style: italic;
-    font-size: 14px;
-    color: var(--text-3);
-  }
-</style>

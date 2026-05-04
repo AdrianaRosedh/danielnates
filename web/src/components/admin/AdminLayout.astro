@@ -12,76 +12,157 @@ const user = Astro.locals.user;
 const scope = Astro.locals.adminScope ?? "all";
 const isFullAdmin = scope === "all";
 
-type NavLink = { href: string; label: string; key?: Props["active"]; group?: undefined };
-type NavGroup = { group: string; href?: undefined; label?: undefined; key?: undefined };
-type NavItem = NavLink | NavGroup;
+/* App identity — visualises which "world" the user is in. The accent
+ * tints the brand mark, the hover/active states, and the small dot
+ * next to each nav item. Scoped users only ever see their app. */
+type AppId = "daniel" | "fritanguita" | "olivea" | "maizal";
+interface AppDef { id: AppId; label: string; tagline: string; accent: string; href: string }
+const APPS: AppDef[] = [
+  { id: "daniel",      label: "Daniel Nates",  tagline: "Cocinero · Dibujante",         accent: "#EFE6D4", href: "/admin" },
+  { id: "fritanguita", label: "Fritanguita",   tagline: "Roma Norte · CDMX",            accent: "#3FAA67", href: "/admin/projects" },
+  { id: "olivea",      label: "Olivea",        tagline: "Valle de Guadalupe",           accent: "#7C8B5E", href: "/admin/projects" },
+  { id: "maizal",      label: "Maizal",        tagline: "Puebla · 2017–2024",           accent: "#A8896E", href: "/admin/projects" },
+];
 
-/* Build nav based on scope. Scoped users (e.g. Fritanguita team) only
- * see Dashboard + Projects (filtered to their slug at the page level).
- * Full admins see everything. */
-const items: NavItem[] = isFullAdmin
-  ? [
-      { href: "/admin", label: "Dashboard", key: "dashboard" },
-      { group: "Singletons" },
-      { href: "/admin/site", label: "Ajustes del sitio", key: "site" },
-      { href: "/admin/daniel", label: "Daniel", key: "daniel" },
-      { href: "/admin/press-kit", label: "Prensa (kit)", key: "press_kit" },
-      { group: "Contenido" },
-      { href: "/admin/daily", label: "Brief diario", key: "daily" },
-      { href: "/admin/projects", label: "Proyectos", key: "projects" },
-      { href: "/admin/articles", label: "Diario", key: "articles" },
-      { href: "/admin/art", label: "Arte", key: "art" },
-      { href: "/admin/field-notes", label: "Field Notes", key: "field_notes" },
-      { href: "/admin/press", label: "Press menciones", key: "press" },
-      { group: "Inbox" },
-      { href: "/admin/messages", label: "Contacto", key: "messages" },
-    ]
-  : [
-      { href: "/admin", label: "Dashboard", key: "dashboard" },
-      { group: "Tu proyecto" },
-      { href: "/admin/projects", label: "Proyecto", key: "projects" },
-    ];
+const currentApp: AppDef = isFullAdmin
+  ? APPS[0]                                                       // full admin = Daniel context
+  : (APPS.find((a) => a.id === scope as AppId) ?? APPS[0]);
+
+const visibleApps = isFullAdmin ? APPS : APPS.filter((a) => a.id === scope as AppId);
+
+/* Section-grouped nav, with an inline icon ring per item. Icon glyph is
+ * just an SVG monogram — kept abstract so it reads as a system, not
+ * literal pictograms. */
+type NavLink = { href: string; label: string; key?: Props["active"]; icon: string };
+type NavSection = { section: string; items: NavLink[] };
+
+const danielNav: NavSection[] = [
+  { section: "Inicio", items: [
+      { href: "/admin", label: "Dashboard", key: "dashboard", icon: "home" },
+  ]},
+  { section: "Identidad", items: [
+      { href: "/admin/site",      label: "Ajustes del sitio", key: "site",      icon: "tune" },
+      { href: "/admin/daniel",    label: "Daniel",            key: "daniel",    icon: "person" },
+      { href: "/admin/press-kit", label: "Prensa · kit",      key: "press_kit", icon: "kit" },
+  ]},
+  { section: "Diario", items: [
+      { href: "/admin/daily",       label: "Día · brief",     key: "daily",       icon: "sun" },
+      { href: "/admin/articles",    label: "Artículos",       key: "articles",    icon: "doc" },
+      { href: "/admin/field-notes", label: "Field Notes",     key: "field_notes", icon: "note" },
+  ]},
+  { section: "Arte", items: [
+      { href: "/admin/art",         label: "Piezas",           key: "art",        icon: "art" },
+  ]},
+  { section: "Proyectos", items: [
+      { href: "/admin/projects",    label: "Todos",            key: "projects",   icon: "stack" },
+  ]},
+  { section: "Prensa", items: [
+      { href: "/admin/press",       label: "Menciones",        key: "press",      icon: "quote" },
+  ]},
+  { section: "Inbox", items: [
+      { href: "/admin/messages",    label: "Contacto",         key: "messages",   icon: "mail" },
+  ]},
+];
+
+const scopedNav: NavSection[] = [
+  { section: "Inicio",  items: [
+      { href: "/admin", label: "Dashboard", key: "dashboard", icon: "home" },
+  ]},
+  { section: "Tu página", items: [
+      { href: "/admin/projects", label: "Editar página",  key: "projects", icon: "stack" },
+  ]},
+];
+
+const sections = isFullAdmin ? danielNav : scopedNav;
+
+/* Tiny inline-SVG icon system — single source. Each glyph is a 16×16
+ * stroke pictogram; scaled and tinted via currentColor at render. */
+const ICONS: Record<string, string> = {
+  home:   `<path d="M2 8 L8 3 L14 8 V13 H10 V9 H6 V13 H2 Z"/>`,
+  tune:   `<circle cx="5" cy="5" r="2"/><line x1="5" y1="7" x2="5" y2="14"/><line x1="5" y1="2" x2="5" y2="3"/><circle cx="11" cy="11" r="2"/><line x1="11" y1="2" x2="11" y2="9"/><line x1="11" y1="13" x2="11" y2="14"/>`,
+  person: `<circle cx="8" cy="6" r="3"/><path d="M2 14 C 2 10 14 10 14 14"/>`,
+  kit:    `<rect x="2.5" y="5" width="11" height="8" rx="1"/><path d="M6 5 V3.5 H10 V5"/>`,
+  sun:    `<circle cx="8" cy="8" r="3"/><line x1="8" y1="2" x2="8" y2="3.5"/><line x1="8" y1="12.5" x2="8" y2="14"/><line x1="2" y1="8" x2="3.5" y2="8"/><line x1="12.5" y1="8" x2="14" y2="8"/><line x1="3.5" y1="3.5" x2="4.5" y2="4.5"/><line x1="11.5" y1="11.5" x2="12.5" y2="12.5"/><line x1="3.5" y1="12.5" x2="4.5" y2="11.5"/><line x1="11.5" y1="4.5" x2="12.5" y2="3.5"/>`,
+  doc:    `<path d="M3 2 H10 L13 5 V14 H3 Z"/><line x1="5" y1="6" x2="11" y2="6"/><line x1="5" y1="9" x2="11" y2="9"/><line x1="5" y1="12" x2="9" y2="12"/>`,
+  note:   `<path d="M3 2 H13 V14 L10.5 12 L8 14 L5.5 12 L3 14 Z"/>`,
+  art:    `<rect x="2.5" y="2.5" width="11" height="11" rx="1"/><line x1="2.5" y1="11" x2="13.5" y2="11"/><circle cx="5.5" cy="6" r="1"/>`,
+  stack:  `<rect x="2.5" y="3" width="11" height="3" rx="0.5"/><rect x="2.5" y="7" width="11" height="3" rx="0.5"/><rect x="2.5" y="11" width="11" height="2.5" rx="0.5"/>`,
+  quote:  `<path d="M3 9 V6 C 3 4 4 3 6 3 V5 C 5 5 5 6 5 7 H6 V9 Z"/><path d="M9 9 V6 C 9 4 10 3 12 3 V5 C 11 5 11 6 11 7 H12 V9 Z"/>`,
+  mail:   `<rect x="2.5" y="3.5" width="11" height="9" rx="1"/><path d="M2.5 4.5 L8 9 L13.5 4.5"/>`,
+};
+
+const iconSvg = (key: string) =>
+  `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[key] ?? ""}</svg>`;
 ---
 
 <!doctype html>
-<html lang="es">
+<html lang="es" data-app={currentApp.id}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>{title}</title>
     <meta name="robots" content="noindex,nofollow" />
+    <style is:inline define:vars={{ accent: currentApp.accent }}>
+      :root { --app-accent: var(--accent); }
+    </style>
   </head>
-  <body class="admin">
+  <body class="admin" data-app={currentApp.id}>
     <aside class="admin__nav">
-      <a class="admin__brand" href="/admin">
-        <span></span>
-        <span style="background: transparent;">Daniel Nates · Admin</span>
+
+      {/* App identity card — anchors which "world" you're in. */}
+      <a class="appbar" href={currentApp.href}>
+        <span class="appbar__dot" aria-hidden="true"></span>
+        <span class="appbar__body">
+          <span class="appbar__label">{currentApp.label}</span>
+          <span class="appbar__tag">{currentApp.tagline}</span>
+        </span>
       </a>
 
-      {items.map((it) =>
-        it.group ? (
-          <div class="admin__navGroup">{it.group}</div>
-        ) : (
-          <a
-            class={`admin__navLink${active === it.key ? " is-active" : ""}`}
-            href={it.href}
-          >
-            {it.label}
-          </a>
-        ),
-      )}
+      {/* App switcher — only visible when user has access to >1 app. */}
+      {visibleApps.length > 1 ? (
+        <div class="appswitcher" role="group" aria-label="Cambiar de app">
+          {visibleApps.map((a) => (
+            <a
+              class={`appswitcher__pill${a.id === currentApp.id ? " is-active" : ""}`}
+              href={a.href}
+              style={`--pill-accent: ${a.accent};`}
+            >
+              <span class="appswitcher__bullet" aria-hidden="true"></span>
+              {a.label.split(" ")[0]}
+            </a>
+          ))}
+        </div>
+      ) : null}
 
-      <div style="margin-top: auto; padding-top: 24px; border-top: 1px solid var(--line);">
-        <p style="margin: 0 12px 4px; font-size: 11px; color: var(--text-3); letter-spacing: .14em;">
-          {user?.email}
+      {/* Grouped nav with inline icons. */}
+      <nav class="adminnav">
+        {sections.map((sec) => (
+          <div class="adminnav__section">
+            <p class="adminnav__sectionLabel">{sec.section}</p>
+            {sec.items.map((it) => (
+              <a
+                class={`adminnav__link${active === it.key ? " is-active" : ""}`}
+                href={it.href}
+              >
+                <span class="adminnav__icon" set:html={iconSvg(it.icon)}></span>
+                <span class="adminnav__label">{it.label}</span>
+              </a>
+            ))}
+          </div>
+        ))}
+      </nav>
+
+      {/* Footer: who you are + scope + utilities */}
+      <div class="adminnav__foot">
+        <p class="adminnav__footEmail">{user?.email}</p>
+        <p class="adminnav__footScope">
+          <span class="adminnav__scopeDot" aria-hidden="true"></span>
+          {isFullAdmin ? "Acceso completo" : `Acceso · ${scope}`}
         </p>
-        {!isFullAdmin ? (
-          <p style="margin: 0 12px 8px; font-size: 10px; color: var(--text-3); letter-spacing: .22em; text-transform: uppercase;">
-            Acceso · {scope}
-          </p>
-        ) : null}
-        <a class="admin__navLink" href="/admin/logout">Cerrar sesión</a>
-        <a class="admin__navLink" href="/" style="color: var(--text-3);">Ver el sitio →</a>
+        <div class="adminnav__footLinks">
+          <a class="adminnav__util" href="/" target="_blank" rel="noreferrer">Ver el sitio ↗</a>
+          <a class="adminnav__util" href="/admin/logout">Cerrar sesión</a>
+        </div>
       </div>
     </aside>
 

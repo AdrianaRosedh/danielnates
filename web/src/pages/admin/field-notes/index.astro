@@ -10,22 +10,30 @@ let rows: Array<{
   title: string;
   date: string;
   category: string | null;
+  external_link: string | null;
   published: boolean;
 }> = [];
 
 if (supabase) {
   const { data } = await supabase
     .from("field_notes")
-    .select("id, title, date, category, published")
+    .select("id, title, date, category, external_link, published")
     .order("date", { ascending: false })
     .limit(200);
   rows = (data ?? []) as typeof rows;
 }
 
 function fmt(d: string) {
-  try { return new Date(d + "T00:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" }); }
+  try { return new Date(d + "T00:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" }); }
   catch { return d; }
 }
+
+const CATEGORY_LABEL: Record<string, string> = {
+  ingredient: "Ingrediente",
+  territory: "Territorio",
+  technique: "Técnica",
+  influence: "Influencia",
+};
 ---
 
 <AdminLayout title="Field Notes · Admin" active="field_notes">
@@ -33,30 +41,50 @@ function fmt(d: string) {
     <div>
       <p class="admin__crumb">Contenido</p>
       <h1 class="admin__title">Field Notes</h1>
+      <p class="admin__lede" style="margin-top: 8px; max-width: 60ch; color: var(--text-2); font-family: var(--font-display); font-size: 16px; line-height: 1.5;">
+        Apuntes rápidos del cuaderno — ingredientes, territorios, técnicas, influencias.
+      </p>
     </div>
     <a class="admin__btn admin__btn--primary" href="/admin/field-notes/new">+ Nueva nota</a>
   </header>
 
   {rows.length ? (
-    <div class="admin__list">
+    <section class="cardgrid" style="margin-top: 32px;">
       {rows.map((n) => (
-        <a class="admin__row" href={`/admin/field-notes/${n.id}`}>
-          <div style="width: 64px; height: 80px; background: rgba(244,239,230,.04); border-radius: 6px;"></div>
-          <div class="admin__rowMain">
-            <h3>{n.title}</h3>
-            <p>{n.category ?? "—"}</p>
+        <a class="card" href={`/admin/field-notes/${n.id}`}>
+          <div class="card__media card__media--placeholder" style="aspect-ratio: 16 / 9;">
+            <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family: var(--font-display); font-style: italic; font-size: 36px; color: rgba(244,239,230,.22); letter-spacing: -0.01em; padding: 24px; text-align: center;">
+              {n.category ? CATEGORY_LABEL[n.category] ?? n.category : "Nota"}
+            </div>
+            <span class={`card__pill${n.published ? " card__pill--published" : ""}`}>
+              {n.published ? "Publicado" : "Borrador"}
+            </span>
           </div>
-          <span class={`admin__pill${n.published ? " admin__pill--published" : ""}`}>
-            {n.published ? "Publicado" : "Borrador"}
-          </span>
-          <span class="admin__rowMeta">{fmt(n.date)}</span>
+          <div class="card__body">
+            <p class="card__kicker">{fmt(n.date)}{n.external_link ? " · enlace ↗" : ""}</p>
+            <h3 class="card__title">{n.title}</h3>
+            <p class="card__foot">
+              <span>Editar</span>
+              <span aria-hidden="true">→</span>
+            </p>
+          </div>
         </a>
       ))}
-    </div>
+      <a class="card card--add" href="/admin/field-notes/new">
+        <span class="card--add__plus">+</span>
+        <span class="card--add__label">Nueva nota</span>
+      </a>
+    </section>
   ) : (
-    <div class="admin__list" style="padding: 40px; text-align: center;">
-      <p style="margin: 0; color: var(--text-2);">Aún no hay notas.</p>
-      <a class="admin__btn admin__btn--primary" href="/admin/field-notes/new" style="margin-top: 16px;">Crear la primera</a>
+    <div class="empty" style="margin-top: 32px;">
+      <span class="empty__mark" aria-hidden="true">
+        <svg viewBox="0 0 16 16" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 2 H13 V14 L10.5 12 L8 14 L5.5 12 L3 14 Z"/>
+        </svg>
+      </span>
+      <h3 class="empty__title">Aún no hay notas</h3>
+      <p class="empty__sub">Cada nota lleva título, fecha, una categoría (ingrediente, territorio, técnica, influencia) y cuerpo bilingüe.</p>
+      <a class="admin__btn admin__btn--primary" href="/admin/field-notes/new" style="margin-top: 8px;">+ Crear la primera</a>
     </div>
   )}
 </AdminLayout>
