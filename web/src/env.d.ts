@@ -10,6 +10,10 @@ declare namespace App {
     /** Admin chrome language ('es' | 'en'). Independent of the public
      *  site locale. Persisted via the dn_admin_lang cookie. */
     adminLang?: "es" | "en";
+    /** Effective admin app ('daniel' | 'fritanguita'). For full admins
+     *  this is read from the dn_admin_app cookie; for scoped users it
+     *  is derived from their scope (they cannot switch). */
+    adminApp?: "daniel" | "fritanguita";
   }
 }
 

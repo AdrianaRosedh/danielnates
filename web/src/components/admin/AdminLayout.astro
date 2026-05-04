@@ -18,23 +18,24 @@ const here = Astro.url.pathname;
 
 /* App identity — visualises which "world" the user is in. The accent
  * tints the brand mark, the hover/active states, and the small dot
- * next to each nav item. Scoped users only ever see their app.
+ * next to each nav item.
  *
  * Olivea + Maizal aren't apps because they don't have their own admin
  * surfaces — they live as project rows under Daniel's portfolio. Only
  * Fritanguita gets its own app context (since the team will eventually
- * have their own login + their own .com). */
+ * have their own login + their own .com).
+ *
+ * Full admins switch via the cookie (set through /api/admin/app).
+ * Scoped users are locked to their scope at the middleware level. */
 type AppId = "daniel" | "fritanguita";
-interface AppDef { id: AppId; label: string; tagline: string; accent: string; href: string }
+interface AppDef { id: AppId; label: string; tagline: string; accent: string }
 const APPS: AppDef[] = [
-  { id: "daniel",      label: "Daniel Nates",  tagline: "Chef · Draughtsman",   accent: "#EFE6D4", href: "/admin" },
-  { id: "fritanguita", label: "Fritanguita",   tagline: "Roma Norte · CDMX",    accent: "#3FAA67", href: "/admin/projects" },
+  { id: "daniel",      label: "Daniel Nates",  tagline: t("Chef · Dibujante", "Chef · Draughtsman"),     accent: "#EFE6D4" },
+  { id: "fritanguita", label: "Fritanguita",   tagline: t("Roma Norte · CDMX", "Roma Norte · Mexico City"), accent: "#3FAA67" },
 ];
 
-const currentApp: AppDef = isFullAdmin
-  ? APPS[0]                                                       // full admin = Daniel context
-  : (APPS.find((a) => a.id === scope as AppId) ?? APPS[0]);
-
+const appId: AppId = (Astro.locals.adminApp as AppId) ?? "daniel";
+const currentApp: AppDef = APPS.find((a) => a.id === appId) ?? APPS[0];
 const visibleApps = isFullAdmin ? APPS : APPS.filter((a) => a.id === scope as AppId);
 
 /* Section-grouped nav, with an inline icon ring per item. Icon glyph is
@@ -71,16 +72,19 @@ const danielNav: NavSection[] = [
   ]},
 ];
 
-const scopedNav: NavSection[] = [
+/* Fritanguita app — nav scoped to just the Fritanguita surfaces.
+ * Same shape for full admins (when they switch via the toggle) and
+ * for scoped users (Antonio/Santiago/José etc). */
+const fritanguitaNav: NavSection[] = [
   { section: t("Inicio", "Home"), items: [
       { href: "/admin", label: "Dashboard", key: "dashboard", icon: "home" },
   ]},
-  { section: t("Tu página", "Your page"), items: [
-      { href: "/admin/projects", label: t("Editar página", "Edit page"),  key: "projects", icon: "stack" },
+  { section: t("Página", "Page"), items: [
+      { href: "/admin/projects", label: t("Editar página principal", "Edit main page"), key: "projects", icon: "stack" },
   ]},
 ];
 
-const sections = isFullAdmin ? danielNav : scopedNav;
+const sections = appId === "fritanguita" ? fritanguitaNav : danielNav;
 
 /* Tiny inline-SVG icon system — single source. Each glyph is a 16×16
  * stroke pictogram; scaled and tinted via currentColor at render. */
@@ -117,7 +121,7 @@ const iconSvg = (key: string) =>
     <aside class="admin__nav">
 
       {/* App identity card — anchors which "world" you're in. */}
-      <a class="appbar" href={currentApp.href}>
+      <a class="appbar" href="/admin">
         <span class="appbar__dot" aria-hidden="true"></span>
         <span class="appbar__body">
           <span class="appbar__label">{currentApp.label}</span>
@@ -125,13 +129,14 @@ const iconSvg = (key: string) =>
         </span>
       </a>
 
-      {/* App switcher — only visible when user has access to >1 app. */}
+      {/* App switcher — only visible when user has access to >1 app.
+          Each pill hits /api/admin/app which sets the cookie and 303s. */}
       {visibleApps.length > 1 ? (
-        <div class="appswitcher" role="group" aria-label="Cambiar de app">
+        <div class="appswitcher" role="group" aria-label={t("Cambiar de app", "Switch app")}>
           {visibleApps.map((a) => (
             <a
               class={`appswitcher__pill${a.id === currentApp.id ? " is-active" : ""}`}
-              href={a.href}
+              href={`/api/admin/app?app=${a.id}&from=${encodeURIComponent(here)}`}
               style={`--pill-accent: ${a.accent};`}
             >
               <span class="appswitcher__bullet" aria-hidden="true"></span>

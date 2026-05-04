@@ -9,6 +9,8 @@ const scope = Astro.locals.adminScope ?? "all";
 const isFullAdmin = scope === "all";
 const lang: AdminLang = Astro.locals.adminLang ?? "es";
 const t = txFor(lang);
+const app = Astro.locals.adminApp ?? "daniel";          // 'daniel' | 'fritanguita'
+const projectSlug = app === "fritanguita" ? "fritanguita" : (!isFullAdmin ? scope : null);
 
 interface Tile {
   href: string;
@@ -38,19 +40,21 @@ async function latestCover(table: string, col: string, extra?: { eq?: [string, s
 async function projectCount(): Promise<number> {
   if (!supabase) return 0;
   let q = supabase.from("projects").select("*", { count: "exact", head: true });
-  if (!isFullAdmin) q = q.eq("slug", scope);
+  if (projectSlug) q = q.eq("slug", projectSlug);
   const { count } = await q;
   return count ?? 0;
 }
 async function projectCover(): Promise<string | null> {
   if (!supabase) return null;
   let q = supabase.from("projects").select("hero_image_url").not("hero_image_url", "is", null).order("updated_at", { ascending: false }).limit(1);
-  if (!isFullAdmin) q = q.eq("slug", scope);
+  if (projectSlug) q = q.eq("slug", projectSlug);
   const { data } = await q.maybeSingle();
   return ((data as { hero_image_url: string | null } | null)?.hero_image_url) ?? null;
 }
 
-const tiles: Tile[] = isFullAdmin ? [
+/* Daniel-app tiles: full-admin gets every content type, all the
+ * Daniel-only items first, then the shared Projects entry. */
+const danielTiles: Tile[] = [
   { href: "/admin/daily",       label: t("Día · brief", "Day · brief"),     hint: t("Una imagen, una línea — hoy.", "One image, one line — today."),       count: await count("daily_briefs"),     cover: await latestCover("daily_briefs", "image_url"), scope: "all" },
   { href: "/admin/articles",    label: t("Artículos", "Articles"),          hint: t("Notas, ensayos, lecturas.", "Notes, essays, readings."),               count: await count("articles"),         cover: await latestCover("articles", "cover_url"),     scope: "all" },
   { href: "/admin/art",         label: t("Arte", "Art"),                    hint: t("Lo que la mano hace cuando no cocina.", "What the hand does when it isn't cooking."), count: await count("art_pieces"),       cover: await latestCover("art_pieces", "cover_url"),   scope: "all" },
@@ -58,25 +62,32 @@ const tiles: Tile[] = isFullAdmin ? [
   { href: "/admin/field-notes", label: "Field Notes",                       hint: t("Apuntes rápidos del cuaderno.", "Quick notes from the sketchbook."),    count: await count("field_notes"),      glyph: "FN", scope: "all" },
   { href: "/admin/press",       label: t("Press menciones", "Press mentions"), hint: t("Lo que escriben sobre Daniel.", "What people write about Daniel."), count: await count("press_mentions"),   glyph: "PR", scope: "all" },
   { href: "/admin/messages",    label: t("Mensajes", "Messages"),           hint: t("Contacto recibido.", "Contact received."),                              count: await count("contact_messages"), glyph: "✉",  scope: "all" },
-] : [
-  { href: "/admin/projects",    label: t("Tu página", "Your page"),         hint: t(`Editar la página de ${scope}.`, `Edit the ${scope} page.`),            count: await projectCount(),            cover: await projectCover(),                            scope: "scoped" },
 ];
 
-const headline = isFullAdmin
-  ? t("Todo lo que aparece en danielnates.com vive aquí.", "Everything that appears on danielnates.com lives here.")
-  : t(`Bienvenido. Tu acceso edita la página de ${scope}.`, `Welcome. Your access edits the ${scope} page.`);
+/* Fritanguita-app tiles: only what the Fritanguita team can edit. */
+const fritanguitaTiles: Tile[] = [
+  { href: "/admin/projects",    label: t("Página principal", "Main page"),  hint: t("Editar el hero, los bloques, la framing.", "Edit the hero, blocks, framing."), count: await projectCount(), cover: await projectCover(), scope: "scoped" },
+];
+
+const tiles: Tile[] = app === "fritanguita" ? fritanguitaTiles : danielTiles;
+
+const headline = app === "fritanguita"
+  ? t("La página de Fritanguita vive aquí. Lo que publicas se ve en /fritanguita.", "The Fritanguita page lives here. What you publish shows at /fritanguita.")
+  : isFullAdmin
+    ? t("Todo lo que aparece en danielnates.com vive aquí.", "Everything that appears on danielnates.com lives here.")
+    : t(`Bienvenido. Tu acceso edita la página de ${scope}.`, `Welcome. Your access edits the ${scope} page.`);
 ---
 
 <AdminLayout title="Admin · Dashboard" active="dashboard">
   <header class="admin__head">
     <div>
-      <p class="admin__crumb">{isFullAdmin ? "Daniel Nates" : t("Equipo", "Team")}</p>
+      <p class="admin__crumb">{app === "fritanguita" ? "Fritanguita" : "Daniel Nates"}</p>
       <h1 class="admin__title">Dashboard</h1>
       <p class="admin__lede" style="margin-top: 8px; max-width: 60ch; color: var(--text-2); font-family: var(--font-display); font-size: 16px; line-height: 1.5;">
         {headline}
       </p>
     </div>
-    {isFullAdmin ? (
+    {app === "daniel" && isFullAdmin ? (
       <a class="admin__btn admin__btn--primary" href="/admin/daily/new">+ {t("Brief de hoy", "Today's brief")}</a>
     ) : null}
   </header>

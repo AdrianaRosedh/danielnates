@@ -9,6 +9,13 @@ const scope = Astro.locals.adminScope ?? "all";
 const isFullAdmin = scope === "all";
 const lang: AdminLang = Astro.locals.adminLang ?? "es";
 const t = txFor(lang);
+const app = Astro.locals.adminApp ?? "daniel";
+/* When in the Fritanguita app (or scope-locked to it), filter to
+ * that single project. Daniel-app full admins see every project. */
+const filterSlug: string | null = app === "fritanguita"
+  ? "fritanguita"
+  : (!isFullAdmin ? scope : null);
+const isSingleProject = filterSlug !== null;
 
 let rows: Array<{
   id: string;
@@ -28,9 +35,16 @@ if (supabase) {
     .select("id, slug, title, status, hero_image_url, summary_es, summary_en, published, updated_at")
     .order("updated_at", { ascending: false })
     .limit(200);
-  if (!isFullAdmin) q = q.eq("slug", scope);
+  if (filterSlug) q = q.eq("slug", filterSlug);
   const { data } = await q;
   rows = (data ?? []) as typeof rows;
+}
+
+/* When the list is just one project, jump the user straight into
+ * the editor — saves a click and matches the Fritanguita-app mental
+ * model ("you only have one page"). */
+if (isSingleProject && rows.length === 1) {
+  return Astro.redirect(`/admin/projects/${rows[0].id}`);
 }
 
 function statusLabel(s: string | null) {
@@ -46,9 +60,9 @@ function statusLabel(s: string | null) {
 <AdminLayout title={t("Proyectos · Admin", "Projects · Admin")} active="projects">
   <header class="admin__head">
     <div>
-      <p class="admin__crumb">{isFullAdmin ? t("Contenido", "Content") : t("Tu página", "Your page")}</p>
-      <h1 class="admin__title">{isFullAdmin ? t("Proyectos", "Projects") : t("Editar página", "Edit page")}</h1>
-      {isFullAdmin ? (
+      <p class="admin__crumb">{isSingleProject ? t("Tu página", "Your page") : t("Contenido", "Content")}</p>
+      <h1 class="admin__title">{isSingleProject ? t("Editar página", "Edit page") : t("Proyectos", "Projects")}</h1>
+      {!isSingleProject ? (
         <p class="admin__lede" style="margin-top: 8px; max-width: 60ch; color: var(--text-2); font-family: var(--font-display); font-size: 16px; line-height: 1.5;">
           {t(
             "Cada proyecto se muestra como una página propia. Para editar el orden de los bloques, abrir cualquier tarjeta.",
@@ -57,7 +71,7 @@ function statusLabel(s: string | null) {
         </p>
       ) : null}
     </div>
-    {isFullAdmin ? (
+    {isFullAdmin && !isSingleProject ? (
       <a class="admin__btn admin__btn--primary" href="/admin/projects/new">+ {t("Nuevo proyecto", "New project")}</a>
     ) : null}
   </header>
@@ -91,7 +105,7 @@ function statusLabel(s: string | null) {
           </div>
         </a>
       ))}
-      {isFullAdmin ? (
+      {isFullAdmin && !isSingleProject ? (
         <a class="card card--add" href="/admin/projects/new">
           <span class="card--add__plus">+</span>
           <span class="card--add__label">{t("Nuevo proyecto", "New project")}</span>
