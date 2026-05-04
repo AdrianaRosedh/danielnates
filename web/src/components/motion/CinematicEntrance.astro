@@ -72,7 +72,9 @@ if (!enabled) return null;
   @media (prefers-reduced-motion: reduce){ .entrance{ display: none; } }
 </style>
 
-{/* Pre-paint: decide skip vs show before the first frame. */}
+{/* Pre-paint: decide skip vs show before the first frame, plus
+    escape hatches so the user is never trapped if the timeline
+    fails to run for any reason. */}
 <script is:inline>
   (function(){
     try {
@@ -85,10 +87,47 @@ if (!enabled) return null;
         var s = document.createElement('style');
         s.textContent = '[data-entrance]{display:none !important}';
         document.head.appendChild(s);
-      } else {
-        document.documentElement.dataset.entranceActive = '1';
-        document.documentElement.style.overflow = 'hidden';
+        return;
       }
-    } catch (_) {}
+
+      document.documentElement.dataset.entranceActive = '1';
+      document.documentElement.style.overflow = 'hidden';
+
+      var dismissed = false;
+      function release(){
+        if (dismissed) return;
+        dismissed = true;
+        document.documentElement.style.overflow = '';
+        document.documentElement.style.removeProperty('overflow');
+        document.body && (document.body.style.overflow = '');
+        delete document.documentElement.dataset.entranceActive;
+        var el = document.querySelector('[data-entrance]');
+        if (el) {
+          el.style.transition = 'opacity 320ms ease, transform 320ms ease';
+          el.style.opacity = '0';
+          el.style.transform = 'translateY(-12px)';
+          setTimeout(function(){ try { el.remove(); } catch(_){} }, 380);
+        }
+        try { localStorage.setItem('dn_entered_v1', '1'); } catch(_) {}
+        window.removeEventListener('wheel', release, { passive: true });
+        window.removeEventListener('touchmove', release, { passive: true });
+        window.removeEventListener('touchstart', release, { passive: true });
+        window.removeEventListener('keydown', release);
+        window.removeEventListener('click', release);
+      }
+
+      // Any user gesture dismisses the curtain immediately.
+      window.addEventListener('wheel', release, { passive: true });
+      window.addEventListener('touchmove', release, { passive: true });
+      window.addEventListener('touchstart', release, { passive: true });
+      window.addEventListener('keydown', release);
+      window.addEventListener('click', release);
+
+      // Hard failsafe: never trap the user, even if AnimationDirector
+      // never runs (import error, slow JS, anything).
+      setTimeout(release, 6000);
+    } catch (_) {
+      try { document.documentElement.style.overflow = ''; } catch (_) {}
+    }
   })();
 </script>
