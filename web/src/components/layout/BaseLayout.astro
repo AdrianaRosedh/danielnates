@@ -4,6 +4,7 @@ import CustomCursor from "../motion/CustomCursor.astro";
 import CinematicEntrance from "../motion/CinematicEntrance.astro";
 import AnimationDirector from "../motion/AnimationDirector.astro";
 import MenuOverlay from "./MenuOverlay.astro";
+import ScrollProgress from "../motion/ScrollProgress.astro";
 import { getDaniel } from "../../lib/queries";
 import { switchLocale } from "../../lib/i18n";
 
@@ -104,6 +105,7 @@ const ogImage = `${SITE}/og.png?${ogParams.toString()}`;
     <CustomCursor />
     <slot />
     <MenuOverlay locale={locale} daniel={daniel} />
+    <ScrollProgress />
     <AnimationDirector />
   </body>
 </html>

@@ -90,10 +90,15 @@ const ig2 = daniel?.social?.fritanguita_instagram ?? null;
     text-align: center;
   }
   .closing__rule{
+    /* Vertical sage hairline — picks up the natural palette as a
+       deliberate architectural mark before the closing line. */
     display: block;
     width: 1px;
     height: clamp(56px, 8vw, 96px);
-    background: linear-gradient(to bottom, transparent, rgba(244,239,230,.4), transparent);
+    background: linear-gradient(to bottom,
+      transparent,
+      color-mix(in srgb, var(--olivar) 70%, transparent),
+      transparent);
     margin: 0 auto clamp(40px, 5vw, 64px);
   }
   .closing__line{

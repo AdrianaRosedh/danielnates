@@ -42,13 +42,37 @@ const locale: Locale = propLocale ?? Astro.locals.locale ?? "es";
     width: 100vw;
     margin-left: calc(50% - 50vw);
     margin-right: calc(50% - 50vw);
-    background: var(--ink);
+    /* Subtle radial sage wash on the ink background — invisible up
+       close, but it tints the eye when scrolling past. The natural
+       palette feels present even though no bright surface is shown. */
+    background:
+      radial-gradient(80% 60% at 8% 10%,
+        color-mix(in srgb, var(--olivar) 10%, transparent),
+        transparent 70%),
+      radial-gradient(70% 50% at 92% 90%,
+        color-mix(in srgb, var(--clay) 7%, transparent),
+        transparent 70%),
+      var(--ink);
     color: var(--bone);
     padding: clamp(80px, 12vw, 180px) clamp(20px, 5vw, 80px);
     position: relative;
   }
   .manifesto__inner{ max-width: 1280px; margin: 0 auto; }
-  .manifesto__kicker{ color: rgba(244,239,230,.55); margin: 0 0 clamp(36px, 5vw, 72px); }
+  .manifesto__kicker{
+    /* Kicker now sage with a leading rule — reads as a chapter mark,
+       not just a label. */
+    color: var(--olivar);
+    margin: 0 0 clamp(36px, 5vw, 72px);
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .manifesto__kicker::before{
+    content: "";
+    width: 28px;
+    height: 1px;
+    background: var(--olivar);
+  }
 
   .manifesto__list{
     list-style: none;
@@ -59,20 +83,34 @@ const locale: Locale = propLocale ?? Astro.locals.locale ?? "es";
   }
   .manifesto__item{
     display: grid;
-    grid-template-columns: 56px 1fr;
+    grid-template-columns: 64px 1fr;
     gap: clamp(20px, 3vw, 56px);
     align-items: baseline;
     padding-bottom: clamp(36px, 5vw, 72px);
-    border-bottom: 1px solid rgba(244,239,230,.10);
+    /* Sage hairline rule between pillars — picks up the natural palette
+       and breaks the dead-monochrome feel. */
+    border-bottom: 1px solid color-mix(in srgb, var(--olivar) 28%, transparent);
   }
   .manifesto__item:last-child{ border-bottom: 0; padding-bottom: 0; }
 
   .manifesto__num{
+    /* Number is now a small architectural mark — sage on ink, with a
+       paired tick under it so it reads like a chapter ordinal. */
     font-family: var(--font-sans);
-    font-size: 12px;
-    letter-spacing: .18em;
-    color: rgba(244,239,230,.45);
-    padding-top: 14px;
+    font-size: 11px;
+    letter-spacing: .26em;
+    color: var(--olivar);
+    padding-top: 16px;
+    position: relative;
+    display: inline-block;
+  }
+  .manifesto__num::after{
+    content: "";
+    display: block;
+    width: 22px;
+    height: 1px;
+    background: color-mix(in srgb, var(--olivar) 60%, transparent);
+    margin-top: 8px;
   }
   .manifesto__body{ min-width: 0; }
   .manifesto__label{
