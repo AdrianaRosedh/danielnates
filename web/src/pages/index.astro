@@ -4,72 +4,46 @@ export const prerender = false;
 import BaseLayout from "../components/layout/BaseLayout.astro";
 import TopDock from "../components/layout/TopDock.astro";
 import ColdOpen from "../components/scenes/ColdOpen.astro";
-import TheLine from "../components/scenes/TheLine.astro";
-import Manifesto from "../components/scenes/Manifesto.astro";
+import NotebookScene from "../components/scenes/NotebookScene.astro";
 import FrameScene from "../components/scenes/FrameScene.astro";
-import ChapterHero from "../components/scenes/ChapterHero.astro";
-import MagazineSpread from "../components/scenes/MagazineSpread.astro";
-import AtelierPreview from "../components/scenes/AtelierPreview.astro";
 import Closing from "../components/scenes/Closing.astro";
 
-import { getDaniel, getProjects, getLatestArticles, getArtPieces } from "../lib/queries";
-import { href, t2 } from "../lib/i18n";
-import type { Locale, Pillar } from "../lib/types";
+import { getDaniel } from "../lib/queries";
+import { t2 } from "../lib/i18n";
+import type { Locale } from "../lib/types";
 
 interface PageProps { lang?: Locale }
 const { lang } = Astro.props as PageProps;
 const locale: Locale = lang ?? Astro.locals.locale ?? "es";
 
-const [daniel, projects, articles, art] = await Promise.all([
-  getDaniel(),
-  getProjects(),
-  getLatestArticles(3),
-  getArtPieces(),
-]);
+/* Landing page composition — six chapters, four scenes (two of the
+ * chapters live INSIDE NotebookScene as spreads).
+ *
+ *   0 · Aparición   — ColdOpen        (ink, garden photo at full presence)
+ *   I · El Cuaderno — NotebookScene   (CREAM, horizontal page-turn signature)
+ * II · El Huerto    — FrameScene moss (moss-tinted ink, inverse parallax rest)
+ *  V · Coda         — Closing         (mist→ink gradient, the film ends)
+ *
+ * Manifesto, three ChapterHeros, MagazineSpread, AtelierPreview and
+ * TheLine all moved off the landing page — they're a survey of
+ * everything Daniel does, but the landing should make ONE argument:
+ * the same hand cooks and draws. The Notebook IS that argument.
+ *
+ * The chapter pages (/olivea, /fritanguita, /maizal, /diario, /arte,
+ * /sobre, /prensa, /proyectos, /contacto) are unchanged. */
+
+const daniel = await getDaniel();
 
 const heroName = daniel?.name ?? "Daniel Nates";
-
 const heroLine = t2(daniel?.tagline_es, daniel?.tagline_en, locale) || (locale === "es"
   ? "Cocinar y dibujar — la misma lengua."
   : "To cook and to draw — the same language.");
-
 const heroSig = t2(daniel?.subline_es, daniel?.subline_en, locale) || (locale === "es"
   ? "Cocinero en Olivea · Socio en Fritanguita · Dibujante."
   : "Chef at Olivea · Partner at Fritanguita · Draughtsman.");
-
 const heroMeta = locale === "es"
   ? "Valle de Guadalupe · CDMX · MMXXVI"
   : "Valle de Guadalupe · Mexico City · MMXXVI";
-
-// Manifesto — four pillars (defaults if Daniel hasn't filled them in).
-const pillars: Pillar[] = (daniel?.pillars && daniel.pillars.length
-  ? daniel.pillars
-  : [
-    {
-      label: "Producto",
-      copy_es: "Ingrediente primero, técnica después. Lo que el campo o el mar permite, eso se cocina.",
-      copy_en: "Ingredient first, technique second. What the field or the sea allows is what gets cooked.",
-    },
-    {
-      label: "Huerto",
-      copy_es: "En Olivea, la carta cambia con la temporada del huerto. La cocina escucha primero al campo.",
-      copy_en: "At Olivea, the menu changes with the garden's season. The kitchen listens to the field first.",
-    },
-    {
-      label: "Calle",
-      copy_es: "En Fritanguita, la fritanga poblana en su forma más contemporánea. Hecha a mano, fuego rápido.",
-      copy_en: "At Fritanguita, the poblano fritanga in its most contemporary form. Hand-made, fast fire.",
-    },
-    {
-      label: "Imagen",
-      copy_es: "Dibujar y cocinar comparten lengua: composición, contraste, intención. El cocinero también hace imágenes.",
-      copy_en: "To draw and to cook share a language: composition, contrast, intent. The cook also makes images.",
-    },
-  ]);
-
-const olivea = projects.find((p) => p.slug === "olivea");
-const frita  = projects.find((p) => p.slug === "fritanguita");
-const maizal = projects.find((p) => p.slug === "maizal");
 ---
 
 <BaseLayout
@@ -86,6 +60,8 @@ const maizal = projects.find((p) => p.slug === "maizal");
 >
   <TopDock locale={locale} />
 
+  {/* 0 · Aparición — arrival. The garden photograph at full presence,
+      the name, one signature line. No menu, no list, no metadata. */}
   <ColdOpen
     name={heroName}
     signature={heroSig}
@@ -95,95 +71,34 @@ const maizal = projects.find((p) => p.slug === "maizal");
     locale={locale}
   />
 
-  <TheLine line={heroLine} attribution={heroName} />
-
-  <Manifesto
-    pillars={pillars}
-    kicker={locale === "es" ? "Manifiesto" : "Manifesto"}
+  {/* I · El Cuaderno — the signature. Five spreads turn horizontally
+      as you scroll vertically. Each spread = a hand-drawn line on the
+      left + a project on the right. The same hand that cooks draws
+      first; that thesis IS the page. */}
+  <NotebookScene
+    title={locale === "es" ? "El Cuaderno" : "The Notebook"}
     locale={locale}
   />
 
-  {/* Frame I — meditative pause between manifesto and projects.
-      The same garden image as the cold-open, here treated as a held
-      portrait: scroll-scaled, hairline matted, with editorial
-      metadata. The eye lands on Daniel before meeting his work. */}
+  {/* II · El Huerto — pure photography rest. Moss-tinted ink. The
+      garden image enters BIG (scale 1.18) and slowly settles back —
+      inverse parallax. The world recedes. */}
   <FrameScene
     src="/media/hero/daniel-garden.jpg"
     alt={heroName}
-    index="I"
-    caption={locale === "es" ? "El cocinero, antes del servicio." : "The cook, before service."}
-    place={locale === "es" ? "Olivea · Valle de Guadalupe · MMXXVI" : "Olivea · Valle de Guadalupe · MMXXVI"}
-    ratio="4/5"
-    locale={locale}
-  />
-
-  {olivea ? (
-    <ChapterHero
-      index="01"
-      brand="olivea"
-      title={olivea.title}
-      summary={t2(olivea.summary_es, olivea.summary_en, locale) || (locale === "es"
-        ? "Mi lado lento. La cocina al lado del huerto, en Valle de Guadalupe. Estrella Michelin y Estrella Verde."
-        : "My slow side. The kitchen beside the garden, in Valle de Guadalupe. Michelin Star and Green Star.")}
-      videoUrl={olivea.hero_video_url ?? "/media/olivea/olivea.mp4"}
-      href={href(`/${olivea.slug}`, locale)}
-      align="left"
-      locale={locale}
-      voice={olivea.voice ?? null}
-    />
-  ) : null}
-
-  {frita ? (
-    <ChapterHero
-      index="02"
-      brand="fritanguita"
-      title={frita.title}
-      summary={t2(frita.summary_es, frita.summary_en, locale) || (locale === "es"
-        ? "Mi lado rápido. Fritanga poblana, maíz nativo nixtamalizado, en Roma Norte. Con Santiago Muñoz."
-        : "My fast side. Poblano fritanga, native nixtamalized corn, in Roma Norte. With Santiago Muñoz.")}
-      videoUrl={frita.hero_video_url ?? "/media/fritanguita/fritanguita.mp4"}
-      href={href(`/${frita.slug}`, locale)}
-      align="right"
-      locale={locale}
-      voice={frita.voice ?? null}
-    />
-  ) : null}
-
-  {maizal ? (
-    <ChapterHero
-      index="03"
-      brand="maizal"
-      title={maizal.title}
-      summary={t2(maizal.summary_es, maizal.summary_en, locale) || (locale === "es"
-        ? "Mi primer maestro. Ocho años en La Casona de los Sapos, Puebla. Lo que aprendí ahí sigue cocinando lo que hago hoy. 2017–2024."
-        : "My first teacher. Eight years at La Casona de los Sapos, Puebla. What I learned there still cooks what I do today. 2017–2024.")}
-      videoUrl={maizal.hero_video_url ?? null}
-      href={href(`/${maizal.slug}`, locale)}
-      align="left"
-      locale={locale}
-      voice={maizal.voice ?? null}
-    />
-  ) : null}
-
-  {/* Frame II — second cream interlude after the dark project chapters.
-      Two cream frames flanking the project block create the rhythm
-      that was missing: dark → cream → dark → cream → dark. Reuses the
-      garden image for now; swap with a kitchen / sketchbook / hands
-      photo once more imagery is added to web/public/media/frames/. */}
-  <FrameScene
-    src="/media/hero/daniel-garden.jpg"
-    alt={heroName}
+    tone="moss"
     index="II"
-    caption={locale === "es" ? "El cuaderno y la sartén — la misma mano." : "The sketchbook and the pan — the same hand."}
-    place={locale === "es" ? "Atelier · MMXXVI" : "Atelier · MMXXVI"}
-    ratio="3/4"
+    caption={locale === "es"
+      ? "Cuando la cocina escucha al campo primero."
+      : "When the kitchen listens to the field first."}
+    place="Olivea · Valle de Guadalupe · MMXXVI"
+    ratio="16/9"
     locale={locale}
   />
 
-  <MagazineSpread articles={articles} locale={locale} />
-
-  <AtelierPreview pieces={art} locale={locale} />
-
+  {/* V · Coda — closing. Mist→ink gradient, the only place the
+      mountain blue-gray of the photo gets used. Closes the natural-
+      palette loop. */}
   <Closing locale={locale} daniel={daniel} />
 
 </BaseLayout>

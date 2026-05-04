@@ -230,6 +230,94 @@
     });
   }
 
+  /* ── Notebook signature — pin + horizontal scroll + SVG self-draw  */
+  /* The defining motion of the landing. A [data-notebook] section
+   * pins for ~N viewports of vertical scroll while its inner
+   * [data-notebook-track] translates horizontally through N spreads.
+   * Each spread's SVG drawing self-draws (stroke-dashoffset → 0)
+   * as it enters frame, and the recto counter updates on enter. */
+  function setupNotebook() {
+    const sections = document.querySelectorAll<HTMLElement>("[data-notebook]");
+    if (!sections.length) return;
+    if (matchMedia("(max-width: 880px)").matches) return; // mobile uses native vertical stack
+    if (reduce) return;
+
+    sections.forEach((section) => {
+      const track = section.querySelector<HTMLElement>("[data-notebook-track]");
+      const counter = section.querySelector<HTMLElement>("[data-notebook-counter]");
+      if (!track) return;
+
+      const spreads = track.querySelectorAll<HTMLElement>("[data-spread]");
+      const N = spreads.length;
+      if (N < 2) return;
+
+      // Horizontal page-turn pinned to the section.
+      const pageTl = gsap.to(track, {
+        xPercent: -100 * (N - 1),
+        ease: "none",
+        scrollTrigger: {
+          trigger: section,
+          pin: true,
+          scrub: 1.2,
+          start: "top top",
+          // Distance to scroll = (N-1) viewport widths.
+          end: () => `+=${window.innerWidth * (N - 1)}`,
+          invalidateOnRefresh: true,
+          anticipatePin: 1,
+        },
+      });
+
+      // Per-spread: counter update + SVG self-draw, scoped to the
+      // page-turn timeline via containerAnimation.
+      spreads.forEach((spread, i) => {
+        // Counter
+        if (counter) {
+          ScrollTrigger.create({
+            trigger: spread,
+            containerAnimation: pageTl,
+            start: "left center",
+            end: "right center",
+            onEnter:     () => { counter.textContent = romanFor(i + 1); },
+            onEnterBack: () => { counter.textContent = romanFor(i + 1); },
+          });
+        }
+
+        // SVG self-draw on the left page (drawing).
+        const svgs = spread.querySelectorAll<SVGSVGElement>("[data-sketch] svg");
+        svgs.forEach((svg) => {
+          const lines = svg.querySelectorAll<SVGPathElement | SVGEllipseElement>(
+            "path, ellipse",
+          );
+          // Set initial dasharray/offset so they're invisible.
+          lines.forEach((line) => {
+            const len = (line as SVGGeometryElement).getTotalLength?.() ?? 0;
+            if (!len) return;
+            line.style.strokeDasharray = String(len);
+            line.style.strokeDashoffset = String(len);
+          });
+          // Tween to drawn as the spread enters the centre.
+          gsap.to(lines, {
+            strokeDashoffset: 0,
+            ease: "none",
+            stagger: 0.08,
+            scrollTrigger: {
+              trigger: spread,
+              containerAnimation: pageTl,
+              start: "left right",
+              end: "center center",
+              scrub: true,
+            },
+          });
+        });
+      });
+    });
+  }
+
+  function romanFor(n: number): string {
+    const r = ["I","II","III","IV","V","VI","VII","VIII","IX","X"];
+    return r[n - 1] ?? String(n);
+  }
+
   /* ── Frame scenes — single-photo meditative moments ───────────── */
   /* Each [data-frame] is a 200vh tall scene with a sticky [data-frame-plate]
    * inside. The plate starts small and softly faded, scales up to 100% as
@@ -242,7 +330,44 @@
       const plate = frame.querySelector<HTMLElement>("[data-frame-plate]");
       if (!plate) return;
 
-      // Phase 1: enter — small + soft → full size, full opacity.
+      const tone = frame.dataset.frameTone ?? "bone";
+
+      if (tone === "moss") {
+        /* Inverse parallax — image enters BIG and settles back. The
+         * world recedes around it. Pure photography rest. */
+        gsap.fromTo(plate,
+          { scale: 1.18, yPercent: -8, autoAlpha: 0.6 },
+          {
+            scale: 1.0,
+            yPercent: 0,
+            autoAlpha: 1,
+            ease: "none",
+            scrollTrigger: {
+              trigger: frame,
+              start: "top bottom",
+              end: "center center",
+              scrub: 1.4,
+            },
+          },
+        );
+        gsap.fromTo(plate,
+          { scale: 1.0, autoAlpha: 1 },
+          {
+            scale: 0.96,
+            autoAlpha: 0.35,
+            ease: "none",
+            scrollTrigger: {
+              trigger: frame,
+              start: "center center",
+              end: "bottom top",
+              scrub: 1.4,
+            },
+          },
+        );
+        return;
+      }
+
+      /* Default (bone) — small + soft → full → drift larger + fade. */
       gsap.fromTo(plate,
         { scale: 0.42, autoAlpha: 0.55 },
         {
@@ -257,8 +382,6 @@
           },
         },
       );
-
-      // Phase 2: leave — drift slightly larger + fade out as we scroll past.
       gsap.fromTo(plate,
         { scale: 1.0, autoAlpha: 1 },
         {
@@ -414,6 +537,7 @@
     // hero text is already revealed.
     setupReveals();
     setupHeroes();
+    setupNotebook();
     setupFrames();
     setupDockChrome();
     setupAnchors();

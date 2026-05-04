@@ -76,9 +76,16 @@ const ig2 = daniel?.social?.fritanguita_instagram ?? null;
     width: 100vw;
     margin-left: calc(50% - 50vw);
     margin-right: calc(50% - 50vw);
-    background: #08090A;          /* deepest ink — true fade-to-black */
+    /* Mist → ink gradient. The mountain blue-gray from the hero
+       photo gets its only appearance here — closing the natural-
+       palette loop without showing it everywhere. */
+    background:
+      linear-gradient(180deg,
+        color-mix(in srgb, var(--mist) 18%, var(--ink)) 0%,
+        var(--ink) 60%,
+        #08090A 100%);
     color: var(--bone);
-    border-top: 1px solid rgba(244,239,230,.06);
+    border-top: 1px solid color-mix(in srgb, var(--mist) 22%, rgba(244,239,230,.04));
     overflow: hidden;
   }
 

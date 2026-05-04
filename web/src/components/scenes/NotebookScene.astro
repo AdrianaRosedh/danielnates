@@ -1,0 +1,487 @@
+---
+/**
+ * NotebookScene — the landing page's signature.
+ *
+ * A pinned ~400vh-tall section. Vertical scroll drives a horizontal
+ * page-turn through 5 facing spreads. Each spread is left page +
+ * right page:
+ *   left  = a hand-drawn SVG line illustration that draws itself
+ *           (stroke-dashoffset → 0) as the spread enters frame
+ *   right = a single photograph + italic display caption + recto
+ *           ordinal in the corner
+ *
+ * The thesis: Daniel cooks AND he draws. The same hand makes both.
+ * This scene literally pairs one drawing with one project on every
+ * spread. Animation Director picks up [data-notebook] and binds the
+ * pinned scrollTrigger + per-spread containerAnimation triggers for
+ * the SVG self-draw.
+ *
+ * Drawings here are placeholder line art — each is a single subject
+ * suggested with a few strokes. They CAN be replaced by Daniel's
+ * own drawings (any SVG with stroke paths) without touching motion.
+ */
+
+import type { Locale } from "../../lib/types";
+
+interface Spread {
+  recto: string;                   // "I" .. "V"
+  caption: string;                 // italic display line, right page
+  place: string;                   // small caps, right page foot
+  href?: string | null;            // optional CTA on right page
+  hrefLabel?: string;
+  imageUrl?: string | null;        // right page photograph
+  sketch: "leaf" | "cazo" | "milpa" | "mano" | "mesa";
+}
+
+interface Props {
+  title?: string;                  // "El Cuaderno" / "The Notebook"
+  spreads?: Spread[];
+  locale?: Locale;
+}
+
+const { title = "El Cuaderno", spreads = [], locale: propLocale } = Astro.props as Props;
+const locale: Locale = propLocale ?? Astro.locals.locale ?? "es";
+
+/* Default editorial fallback — five spreads tracing Daniel's arc.
+ * If the parent passes its own spreads array these are skipped. */
+const defaultSpreads: Spread[] = [
+  {
+    recto: "I",
+    sketch: "leaf",
+    imageUrl: "/media/hero/daniel-garden.jpg",
+    caption: locale === "es" ? "El huerto manda. La carta cambia con la mañana." : "The garden leads. The menu changes with the morning.",
+    place: "Olivea · Valle de Guadalupe",
+    href: locale === "es" ? "/olivea" : "/en/olivea",
+    hrefLabel: locale === "es" ? "Capítulo Olivea →" : "Chapter Olivea →",
+  },
+  {
+    recto: "II",
+    sketch: "cazo",
+    imageUrl: null,
+    caption: locale === "es" ? "Fritanga poblana, en su forma más contemporánea." : "Poblano fritanga in its most contemporary form.",
+    place: "Fritanguita · Roma Norte · CDMX",
+    href: locale === "es" ? "/fritanguita" : "/en/fritanguita",
+    hrefLabel: locale === "es" ? "Capítulo Fritanguita →" : "Chapter Fritanguita →",
+  },
+  {
+    recto: "III",
+    sketch: "milpa",
+    imageUrl: null,
+    caption: locale === "es" ? "El primer maestro. Lo que aprendí ahí, todavía cocina lo que hago." : "The first teacher. What I learned there still cooks what I do.",
+    place: "Maizal · Puebla · 2017–2024",
+    href: locale === "es" ? "/maizal" : "/en/maizal",
+    hrefLabel: locale === "es" ? "Capítulo Maizal →" : "Chapter Maizal →",
+  },
+  {
+    recto: "IV",
+    sketch: "mano",
+    imageUrl: null,
+    caption: locale === "es" ? "La mano dibuja antes de cocinar. Composición, contraste, intención." : "The hand draws before it cooks. Composition, contrast, intent.",
+    place: locale === "es" ? "Atelier · MMXXVI" : "Studio · MMXXVI",
+    href: locale === "es" ? "/arte" : "/en/arte",
+    hrefLabel: locale === "es" ? "Atelier →" : "Studio →",
+  },
+  {
+    recto: "V",
+    sketch: "mesa",
+    imageUrl: null,
+    caption: locale === "es" ? "La mesa es el último cuadro." : "The table is the last painting.",
+    place: locale === "es" ? "Daniel Nates · MMXXVI" : "Daniel Nates · MMXXVI",
+  },
+];
+
+const items: Spread[] = spreads.length ? spreads : defaultSpreads;
+const total = items.length;
+
+/* ────────────────────────────────────────────────────────────────
+   SVG line drawings — kept stylized + simple. Each path is a
+   continuous line so stroke-dasharray + stroke-dashoffset can be
+   animated cleanly. Replace with Daniel's hand-drawn SVGs by
+   swapping the markup in this single function block. */
+function sketchSvg(kind: Spread["sketch"]): string {
+  switch (kind) {
+    case "leaf":
+      return `
+        <svg viewBox="0 0 200 240" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M100 230 L100 80" />
+          <path d="M100 80 C 60 100, 50 150, 100 200 C 150 150, 140 100, 100 80 Z" />
+          <path d="M100 95 L100 195" />
+          <path d="M100 115 L75 132" />
+          <path d="M100 115 L125 132" />
+          <path d="M100 142 L70 162" />
+          <path d="M100 142 L130 162" />
+          <path d="M100 168 L84 182" />
+          <path d="M100 168 L116 182" />
+        </svg>`;
+    case "cazo":
+      return `
+        <svg viewBox="0 0 240 240" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M80 50 C 75 70, 90 80, 85 102" />
+          <path d="M120 36 C 115 58, 130 68, 125 92" />
+          <path d="M160 50 C 155 72, 170 82, 165 102" />
+          <path d="M52 158 C 52 138, 188 138, 188 158" />
+          <path d="M52 158 L 52 188 C 52 208, 188 208, 188 188 L 188 158" />
+          <path d="M188 174 L 232 174" />
+          <path d="M226 168 L 234 174 L 226 180" />
+        </svg>`;
+    case "milpa":
+      return `
+        <svg viewBox="0 0 200 240" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M100 232 L100 28" />
+          <path d="M100 70 C 70 64, 50 48, 60 30" />
+          <path d="M100 110 C 130 102, 150 86, 142 64" />
+          <path d="M100 78 C 86 95, 86 165, 100 182 C 114 165, 114 95, 100 78 Z" />
+          <path d="M86 96 L114 96" />
+          <path d="M84 112 L116 112" />
+          <path d="M83 130 L117 130" />
+          <path d="M83 148 L117 148" />
+          <path d="M85 166 L115 166" />
+        </svg>`;
+    case "mano":
+      return `
+        <svg viewBox="0 0 200 240" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M70 230 L70 188 C 70 178, 130 178, 130 188 L 130 230" />
+          <path d="M70 188 C 65 138, 75 96, 90 86 C 95 106, 95 168, 95 188" />
+          <path d="M130 188 C 135 138, 125 96, 110 86 C 105 106, 105 168, 105 188" />
+          <path d="M85 86 L 80 32" />
+          <path d="M95 80 L 92 22" />
+          <path d="M105 80 L 108 22" />
+          <path d="M115 86 L 120 32" />
+          <path d="M68 138 L 48 108" />
+        </svg>`;
+    case "mesa":
+      return `
+        <svg viewBox="0 0 240 200" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M0 162 L 240 162" />
+          <ellipse cx="120" cy="112" rx="62" ry="14" />
+          <ellipse cx="120" cy="112" rx="50" ry="10" />
+          <path d="M40 92 L 80 92 L 80 100 L 40 100 Z" />
+          <path d="M30 96 L 40 92" />
+          <path d="M30 96 L 40 100" />
+          <path d="M200 76 L 200 132" />
+          <path d="M195 76 L 195 88" />
+          <path d="M205 76 L 205 88" />
+          <path d="M190 76 L 210 76" />
+        </svg>`;
+  }
+}
+---
+
+<section class="notebook scene--bone" data-scene="bone" data-notebook>
+
+  {/* Pin chrome — title + counter sit at the top of the viewport
+      and persist while the spreads slide horizontally. */}
+  <header class="notebook__chrome" data-notebook-chrome>
+    <div class="notebook__title">
+      <span class="notebook__dot" aria-hidden="true"></span>
+      <span>{title}</span>
+    </div>
+    <div class="notebook__counter">
+      <span data-notebook-counter>I</span>
+      <span class="notebook__counterSep">/</span>
+      <span>{items[total - 1]?.recto ?? "V"}</span>
+    </div>
+  </header>
+
+  {/* The track — flex row of N spreads, AnimationDirector drives
+      its xPercent via scroll. */}
+  <div class="notebook__viewport">
+    <div class="notebook__track" data-notebook-track style={`--n: ${total};`}>
+      {items.map((sp) => (
+        <article class="spread" data-spread>
+
+          {/* Left page — drawing */}
+          <div class="spread__page spread__page--left">
+            <div class="spread__sketchwrap" data-sketch set:html={sketchSvg(sp.sketch)} />
+          </div>
+
+          {/* Center binding shadow */}
+          <div class="spread__binding" aria-hidden="true"></div>
+
+          {/* Right page — photograph + caption + recto */}
+          <div class="spread__page spread__page--right">
+            <div class="spread__media">
+              {sp.imageUrl ? (
+                <img src={sp.imageUrl} alt={sp.caption} loading="lazy" />
+              ) : (
+                <div class="spread__plate" aria-hidden="true">
+                  <span class="spread__plateGlyph">{sp.recto}</span>
+                </div>
+              )}
+              <div class="spread__inner-rule" aria-hidden="true"></div>
+            </div>
+            <div class="spread__meta">
+              <p class="spread__caption">{sp.caption}</p>
+              <div class="spread__foot">
+                <span class="spread__place">{sp.place}</span>
+                {sp.href ? (
+                  <a class="spread__cta" href={sp.href}>{sp.hrefLabel ?? "→"}</a>
+                ) : null}
+              </div>
+            </div>
+            <span class="spread__recto" aria-hidden="true">RECTO {sp.recto}</span>
+          </div>
+
+        </article>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  /* ── Section + pin chrome ─────────────────────────────────────── */
+  .notebook{
+    position: relative;
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    /* The vertical runway = N * 100vh approximately. The Director
+       will set the actual scroll distance via end: () => `+=…`. */
+    height: 100vh;
+    background:
+      radial-gradient(60% 50% at 50% 0%,
+        color-mix(in srgb, var(--paper) 80%, var(--bone)),
+        var(--bone) 70%),
+      var(--bone);
+    color: var(--ink);
+    overflow: hidden;
+    /* When pinned this becomes the sticky surface; this is the
+       "rest" position before pin engages. */
+  }
+
+  .notebook__chrome{
+    position: absolute;
+    top: clamp(40px, 5vw, 72px);
+    left: clamp(20px, 4vw, 80px);
+    right: clamp(20px, 4vw, 80px);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 3;
+    pointer-events: none;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--ink) 70%, transparent);
+  }
+  .notebook__title{ display: inline-flex; align-items: center; gap: 12px; }
+  .notebook__dot{
+    width: 8px; height: 8px; border-radius: 999px;
+    background: var(--moss);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--moss) 14%, transparent);
+  }
+  .notebook__counter{
+    display: inline-flex; align-items: baseline; gap: 6px;
+    font-feature-settings: "tnum";
+    font-family: var(--font-mono);
+    color: var(--moss);
+  }
+  .notebook__counterSep{ color: color-mix(in srgb, var(--moss) 40%, transparent); }
+
+  /* ── Viewport + track ─────────────────────────────────────────── */
+  .notebook__viewport{
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    /* Reserve top/bottom space for chrome */
+    padding-top: clamp(120px, 14vh, 180px);
+    padding-bottom: clamp(60px, 8vh, 100px);
+  }
+  .notebook__track{
+    height: 100%;
+    display: flex;
+    align-items: stretch;
+    will-change: transform;
+  }
+
+  /* ── A single spread (left + right page) ──────────────────────── */
+  .spread{
+    flex: 0 0 100vw;
+    height: 100%;
+    display: grid;
+    grid-template-columns: 1fr 12px 1fr;
+    align-items: center;
+    padding: 0 clamp(20px, 5vw, 80px);
+    gap: 0;
+  }
+
+  .spread__page{
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: clamp(20px, 4vh, 56px) clamp(20px, 4vw, 56px);
+    background:
+      radial-gradient(80% 100% at 50% 0%,
+        color-mix(in srgb, var(--paper) 50%, transparent),
+        transparent 60%),
+      var(--bone);
+    position: relative;
+  }
+
+  /* ── Left page — drawing ──────────────────────────────────────── */
+  .spread__page--left{
+    align-items: center;
+    color: var(--moss);
+  }
+  .spread__sketchwrap{
+    width: clamp(180px, 30vw, 360px);
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .spread__sketchwrap :global(svg){
+    width: 100%;
+    height: 100%;
+    color: var(--moss);
+  }
+  /* The Director will set stroke-dasharray/offset to enable the
+     self-draw. Initially they're hidden via opacity until measured. */
+  .spread__sketchwrap :global(svg path),
+  .spread__sketchwrap :global(svg ellipse){
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* ── Center binding ───────────────────────────────────────────── */
+  .spread__binding{
+    width: 1px;
+    height: 70%;
+    background: linear-gradient(to bottom,
+      transparent,
+      color-mix(in srgb, var(--clay) 32%, transparent) 20%,
+      color-mix(in srgb, var(--clay) 32%, transparent) 80%,
+      transparent);
+    margin: auto;
+    box-shadow:
+      4px 0 16px -8px rgba(14,15,12,.18),
+      -4px 0 16px -8px rgba(14,15,12,.18);
+  }
+
+  /* ── Right page — photograph + caption ────────────────────────── */
+  .spread__page--right{
+    gap: clamp(18px, 3vw, 36px);
+  }
+  .spread__media{
+    position: relative;
+    width: 100%;
+    max-width: clamp(280px, 38vw, 480px);
+    aspect-ratio: 4 / 5;
+    margin: 0 auto;
+    overflow: hidden;
+    border-radius: var(--r-2);
+    background: rgba(14,15,12,.04);
+    box-shadow:
+      0 30px 60px -16px rgba(14, 15, 12, .28),
+      0 8px 22px -8px rgba(14, 15, 12, .18),
+      0 0 0 1px color-mix(in srgb, var(--moss) 22%, rgba(14,15,12,.08));
+  }
+  .spread__media img{
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: block;
+    filter: saturate(1.04) contrast(1.05);
+  }
+  .spread__inner-rule{
+    position: absolute;
+    inset: 6px;
+    border: 1px solid color-mix(in srgb, var(--bone) 70%, transparent);
+    pointer-events: none;
+    border-radius: calc(var(--r-2) - 6px);
+  }
+  .spread__plate{
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background:
+      radial-gradient(60% 60% at 50% 40%,
+        color-mix(in srgb, var(--ink) 6%, transparent),
+        transparent 70%);
+  }
+  .spread__plateGlyph{
+    font-family: var(--font-display);
+    font-size: clamp(64px, 9vw, 132px);
+    color: color-mix(in srgb, var(--ink) 18%, transparent);
+    letter-spacing: -0.02em;
+  }
+
+  .spread__meta{
+    width: 100%;
+    max-width: clamp(280px, 38vw, 480px);
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .spread__caption{
+    margin: 0;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: clamp(18px, 1.6vw, 24px);
+    line-height: 1.4;
+    color: var(--ink);
+    max-width: 32ch;
+  }
+  .spread__foot{
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 16px;
+    border-top: 1px solid color-mix(in srgb, var(--moss) 22%, rgba(14,15,12,.10));
+    padding-top: 12px;
+  }
+  .spread__place{
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--ink) 60%, transparent);
+  }
+  .spread__cta{
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--moss);
+    border-bottom: 1px solid color-mix(in srgb, var(--moss) 50%, transparent);
+    padding-bottom: 1px;
+    transition: color 400ms var(--ease-fluid), border-color 400ms var(--ease-fluid);
+  }
+  .spread__cta:hover{
+    color: var(--ink);
+    border-bottom-color: var(--ink);
+  }
+  .spread__recto{
+    position: absolute;
+    bottom: clamp(12px, 2vh, 24px);
+    right: clamp(20px, 3vw, 36px);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: .26em;
+    color: color-mix(in srgb, var(--moss) 60%, transparent);
+  }
+
+  /* Mobile: stack pages vertically — same content, no horizontal pin. */
+  @media (max-width: 880px){
+    .notebook{ height: auto; min-height: auto; }
+    .notebook__viewport{ position: relative; height: auto; padding-top: clamp(80px, 12vh, 120px); padding-bottom: clamp(60px, 8vh, 100px); }
+    .notebook__track{ flex-direction: column; height: auto; transform: none !important; }
+    .spread{ flex: 0 0 auto; grid-template-columns: 1fr; height: auto; padding: clamp(40px, 8vw, 72px) clamp(20px, 5vw, 40px); }
+    .spread__binding{ display: none; }
+    .spread__page{ padding: clamp(20px, 4vw, 36px) 0; }
+    .spread__page--left{ padding-bottom: clamp(36px, 6vw, 56px); }
+  }
+
+  /* Reduced-motion: identical to mobile (no pin/scroll lock). */
+  @media (prefers-reduced-motion: reduce){
+    .notebook{ height: auto; min-height: auto; }
+    .notebook__viewport{ position: relative; height: auto; padding-top: clamp(80px, 12vh, 120px); padding-bottom: clamp(60px, 8vh, 100px); }
+    .notebook__track{ flex-direction: column; height: auto; transform: none !important; }
+    .spread{ flex: 0 0 auto; grid-template-columns: 1fr; height: auto; padding: clamp(40px, 8vw, 72px) clamp(20px, 5vw, 40px); }
+    .spread__binding{ display: none; }
+  }
+</style>

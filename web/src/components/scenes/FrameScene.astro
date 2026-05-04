@@ -26,6 +26,13 @@ interface Props {
   caption?: string | null;        // short title
   place?: string | null;          // location / date line
   ratio?: "4/5" | "1/1" | "3/4" | "16/9";
+  /* Surface tone:
+   *   "bone" (default) — vast cream surface, dark photo floats up
+   *                      from small to full size as you scroll past
+   *   "moss"           — moss-tinted ink surface, image enters BIG
+   *                      and settles back (inverse parallax — the
+   *                      world recedes around it) */
+  tone?: "bone" | "moss";
   locale?: Locale;
 }
 
@@ -36,10 +43,17 @@ const {
   caption = null,
   place = null,
   ratio = "4/5",
+  tone = "bone",
 } = Astro.props as Props;
+const isMoss = tone === "moss";
 ---
 
-<section class="frame scene--bone" data-scene="bone" data-frame>
+<section
+  class={`frame frame--${tone} ${isMoss ? "scene--ink" : "scene--bone"}`}
+  data-scene={isMoss ? "ink" : "bone"}
+  data-frame
+  data-frame-tone={tone}
+>
   <div class="frame__corners" aria-hidden="true">
     <span class="frame__rule frame__rule--top"></span>
     <span class="frame__rule frame__rule--bottom"></span>
@@ -69,20 +83,34 @@ const {
     margin-right: calc(50% - 50vw);
     /* 200vh gives the scroll-bound scale animation enough runway. */
     min-height: 200vh;
-    /* CREAM background — this is the rest scene that breaks the
-       all-ink monotone. The dark photograph floats in vast warm
-       space, like a printed page in an art catalogue. */
+    overflow: hidden;
+  }
+
+  /* Tone: bone (default) — vast cream, dark photo floats up. */
+  .frame--bone{
     background:
       radial-gradient(60% 50% at 50% 30%,
         color-mix(in srgb, var(--paper) 60%, var(--bone)),
         var(--bone) 80%),
       var(--bone);
     color: var(--ink);
-    overflow: hidden;
   }
 
-  /* Hairline frame lines — sage on the cream surface so the
-     accent palette is felt. */
+  /* Tone: moss — moss-tinted ink, image enters big and settles back.
+     The "world recedes" feel — pure photography rest, no chrome. */
+  .frame--moss{
+    background:
+      radial-gradient(70% 60% at 50% 20%,
+        color-mix(in srgb, var(--moss) 18%, transparent),
+        transparent 70%),
+      radial-gradient(60% 50% at 30% 80%,
+        color-mix(in srgb, var(--olivar) 10%, transparent),
+        transparent 70%),
+      var(--ink);
+    color: var(--bone);
+  }
+
+  /* Hairline frame lines — accent flips by tone. */
   .frame__corners{
     position: absolute;
     inset: 0;
@@ -93,7 +121,12 @@ const {
     left: clamp(20px, 5vw, 80px);
     right: clamp(20px, 5vw, 80px);
     height: 1px;
+  }
+  .frame--bone .frame__rule{
     background: color-mix(in srgb, var(--moss) 28%, rgba(14,15,12,.05));
+  }
+  .frame--moss .frame__rule{
+    background: color-mix(in srgb, var(--olivar) 36%, rgba(244,239,230,.06));
   }
   .frame__rule--top{ top: clamp(76px, 9vh, 110px); }
   .frame__rule--bottom{ bottom: clamp(70px, 9vh, 110px); }
@@ -122,12 +155,22 @@ const {
     overflow: hidden;
     border-radius: var(--r-2);
     background: rgba(14,15,12,.04);
-    /* Deep printed-photo shadow on warm paper — gives the image
-       physical weight, like it's actually placed on the page. */
+  }
+  .frame--bone .frame__media{
+    /* Deep printed-photo shadow on warm paper — physical weight. */
     box-shadow:
       0 40px 80px -20px rgba(14, 15, 12, .35),
       0 12px 30px -10px rgba(14, 15, 12, .22),
       0 0 0 1px color-mix(in srgb, var(--moss) 18%, rgba(14,15,12,.10));
+  }
+  /* Moss tone goes BIG — the photo fills the canvas, no mat. */
+  .frame--moss .frame__media{
+    width: clamp(320px, 80vw, 1200px);
+    max-height: 82vh;
+    border-radius: var(--r-3);
+    box-shadow:
+      0 60px 120px -30px rgba(0, 0, 0, .6),
+      0 0 0 1px color-mix(in srgb, var(--olivar) 22%, rgba(244,239,230,.06));
   }
   .frame__media img{
     width: 100%;
@@ -136,14 +179,15 @@ const {
     display: block;
     filter: saturate(1.02) contrast(1.06);
   }
-  /* Inner sage hairline — the photo feels matted, like a museum print. */
-  .frame__inner-rule{
+  /* Inner mat hairline — only on bone tone (museum print feel). */
+  .frame--bone .frame__inner-rule{
     position: absolute;
     inset: 6px;
     border: 1px solid color-mix(in srgb, var(--bone) 70%, transparent);
     pointer-events: none;
     border-radius: calc(var(--r-2) - 6px);
   }
+  .frame--moss .frame__inner-rule{ display: none; }
 
   .frame__meta{
     display: grid;
@@ -157,33 +201,37 @@ const {
     text-transform: uppercase;
   }
   .frame__num{
-    color: var(--moss);
     font-feature-settings: "tnum";
     position: relative;
     padding-right: clamp(16px, 2.4vw, 36px);
   }
+  .frame--bone .frame__num{ color: var(--moss); }
+  .frame--moss .frame__num{ color: var(--olivar); }
   .frame__num::after{
     content: "";
     position: absolute;
     right: 0; top: 50%;
     width: 22px; height: 1px;
-    background: color-mix(in srgb, var(--moss) 50%, transparent);
     transform: translateY(-50%);
   }
+  .frame--bone .frame__num::after{ background: color-mix(in srgb, var(--moss) 50%, transparent); }
+  .frame--moss .frame__num::after{ background: color-mix(in srgb, var(--olivar) 60%, transparent); }
   .frame__caption{
-    color: var(--ink);
     text-align: center;
     font-family: var(--font-display);
     font-style: italic;
     font-size: clamp(15px, 1.2vw, 19px);
     letter-spacing: 0;
     text-transform: none;
-    opacity: .82;
+    opacity: .88;
   }
-  .frame__place{
-    color: rgba(14,15,12,.45);
-    text-align: right;
-  }
+  .frame--bone .frame__caption{ color: var(--ink); }
+  .frame--moss .frame__caption{ color: var(--bone); }
+  .frame__place{ text-align: right; }
+  .frame--bone .frame__place{ color: rgba(14,15,12,.45); }
+  .frame--moss .frame__place{ color: rgba(244,239,230,.50); }
+  .frame--bone .frame__meta{ width: clamp(280px, 56vw, 720px); }
+  .frame--moss .frame__meta{ width: clamp(320px, 80vw, 1200px); }
 
   @media (max-width: 720px){
     .frame__meta{ grid-template-columns: 1fr; gap: 8px; text-align: left; }
