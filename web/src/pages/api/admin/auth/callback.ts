@@ -1,41 +1,54 @@
 import type { APIRoute } from "astro";
-import { getSupabase } from "../../../../lib/supabase";
+import { getSupabaseServer } from "../../../../lib/supabase";
 
 export const prerender = false;
 
 /**
- * Handles the magic-link callback. Supabase appends a token-bearing hash
- * fragment client-side. We can't read URL hash on the server, so this route
- * serves a tiny page that posts the tokens back to /api/admin/auth/exchange.
+ * Handles the magic-link / email-confirmation callback.
+ *
+ * Three shapes Supabase may send:
+ *   1. PKCE magic link    →  ?code=…
+ *   2. Email confirmation →  ?token_hash=…&type=signup|magiclink|recovery
+ *   3. Implicit flow      →  #access_token=…&refresh_token=… (in URL hash)
+ *
+ * For 1 + 2 we exchange server-side via the SSR client, which writes the
+ * session cookie via our shared cookie adapter — this is what keeps the
+ * middleware able to find the session afterwards.
+ *
+ * For 3 we serve a tiny client bridge that posts the tokens to
+ * /api/admin/auth/exchange.
  */
-export const GET: APIRoute = async ({ url }) => {
+export const GET: APIRoute = async ({ url, cookies }) => {
   const next = url.searchParams.get("next") ?? "/admin";
   const code = url.searchParams.get("code");
+  const tokenHash = url.searchParams.get("token_hash");
+  const type = url.searchParams.get("type");
 
-  // PKCE flow — Supabase sends ?code=… directly.
+  const fail = (msg: string) =>
+    Response.redirect(`${url.origin}/admin/login?error=${encodeURIComponent(msg)}`, 303);
+
+  const supabase = getSupabaseServer(cookies);
+  if (!supabase) return fail("Supabase no configurado");
+
+  // 1. PKCE magic-link flow
   if (code) {
-    const supabase = getSupabase();
-    if (!supabase) {
-      return Response.redirect(`${url.origin}/admin/login?error=No+Supabase`, 303);
-    }
-    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-    if (error || !data.session) {
-      return Response.redirect(
-        `${url.origin}/admin/login?error=${encodeURIComponent(error?.message ?? "Auth failed")}`,
-        303,
-      );
-    }
-
-    const { access_token, refresh_token } = data.session;
-
-    const headers = new Headers({ Location: next });
-    const cookieOpts = "Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000";
-    headers.append("Set-Cookie", `sb-access-token=${access_token}; ${cookieOpts}`);
-    headers.append("Set-Cookie", `sb-refresh-token=${refresh_token}; ${cookieOpts}`);
-    return new Response(null, { status: 303, headers });
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) return fail(error.message);
+    return Response.redirect(`${url.origin}${next}`, 303);
   }
 
-  // Implicit flow — tokens arrive in URL fragment. Tiny client bridge.
+  // 2. Email-confirmation / verify-OTP flow (this is what "Confirm Your
+  //    Signup" links use after Supabase's "Confirm email" toggle is on).
+  if (tokenHash && type) {
+    const { error } = await supabase.auth.verifyOtp({
+      type: type as "signup" | "magiclink" | "recovery" | "invite" | "email_change",
+      token_hash: tokenHash,
+    });
+    if (error) return fail(error.message);
+    return Response.redirect(`${url.origin}${next}`, 303);
+  }
+
+  // 3. Implicit flow — tokens come in URL fragment, only readable client-side
   const html = `<!doctype html><meta charset="utf-8" /><title>…</title>
 <script>
 (async function(){

@@ -6,6 +6,17 @@ const url = import.meta.env.PUBLIC_SUPABASE_URL;
 const anon = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
 const serviceRole = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
 
+/** Project ref extracted from the URL — used to compose the SSR client's
+ *  expected auth cookie name (`sb-<ref>-auth-token`). */
+const projectRef = (() => {
+  try {
+    const host = url ? new URL(url).host : "";
+    return host.split(".")[0] || "";
+  } catch {
+    return "";
+  }
+})();
+
 export const isSupabaseConfigured = () => !!url && !!anon;
 
 /**
@@ -39,17 +50,23 @@ export function getSupabaseAdmin(): SupabaseClient | null {
  */
 export function getSupabaseServer(cookies: AstroCookies): SupabaseClient | null {
   if (!url || !anon) return null;
+
+  /* @supabase/ssr writes the session as a single JSON-encoded cookie
+   * named `sb-<project-ref>-auth-token`. For long sessions it chunks
+   * across `.0`, `.1`, `.2` … We have to enumerate all candidates
+   * explicitly because AstroCookies has no list/keys API.
+   *
+   * Also keep the legacy `sb-access-token` / `sb-refresh-token` names
+   * for any older sessions still in browsers. */
+  const candidates: string[] = ["sb-access-token", "sb-refresh-token"];
+  if (projectRef) {
+    candidates.push(`sb-${projectRef}-auth-token`);
+    for (let i = 0; i < 6; i++) candidates.push(`sb-${projectRef}-auth-token.${i}`);
+  }
+
   return createServerClient(url, anon, {
     cookies: {
       getAll() {
-        // Astro cookies has no getAll, so we explicitly enumerate
-        // the cookies @supabase/ssr cares about (sb-* prefix family).
-        const candidates = [
-          "sb-access-token",
-          "sb-refresh-token",
-          // @supabase/ssr defaults to "sb-<project-ref>-auth-token" but
-          // we bridge by checking the access/refresh pair we set.
-        ];
         const out: { name: string; value: string }[] = [];
         for (const n of candidates) {
           const v = cookies.get(n)?.value;
