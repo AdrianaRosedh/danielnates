@@ -31,7 +31,8 @@ interface Spread {
   href?: string | null;            // optional CTA on right page
   hrefLabel?: string;
   imageUrl?: string | null;        // right page photograph
-  sketch: "leaf" | "cazo" | "milpa" | "mano" | "mesa";
+  /** Single Spanish noun anchoring the left page (Huerto, Cazo, Maíz…). */
+  markWord: string;
 }
 
 interface Props {
@@ -44,11 +45,13 @@ const { title = "El Cuaderno", spreads = [], locale: propLocale } = Astro.props 
 const locale: Locale = propLocale ?? Astro.locals.locale ?? "es";
 
 /* Default editorial fallback — five spreads tracing Daniel's arc.
- * If the parent passes its own spreads array these are skipped. */
+ * If the parent passes its own spreads array these are skipped.
+ * Spanish nouns anchor the left page in both locales — these are
+ * Daniel's words for these things. */
 const defaultSpreads: Spread[] = [
   {
     recto: "I",
-    sketch: "leaf",
+    markWord: "Huerto",
     imageUrl: "/media/hero/daniel-garden.jpg",
     caption: locale === "es" ? "El huerto manda. La carta cambia con la mañana." : "The garden leads. The menu changes with the morning.",
     place: "Olivea · Valle de Guadalupe",
@@ -57,7 +60,7 @@ const defaultSpreads: Spread[] = [
   },
   {
     recto: "II",
-    sketch: "cazo",
+    markWord: "Cazo",
     imageUrl: null,
     caption: locale === "es" ? "Fritanga poblana, en su forma más contemporánea." : "Poblano fritanga in its most contemporary form.",
     place: "Fritanguita · Roma Norte · CDMX",
@@ -66,7 +69,7 @@ const defaultSpreads: Spread[] = [
   },
   {
     recto: "III",
-    sketch: "milpa",
+    markWord: "Maíz",
     imageUrl: null,
     caption: locale === "es" ? "El primer maestro. Lo que aprendí ahí, todavía cocina lo que hago." : "The first teacher. What I learned there still cooks what I do.",
     place: "Maizal · Puebla · 2017–2024",
@@ -75,7 +78,7 @@ const defaultSpreads: Spread[] = [
   },
   {
     recto: "IV",
-    sketch: "mano",
+    markWord: "Mano",
     imageUrl: null,
     caption: locale === "es" ? "La mano dibuja antes de cocinar. Composición, contraste, intención." : "The hand draws before it cooks. Composition, contrast, intent.",
     place: locale === "es" ? "Atelier · MMXXVI" : "Studio · MMXXVI",
@@ -84,7 +87,7 @@ const defaultSpreads: Spread[] = [
   },
   {
     recto: "V",
-    sketch: "mesa",
+    markWord: "Mesa",
     imageUrl: null,
     caption: locale === "es" ? "La mesa es el último cuadro." : "The table is the last painting.",
     place: locale === "es" ? "Daniel Nates · MMXXVI" : "Daniel Nates · MMXXVI",
@@ -94,82 +97,13 @@ const defaultSpreads: Spread[] = [
 const items: Spread[] = spreads.length ? spreads : defaultSpreads;
 const total = items.length;
 
-/* ────────────────────────────────────────────────────────────────
-   SVG line drawings — proper notebook studies. Each subject was
-   composed as 50-75 individual <path> elements with varying stroke
-   widths (0.7-2.0px) for pen-pressure variance. The lines are passed
-   through a per-subject feTurbulence + feDisplacementMap filter so
-   they read as ink-on-paper, not as vector geometry.
-
-   Each sketch is observed, not iconic:
-     leaf  → an olive branch (Audubon-style botanical)
-     cazo  → cazo de cobre with wooden ladle, hammer marks, steam
-     milpa → maíz stalk with arching leaves, ear, tassel
-     mano  → hand holding a brush (Da Vinci anatomical study)
-     mesa  → still life: bowl, wooden spoon, herb sprig
-
-   To replace any of these with Daniel's own sketches in the future,
-   swap the body string for that kind. */
-
-type SketchKind = Spread["sketch"];
-
-const SKETCHES: Record<SketchKind, { viewBox: string; body: string }> = {
-  leaf: {
-    viewBox: "0 0 200 240",
-    body: `<path d="M 92 238 C 90 220, 95 200, 100 180 C 104 160, 108 140, 112 120 C 115 100, 118 80, 122 60 C 124 45, 127 30, 130 18" stroke-width="1.8"/><path d="M 93 235 C 91 218, 96 198, 101 178" stroke-width="1.0"/><path d="M 113 118 C 116 98, 119 78, 123 58" stroke-width="0.9"/><path d="M 102 175 C 103 172, 104 170, 105 168" stroke-width="1.2"/><path d="M 108 145 C 109 142, 110 140, 111 138" stroke-width="1.2"/><path d="M 116 105 C 117 102, 118 100, 119 97" stroke-width="1.2"/><path d="M 124 70 C 125 67, 126 65, 127 62" stroke-width="1.1"/><path d="M 99 182 C 80 175, 60 165, 42 148 C 35 142, 30 135, 28 128" stroke-width="1.6"/><path d="M 28 128 C 32 135, 38 142, 46 148 C 62 162, 80 172, 98 180" stroke-width="1.4"/><path d="M 48 142 C 52 138, 58 134, 65 132" stroke-width="0.8"/><path d="M 55 150 C 60 148, 66 146, 72 145" stroke-width="0.8"/><path d="M 70 162 C 74 160, 78 158, 82 157" stroke-width="0.8"/><path d="M 80 168 C 83 167, 86 166, 89 165" stroke-width="0.7"/><path d="M 102 178 C 122 172, 142 158, 156 138 C 162 130, 166 122, 168 115" stroke-width="1.6"/><path d="M 168 115 C 165 122, 160 132, 152 142 C 138 160, 120 172, 102 180" stroke-width="1.4"/><path d="M 152 132 C 148 128, 142 124, 135 122" stroke-width="0.8"/><path d="M 144 145 C 138 142, 132 140, 126 138" stroke-width="0.8"/><path d="M 130 158 C 124 156, 118 154, 113 153" stroke-width="0.8"/><path d="M 118 168 C 114 167, 110 166, 107 165" stroke-width="0.7"/><path d="M 109 138 C 92 130, 76 118, 64 100 C 58 92, 54 84, 52 76" stroke-width="1.6"/><path d="M 52 76 C 56 84, 62 94, 70 104 C 84 120, 98 130, 110 136" stroke-width="1.4"/><path d="M 70 92 C 74 88, 80 86, 86 85" stroke-width="0.8"/><path d="M 78 100 C 82 98, 88 97, 93 96" stroke-width="0.8"/><path d="M 90 115 C 94 114, 98 113, 102 112" stroke-width="0.7"/><path d="M 98 125 C 100 124, 103 123, 105 122" stroke-width="0.7"/><path d="M 113 122 C 130 115, 148 100, 160 82 C 166 74, 170 65, 172 58" stroke-width="1.6"/><path d="M 172 58 C 168 66, 162 76, 154 86 C 140 102, 124 114, 114 120" stroke-width="1.4"/><path d="M 152 78 C 148 74, 142 72, 135 71" stroke-width="0.8"/><path d="M 142 92 C 136 90, 130 88, 124 87" stroke-width="0.8"/><path d="M 128 105 C 122 104, 117 103, 112 102" stroke-width="0.7"/><path d="M 118 115 C 115 114, 112 113, 110 112" stroke-width="0.7"/><path d="M 120 95 C 110 80, 100 65, 95 50 C 92 42, 90 35, 90 28" stroke-width="1.5"/><path d="M 90 28 C 94 38, 100 50, 108 62 C 116 75, 122 88, 122 96" stroke-width="1.3"/><path d="M 100 50 C 104 47, 108 46, 112 46" stroke-width="0.7"/><path d="M 108 64 C 111 62, 114 61, 117 61" stroke-width="0.7"/><path d="M 124 76 C 130 74, 138 72, 146 72 C 154 73, 160 76, 162 82 C 161 76, 156 71, 148 68 C 140 66, 132 67, 126 70" stroke-width="1.4"/><path d="M 142 71 C 142 75" stroke-width="1.0"/><path d="M 105 152 C 102 150, 98 150, 94 152 C 90 156, 88 162, 90 168 C 92 174, 96 178, 102 178 C 108 176, 112 172, 112 166 C 110 158, 108 154, 105 152" stroke-width="1.5"/><path d="M 96 158 C 99 156, 102 156, 105 158" stroke-width="0.7"/><path d="M 108 168 C 110 165" stroke-width="0.7"/><path d="M 102 152 C 100 148, 99 145, 100 142" stroke-width="1.0"/><path d="M 118 100 C 115 98, 111 98, 108 101 C 105 105, 104 110, 106 115 C 109 120, 113 122, 118 121 C 122 119, 124 115, 124 110 C 122 104, 120 101, 118 100" stroke-width="1.5"/><path d="M 110 105 C 113 104, 116 104, 118 106" stroke-width="0.7"/><path d="M 121 113 C 122 110" stroke-width="0.7"/><path d="M 116 100 C 114 96, 113 93, 114 90" stroke-width="1.0"/><path d="M 65 122 C 62 120, 58 121, 56 124 C 54 128, 55 132, 58 134 C 62 136, 66 134, 67 130 C 67 126, 66 123, 65 122" stroke-width="1.4"/><path d="M 58 126 C 61 125, 64 126, 65 128" stroke-width="0.7"/><path d="M 63 122 C 62 119, 62 117, 64 116" stroke-width="0.9"/><path d="M 145 110 C 142 109, 138 110, 136 113 C 134 117, 135 121, 138 123 C 142 125, 146 123, 147 119 C 147 114, 146 111, 145 110" stroke-width="1.4"/><path d="M 138 115 C 141 114, 144 115, 145 117" stroke-width="0.7"/><path d="M 142 110 C 141 107, 142 105, 144 104" stroke-width="0.9"/><path d="M 88 192 C 89 195, 90 198" stroke-width="0.7"/><path d="M 95 195 C 96 198, 97 201" stroke-width="0.7"/><path d="M 102 198 C 103 201, 104 204" stroke-width="0.7"/><path d="M 108 188 C 109 191, 110 194" stroke-width="0.7"/><path d="M 115 168 C 116 171, 117 174" stroke-width="0.7"/><path d="M 120 142 C 121 145, 122 148" stroke-width="0.7"/><path d="M 124 100 C 125 103, 126 106" stroke-width="0.7"/>`,
-  },
-  cazo: {
-    viewBox: "0 0 240 240",
-    body: `<path d="M52 110 C 70 102, 100 98, 122 98 C 148 98, 178 103, 192 111" stroke-width="1.8"/><path d="M52 110 C 68 118, 98 122, 122 122 C 148 122, 176 118, 192 111" stroke-width="1.6"/><path d="M54 112 C 72 105, 100 101, 122 101 C 146 101, 174 105, 190 112" stroke-width="0.9"/><path d="M55 113 C 60 140, 70 168, 88 184 C 102 195, 142 196, 156 184 C 174 168, 184 140, 189 113" stroke-width="1.9"/><path d="M58 116 C 62 138, 71 162, 86 178" stroke-width="1.0"/><path d="M186 116 C 182 138, 173 162, 158 178" stroke-width="1.0"/><path d="M88 184 C 102 192, 140 192, 156 184" stroke-width="1.4"/><path d="M44 108 C 42 102, 46 96, 52 95 C 58 94, 62 100, 60 106" stroke-width="1.7"/><path d="M46 105 C 47 101, 50 99, 54 99" stroke-width="0.9"/><path d="M196 109 C 200 102, 206 96, 212 98 C 218 100, 218 108, 212 112" stroke-width="1.7"/><path d="M199 106 C 202 102, 206 101, 209 102" stroke-width="0.9"/><path d="M132 100 L 158 38" stroke-width="1.9"/><path d="M138 102 L 164 40" stroke-width="1.8"/><path d="M158 38 C 161 35, 165 35, 167 38 C 169 41, 167 44, 164 45" stroke-width="1.6"/><path d="M155 50 L 159 52" stroke-width="0.8"/><path d="M150 62 L 154 64" stroke-width="0.8"/><path d="M145 74 L 149 76" stroke-width="0.8"/><path d="M140 86 L 144 88" stroke-width="0.8"/><path d="M125 105 C 128 110, 134 112, 140 110" stroke-width="1.1"/><path d="M124 88 C 121 80, 119 76, 122 70" stroke-width="0.8"/><path d="M132 86 C 130 78, 130 74, 134 68" stroke-width="0.8"/><path d="M118 90 C 114 84, 113 78, 117 73" stroke-width="0.8"/><path d="M76 138 l 3 1" stroke-width="0.9"/><path d="M88 142 l 3 1" stroke-width="0.9"/><path d="M102 145 l 3 1" stroke-width="0.9"/><path d="M118 147 l 3 1" stroke-width="0.9"/><path d="M134 146 l 3 1" stroke-width="0.9"/><path d="M150 144 l 3 1" stroke-width="0.9"/><path d="M164 140 l 3 1" stroke-width="0.9"/><path d="M82 152 l 3 1" stroke-width="0.8"/><path d="M96 156 l 3 1" stroke-width="0.8"/><path d="M112 159 l 3 1" stroke-width="0.8"/><path d="M128 160 l 3 1" stroke-width="0.8"/><path d="M146 158 l 3 1" stroke-width="0.8"/><path d="M160 154 l 3 1" stroke-width="0.8"/><path d="M88 168 l 3 1" stroke-width="0.8"/><path d="M104 172 l 3 1" stroke-width="0.8"/><path d="M120 174 l 3 1" stroke-width="0.8"/><path d="M138 173 l 3 1" stroke-width="0.8"/><path d="M154 169 l 3 1" stroke-width="0.8"/><path d="M94 130 l 2 1" stroke-width="0.7"/><path d="M110 132 l 2 1" stroke-width="0.7"/><path d="M148 132 l 2 1" stroke-width="0.7"/><path d="M168 128 l 2 1" stroke-width="0.7"/><path d="M168 132 C 172 152, 173 168, 168 178" stroke-width="0.9"/><path d="M174 130 C 178 150, 178 165, 174 174" stroke-width="0.8"/><path d="M180 126 C 184 144, 183 158, 180 168" stroke-width="0.8"/><path d="M64 132 C 60 150, 62 166, 68 176" stroke-width="0.9"/><path d="M70 138 C 68 154, 70 168, 74 174" stroke-width="0.8"/><path d="M118 70 C 114 60, 116 50, 122 42 C 128 34, 124 24, 120 18" stroke-width="0.9"/><path d="M134 68 C 138 58, 136 48, 130 40 C 124 32, 128 22, 132 16" stroke-width="0.9"/><path d="M126 72 C 124 64, 126 56, 130 48 C 134 40, 130 32, 126 26" stroke-width="0.8"/><path d="M70 208 C 84 206, 100 205, 122 205 C 144 205, 162 206, 176 208" stroke-width="0.9"/><path d="M72 213 l 8 0" stroke-width="0.8"/><path d="M86 214 l 8 0" stroke-width="0.8"/><path d="M100 215 l 10 0" stroke-width="0.8"/><path d="M116 215 l 12 0" stroke-width="0.8"/><path d="M134 215 l 10 0" stroke-width="0.8"/><path d="M150 214 l 10 0" stroke-width="0.8"/><path d="M166 213 l 8 0" stroke-width="0.8"/><path d="M88 219 l 14 0" stroke-width="0.7"/><path d="M112 220 l 18 0" stroke-width="0.7"/><path d="M140 219 l 14 0" stroke-width="0.7"/>`,
-  },
-  milpa: {
-    viewBox: "0 0 200 240",
-    body: `<path d="M102 238 C 100 210, 98 180, 99 150 C 100 120, 102 90, 101 60 C 100 40, 99 25, 100 10" stroke-width="1.8"/><path d="M104 238 C 103 215, 101 185, 102 155 C 103 125, 105 95, 104 65 C 103 45, 102 28, 103 12" stroke-width="1.1"/><path d="M97 210 C 100 209, 105 209, 108 210" stroke-width="1.5"/><path d="M97 211 C 100 212, 105 212, 108 211" stroke-width="0.9"/><path d="M96 175 C 100 174, 106 174, 110 175" stroke-width="1.6"/><path d="M96 176 C 100 177, 106 177, 110 176" stroke-width="0.9"/><path d="M97 140 C 100 139, 106 139, 109 140" stroke-width="1.5"/><path d="M97 141 C 100 142, 106 142, 109 141" stroke-width="0.8"/><path d="M97 105 C 100 104, 106 104, 109 105" stroke-width="1.5"/><path d="M97 106 C 100 107, 106 107, 109 106" stroke-width="0.8"/><path d="M98 70 C 100 69, 104 69, 107 70" stroke-width="1.4"/><path d="M98 71 C 100 72, 104 72, 107 71" stroke-width="0.8"/><path d="M98 210 C 75 215, 50 230, 22 238" stroke-width="1.7"/><path d="M98 212 C 78 220, 55 232, 25 238" stroke-width="1.0"/><path d="M97 211 C 75 218, 50 232, 23 238" stroke-width="0.8"/><path d="M85 215 C 70 220, 55 228, 35 235" stroke-width="0.7"/><path d="M75 219 C 62 224, 50 230, 38 235" stroke-width="0.7"/><path d="M65 223 C 55 227, 45 231, 38 234" stroke-width="0.7"/><path d="M105 175 C 130 178, 158 188, 188 195 C 178 200, 165 205, 152 208" stroke-width="1.8"/><path d="M105 177 C 130 180, 158 190, 185 196" stroke-width="1.0"/><path d="M120 180 C 140 184, 160 190, 180 195" stroke-width="0.7"/><path d="M120 183 C 140 187, 160 192, 178 197" stroke-width="0.7"/><path d="M125 187 C 145 191, 162 195, 175 199" stroke-width="0.7"/><path d="M130 191 C 148 194, 162 198, 172 201" stroke-width="0.7"/><path d="M97 140 C 75 145, 50 160, 18 172 C 25 175, 32 176, 40 176" stroke-width="1.7"/><path d="M97 142 C 75 147, 52 162, 22 173" stroke-width="0.9"/><path d="M85 146 C 68 152, 50 162, 32 170" stroke-width="0.7"/><path d="M75 150 C 60 156, 45 164, 32 170" stroke-width="0.7"/><path d="M65 156 C 52 162, 42 167, 32 171" stroke-width="0.7"/><path d="M55 162 C 45 166, 38 169, 32 171" stroke-width="0.7"/><path d="M108 105 C 135 108, 162 118, 192 122 C 188 128, 180 132, 172 134" stroke-width="1.8"/><path d="M108 107 C 135 111, 160 120, 188 124" stroke-width="1.0"/><path d="M125 113 C 148 117, 165 121, 182 125" stroke-width="0.7"/><path d="M125 116 C 148 120, 165 124, 180 128" stroke-width="0.7"/><path d="M130 120 C 150 123, 165 127, 178 131" stroke-width="0.7"/><path d="M97 105 C 80 108, 60 115, 38 122 C 35 118, 33 113, 32 108" stroke-width="1.7"/><path d="M97 107 C 80 111, 62 117, 40 122" stroke-width="0.9"/><path d="M85 111 C 70 115, 55 119, 40 122" stroke-width="0.7"/><path d="M75 114 C 62 117, 50 120, 40 122" stroke-width="0.7"/><path d="M107 70 C 125 73, 145 80, 165 88 C 162 92, 158 95, 152 96" stroke-width="1.6"/><path d="M107 72 C 125 75, 145 82, 162 89" stroke-width="0.9"/><path d="M120 78 C 135 82, 148 86, 160 90" stroke-width="0.7"/><path d="M120 81 C 135 84, 148 88, 158 91" stroke-width="0.7"/><path d="M118 165 C 130 168, 142 175, 148 188 C 150 200, 148 210, 142 218 C 138 215, 134 210, 132 205" stroke-width="1.7"/><path d="M120 167 C 132 172, 142 180, 145 192" stroke-width="0.9"/><path d="M126 175 C 134 180, 140 187, 142 195" stroke-width="0.7"/><path d="M132 184 C 137 190, 140 197, 140 204" stroke-width="0.8"/><path d="M134 195 C 137 200, 138 207, 137 214" stroke-width="0.7"/><path d="M133 195 C 135 198, 138 198, 140 197" stroke-width="0.6"/><path d="M133 199 C 135 202, 138 202, 140 201" stroke-width="0.6"/><path d="M133 203 C 135 206, 138 206, 140 205" stroke-width="0.6"/><path d="M133 207 C 135 210, 138 210, 140 209" stroke-width="0.6"/><path d="M137 196 C 139 199, 141 199, 143 198" stroke-width="0.6"/><path d="M137 200 C 139 203, 141 203, 143 202" stroke-width="0.6"/><path d="M137 204 C 139 207, 141 207, 143 206" stroke-width="0.6"/><path d="M137 208 C 139 211, 141 211, 143 210" stroke-width="0.6"/><path d="M129 198 C 131 201, 133 201, 135 200" stroke-width="0.6"/><path d="M129 202 C 131 205, 133 205, 135 204" stroke-width="0.6"/><path d="M129 206 C 131 209, 133 209, 135 208" stroke-width="0.6"/><path d="M141 197 C 143 200, 145 200, 147 199" stroke-width="0.6"/><path d="M141 201 C 143 204, 145 204, 147 203" stroke-width="0.6"/><path d="M141 205 C 143 208, 145 208, 147 207" stroke-width="0.6"/><path d="M100 60 C 98 45, 95 30, 90 15" stroke-width="0.9"/><path d="M101 58 C 102 42, 103 28, 102 12" stroke-width="0.8"/><path d="M102 58 C 105 44, 108 30, 110 16" stroke-width="0.8"/><path d="M103 58 C 108 45, 113 32, 116 18" stroke-width="0.8"/><path d="M99 58 C 95 44, 90 32, 84 20" stroke-width="0.8"/><path d="M100 58 C 98 42, 95 28, 92 14" stroke-width="0.7"/><path d="M104 60 C 111 47, 117 35, 122 22" stroke-width="0.7"/><path d="M101 60 C 100 44, 99 30, 99 16" stroke-width="0.8"/><path d="M98 60 C 92 47, 87 36, 80 25" stroke-width="0.7"/><path d="M105 60 C 113 50, 120 40, 126 28" stroke-width="0.7"/><path d="M97 61 C 89 50, 82 40, 75 30" stroke-width="0.7"/><path d="M106 62 C 115 53, 122 45, 128 36" stroke-width="0.7"/>`,
-  },
-  mano: {
-    viewBox: "0 0 200 240",
-    body: `<path d="M48 232 C 52 218, 58 204, 64 192" stroke-width="1.6"/><path d="M64 192 C 68 180, 72 168, 78 156" stroke-width="1.7"/><path d="M78 156 C 82 144, 86 132, 92 122" stroke-width="1.8"/><path d="M92 122 C 96 112, 102 102, 110 94" stroke-width="1.9"/><path d="M110 94 C 118 86, 128 80, 138 76" stroke-width="1.8"/><path d="M138 76 C 146 73, 154 71, 160 70" stroke-width="1.7"/><path d="M160 70 C 165 70, 168 72, 169 76" stroke-width="1.5"/><path d="M169 76 C 169 82, 165 88, 158 92" stroke-width="1.6"/><path d="M158 92 C 152 96, 144 99, 136 102" stroke-width="1.7"/><path d="M136 102 C 130 104, 126 108, 124 114" stroke-width="1.5"/><path d="M124 114 C 130 110, 138 108, 146 110" stroke-width="1.4"/><path d="M146 110 C 154 113, 160 119, 162 128" stroke-width="1.5"/><path d="M162 128 C 163 136, 161 144, 158 152" stroke-width="1.6"/><path d="M158 152 C 154 162, 148 170, 140 176" stroke-width="1.7"/><path d="M140 176 C 132 180, 124 182, 116 182" stroke-width="1.6"/><path d="M116 182 C 108 182, 100 180, 94 176" stroke-width="1.5"/><path d="M134 116 C 142 114, 150 116, 154 122" stroke-width="1.3"/><path d="M154 122 C 156 128, 154 134, 150 138" stroke-width="1.3"/><path d="M150 138 C 145 142, 138 144, 132 142" stroke-width="1.2"/><path d="M157 92 L 159 86" stroke-width="1.0"/><path d="M154 94 L 156 88" stroke-width="0.9"/><path d="M161 78 C 163 77, 165 78, 165 80" stroke-width="0.9"/><path d="M120 110 C 124 100, 130 92, 136 86" stroke-width="1.4"/><path d="M136 86 C 142 82, 148 80, 154 80" stroke-width="1.3"/><path d="M114 116 C 116 106, 120 96, 126 88" stroke-width="1.3"/><path d="M126 88 C 132 82, 140 78, 148 76" stroke-width="1.2"/><path d="M108 124 C 110 114, 114 104, 120 96" stroke-width="1.2"/><path d="M104 132 C 106 124, 110 116, 116 110" stroke-width="1.1"/><path d="M99 142 C 101 134, 105 126, 110 120" stroke-width="1.0"/><path d="M150 130 C 152 132, 153 134, 152 136" stroke-width="0.8"/><path d="M147 132 C 149 134, 150 136, 149 138" stroke-width="0.8"/><path d="M144 134 C 146 136, 147 138, 146 140" stroke-width="0.8"/><path d="M141 136 C 143 138, 144 140, 143 142" stroke-width="0.8"/><path d="M139 152 C 142 156, 144 160, 144 164" stroke-width="0.9"/><path d="M133 156 C 136 160, 138 164, 138 168" stroke-width="0.9"/><path d="M126 158 C 129 162, 131 166, 131 170" stroke-width="0.9"/><path d="M118 158 C 121 162, 123 166, 123 170" stroke-width="0.9"/><path d="M110 156 C 113 160, 115 164, 115 168" stroke-width="0.9"/><path d="M138 174 C 140 176, 142 178, 142 180" stroke-width="0.7"/><path d="M132 178 C 134 180, 136 181, 136 182" stroke-width="0.7"/><path d="M124 180 C 126 181, 128 182, 128 183" stroke-width="0.7"/><path d="M116 180 C 117 181, 118 182, 118 183" stroke-width="0.7"/><path d="M88 168 C 92 162, 96 158, 102 156" stroke-width="0.8"/><path d="M86 174 C 90 168, 94 164, 100 162" stroke-width="0.8"/><path d="M84 180 C 88 174, 92 170, 98 168" stroke-width="0.8"/><path d="M82 186 C 86 180, 90 176, 96 174" stroke-width="0.8"/><path d="M80 192 C 84 186, 88 182, 94 180" stroke-width="0.8"/><path d="M70 200 C 74 196, 78 194, 82 192" stroke-width="0.8"/><path d="M68 206 C 72 202, 76 200, 80 198" stroke-width="0.8"/><path d="M66 212 C 70 208, 74 206, 78 204" stroke-width="0.8"/><path d="M58 220 L 78 218" stroke-width="1.0"/><path d="M56 226 L 80 224" stroke-width="0.9"/><path d="M52 232 C 60 234, 70 234, 80 232" stroke-width="1.4"/><path d="M80 232 C 88 230, 94 228, 98 224" stroke-width="1.4"/><path d="M65 196 L 50 224" stroke-width="0.7"/><path d="M68 198 L 54 226" stroke-width="0.7"/><path d="M72 200 L 58 228" stroke-width="0.7"/>`,
-  },
-  mesa: {
-    viewBox: "0 0 240 200",
-    body: `<path d="M14 142 C 70 140, 160 141, 228 143" stroke-width="1.6"/><path d="M16 144 C 80 142, 170 143, 226 145" stroke-width="0.9"/><path d="M88 116 C 92 110, 110 106, 132 105 C 158 104, 178 108, 184 115 C 186 117, 184 119, 180 120 C 168 124, 148 126, 132 126 C 116 126, 100 124, 92 121 C 88 119, 86 117, 88 116 Z" stroke-width="1.7"/><path d="M90 117 C 96 112, 114 108, 134 107 C 156 106, 174 110, 181 116" stroke-width="0.8"/><path d="M89 117 C 96 124, 110 134, 124 140 C 138 144, 152 144, 164 141 C 174 138, 182 130, 184 121" stroke-width="1.8"/><path d="M92 119 C 98 128, 110 136, 122 140" stroke-width="0.9"/><path d="M168 138 C 175 134, 181 128, 183 122" stroke-width="0.8"/><path d="M118 144 C 124 146, 142 147, 156 144" stroke-width="1.4"/><path d="M122 145 L 120 150" stroke-width="1.3"/><path d="M152 145 L 154 150" stroke-width="1.3"/><path d="M120 150 C 128 152, 144 152, 154 150" stroke-width="1.5"/><path d="M124 151 C 134 152, 144 152, 152 151" stroke-width="0.8"/><path d="M100 116 C 108 119, 130 121, 152 120 C 168 119, 178 117, 182 115" stroke-width="0.7"/><path d="M148 117 C 152 113, 160 110, 168 110" stroke-width="0.8"/><path d="M150 116 L 188 92" stroke-width="1.7"/><path d="M152 118 L 190 94" stroke-width="1.6"/><path d="M188 92 C 191 90, 194 90, 196 92 C 198 94, 197 96, 194 97 L 191 95 Z" stroke-width="1.5"/><path d="M165 107 C 168 105, 170 104, 173 104" stroke-width="0.9"/><path d="M170 104 C 173 102, 175 102, 177 103" stroke-width="0.9"/><path d="M163 109 L 168 106" stroke-width="0.7"/><path d="M174 100 L 178 98" stroke-width="0.7"/><path d="M155 124 C 152 122, 152 119, 154 117" stroke-width="0.8"/><path d="M158 126 C 156 124, 155 121, 157 119" stroke-width="0.7"/><path d="M148 132 C 152 130, 156 128, 158 125" stroke-width="0.8"/><path d="M140 137 C 145 135, 149 133, 151 130" stroke-width="0.7"/><path d="M132 139 C 137 138, 142 136, 144 134" stroke-width="0.7"/><path d="M124 138 C 128 138, 132 137, 134 136" stroke-width="0.7"/><path d="M168 134 C 172 132, 176 129, 178 125" stroke-width="0.7"/><path d="M40 134 C 50 130, 62 124, 72 119 C 76 117, 78 116, 80 117" stroke-width="1.5"/><path d="M40 134 L 41 137" stroke-width="1.2"/><path d="M44 132 L 45 130" stroke-width="0.9"/><path d="M50 128 L 49 125" stroke-width="0.9"/><path d="M55 125 L 57 122" stroke-width="0.9"/><path d="M60 122 L 59 119" stroke-width="0.9"/><path d="M64 120 L 66 117" stroke-width="0.9"/><path d="M68 117 L 67 114" stroke-width="0.9"/><path d="M72 115 L 74 112" stroke-width="0.9"/><path d="M76 113 L 75 110" stroke-width="0.9"/><path d="M48 130 C 47 127, 47 125, 49 124" stroke-width="0.7"/><path d="M52 127 C 54 124, 56 123, 58 124" stroke-width="0.7"/><path d="M56 124 C 55 121, 55 119, 57 118" stroke-width="0.7"/><path d="M62 121 C 64 119, 66 118, 68 119" stroke-width="0.7"/><path d="M66 118 C 65 116, 66 113, 67 112" stroke-width="0.7"/><path d="M70 116 C 72 114, 74 112, 76 113" stroke-width="0.7"/><path d="M74 113 C 73 110, 74 108, 75 107" stroke-width="0.7"/><path d="M88 152 C 100 156, 130 158, 156 156 C 170 155, 180 153, 184 152" stroke-width="0.7"/><path d="M92 154 C 102 156, 124 158, 144 157" stroke-width="0.7"/><path d="M100 156 C 110 157, 126 158, 138 158" stroke-width="0.7"/><path d="M114 158 L 130 159" stroke-width="0.7"/><path d="M152 154 L 162 153" stroke-width="0.7"/><path d="M160 152 L 172 151" stroke-width="0.7"/><path d="M40 142 C 48 144, 60 145, 70 144" stroke-width="0.7"/><path d="M44 145 L 56 146" stroke-width="0.7"/><path d="M50 147 L 62 147" stroke-width="0.7"/>`,
-  },
-};
-
-function sketchSvg(kind: SketchKind): string {
-  const { viewBox, body } = SKETCHES[kind];
-  const filterId = `nb-pen-${kind}`;
-  return `<svg viewBox="${viewBox}" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" filter="url(#${filterId})">${body}</svg>`;
-}
-
-/* Pen-wobble defs — one filter per sketch kind, each with its own
-   seed so the hand reads slightly different on every spread. The
-   displacement is small (1.5–2.5px) — a confident hand, not a shaky
-   one. Larger margins on the filter region prevent edge clipping. */
-const PEN_FILTERS: { id: string; freq: number; seed: number; scale: number }[] = [
-  { id: "nb-pen-leaf",  freq: 0.018, seed: 5,  scale: 2.0 },
-  { id: "nb-pen-cazo",  freq: 0.014, seed: 11, scale: 2.4 },
-  { id: "nb-pen-milpa", freq: 0.020, seed: 17, scale: 1.8 },
-  { id: "nb-pen-mano",  freq: 0.016, seed: 23, scale: 2.2 },
-  { id: "nb-pen-mesa",  freq: 0.012, seed: 29, scale: 2.6 },
-];
+/* The left page is pure display typography — a single Spanish noun
+ * anchoring each spread (Huerto, Cazo, Maíz, Mano, Mesa). Editorial-
+ * magazine grammar, not iconography. When Daniel uploads real artwork
+ * we'll wire a sketchUrl prop that takes over. */
 ---
 
 <section class="notebook scene--bone" data-scene="bone" data-notebook>
-
-  {/* Shared pen-wobble filter defs. Lives once per scene; every
-      sketch references its own filter id for a distinct hand. The
-      <svg> is zero-sized and aria-hidden — pure defs container. */}
-  <svg class="notebook__defs" aria-hidden="true" focusable="false" width="0" height="0">
-    <defs>
-      {PEN_FILTERS.map((f) => (
-        <filter id={f.id} x="-10%" y="-10%" width="120%" height="120%">
-          <feTurbulence type="fractalNoise" baseFrequency={f.freq} numOctaves="2" seed={f.seed} result="n" />
-          <feDisplacementMap in="SourceGraphic" in2="n" scale={f.scale} />
-        </filter>
-      ))}
-    </defs>
-  </svg>
 
   {/* Pin chrome — title + counter sit at the top of the viewport
       and persist while the spreads slide horizontally. */}
@@ -192,9 +126,15 @@ const PEN_FILTERS: { id: string; freq: number; seed: number; scale: number }[] =
       {items.map((sp) => (
         <article class="spread" data-spread>
 
-          {/* Left page — drawing */}
+          {/* Left page — display typography. The single Spanish noun
+              that anchors the spread sits in big italic display, with
+              a small roman numeral and hairline rule above it. */}
           <div class="spread__page spread__page--left">
-            <div class="spread__sketchwrap" data-sketch set:html={sketchSvg(sp.sketch)} />
+            <div class="spread__mark" data-mark>
+              <p class="spread__markIndex" data-mark-index>{sp.recto}</p>
+              <span class="spread__markRule" data-mark-rule aria-hidden="true"></span>
+              <h3 class="spread__markWord" data-mark-word>{sp.markWord}</h3>
+            </div>
           </div>
 
           {/* Center binding shadow */}
@@ -327,40 +267,48 @@ const PEN_FILTERS: { id: string; freq: number; seed: number; scale: number }[] =
     position: relative;
   }
 
-  /* ── Left page — drawing ──────────────────────────────────────── */
+  /* ── Left page — display typography ───────────────────────────── */
   .spread__page--left{
     align-items: center;
-    color: var(--moss);
-  }
-  .spread__sketchwrap{
-    width: clamp(180px, 30vw, 360px);
-    aspect-ratio: 1;
-    display: flex;
-    align-items: center;
     justify-content: center;
+    color: var(--ink);
   }
-  .spread__sketchwrap :global(svg){
-    width: 100%;
-    height: 100%;
+  .spread__mark{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: clamp(20px, 2.6vw, 32px);
+    max-width: 100%;
+  }
+  .spread__markIndex{
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .32em;
+    text-transform: uppercase;
     color: var(--moss);
+    font-feature-settings: "tnum";
   }
-  /* The Director will set stroke-dasharray/offset to enable the
-     self-draw. Per-path stroke-width is set inline in the SVG so
-     individual lines carry pressure variance. */
-  .spread__sketchwrap :global(svg path),
-  .spread__sketchwrap :global(svg ellipse){
-    fill: none;
-    stroke: currentColor;
-    stroke-linecap: round;
-    stroke-linejoin: round;
+  .spread__markRule{
+    display: block;
+    width: clamp(56px, 9vw, 110px);
+    height: 1px;
+    background: color-mix(in srgb, var(--moss) 60%, transparent);
   }
-  /* Hide the defs container — it's just a definitions vehicle. */
-  .notebook__defs{
-    position: absolute;
-    width: 0;
-    height: 0;
-    overflow: hidden;
-    pointer-events: none;
+  .spread__markWord{
+    margin: 0;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 400;
+    font-size: clamp(96px, 16vw, 240px);
+    line-height: 0.86;
+    letter-spacing: -0.04em;
+    color: var(--ink);
+    /* Optical adjustment so accented characters (Maíz) breathe with
+       the rest of the line. */
+    word-break: keep-all;
+    hyphens: none;
   }
 
   /* ── Center binding ───────────────────────────────────────────── */
