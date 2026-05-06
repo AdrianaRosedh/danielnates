@@ -1,29 +1,29 @@
 ---
 /**
- * WebGLPlane — Lifts a still photograph into a living, breathing surface.
+ * WebGLPlane — Painterly wet-print surface for photographs.
  *
  * Renders the image as a fragment-shaded plane with:
- *   - Mouse-driven displacement (the photo ripples around the cursor)
- *   - Scroll-driven chromatic aberration + brightness envelope
- *   - Subtle ambient noise so the image is never frozen
+ *   - Brush-drag displacement around the cursor (the photo pulls in
+ *     the direction of mouse motion, like dragging a wet brush across
+ *     a freshly-printed plate)
+ *   - Subtle ambient paper-fiber warp so the surface is never frozen
+ *   - Painterly film grain + low-frequency paper texture overlay
+ *   - Brightness envelope tied to scroll progress
+ *
+ * No chromatic aberration — this surface is hand-touched, not glitchy.
  *
  * Boots lazily on intersection. Falls back to a plain <img> when:
  *   - WebGL is unavailable
  *   - prefers-reduced-motion: reduce
  *   - navigator.connection.saveData (lite network)
- *
- * Use the wrapper class `gl` to size the surface; the canvas + img fill
- * 100% of it. Pass `className` to attach scene-specific CSS.
  */
 
 interface Props {
   src: string;
   alt?: string;
   className?: string;
-  /** Mouse displacement strength (0..0.2, default 0.04). */
+  /** Brush-drag strength (0..0.2, default 0.05). */
   intensity?: number;
-  /** Drive chromatic aberration from scroll progress (default true). */
-  scrollChroma?: boolean;
   /** CSS aspect-ratio value (e.g. "4/5") — optional, host can also size. */
   ratio?: string;
   /** Eager loading + decoding for above-the-fold images. */
@@ -34,8 +34,7 @@ const {
   src,
   alt = "",
   className = "",
-  intensity = 0.04,
-  scrollChroma = true,
+  intensity = 0.05,
   ratio,
   eager = false,
 } = Astro.props as Props;
@@ -45,7 +44,6 @@ const {
   class={`gl ${className}`}
   data-gl-plane
   data-gl-intensity={intensity}
-  data-gl-scroll-chroma={scrollChroma ? "1" : "0"}
   style={ratio ? `aspect-ratio: ${ratio};` : undefined}
 >
   <img
@@ -87,11 +85,6 @@ const {
   }
   .gl[data-gl-active="1"] .gl__img{ opacity: 0; }
   .gl[data-gl-active="1"] .gl__canvas{ opacity: 1; }
-  /* On hover-capable devices the canvas accepts pointer events to feed
-     the displacement shader. Touch devices keep it inert. */
-  @media (hover: hover){
-    .gl[data-gl-active="1"]{ cursor: crosshair; }
-  }
 </style>
 
 <script>
@@ -154,69 +147,110 @@ const {
     }
   `;
 
+  /* Painterly fragment shader.
+   *
+   * The image surface is treated like wet ink on absorbent paper:
+   *  - The mouse pushes pigment in the direction of its motion (uVel)
+   *  - A low-frequency paper-fiber field warps the photo at all times
+   *  - A film-grain layer breathes on top
+   *  - A subtle paper-texture overlay sits underneath the image grade
+   *
+   * No RGB channel separation. Single texture sample. The image stays
+   * whole — only its substrate moves.
+   */
   const FRAG = /* glsl */ `
     precision highp float;
     varying vec2 vUv;
     uniform sampler2D tMap;
     uniform vec2 uMouse;
+    uniform vec2 uVel;
     uniform float uTime;
     uniform float uScroll;
     uniform float uHover;
     uniform float uIntensity;
     uniform vec2 uImageRatio;
-    uniform float uChromaOn;
 
     float hash(vec2 p){
       return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
     }
 
+    /* Smooth value noise — for paper fibers and brush ambient */
+    float vnoise(vec2 p){
+      vec2 i = floor(p);
+      vec2 f = fract(p);
+      float a = hash(i);
+      float b = hash(i + vec2(1.0, 0.0));
+      float c = hash(i + vec2(0.0, 1.0));
+      float d = hash(i + vec2(1.0, 1.0));
+      vec2 u = f * f * (3.0 - 2.0 * f);
+      return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+    }
+
+    /* Cheap fractional-Brownian for paper texture */
+    float fbm(vec2 p){
+      float v = 0.0;
+      float a = 0.5;
+      for(int i = 0; i < 4; i++){
+        v += a * vnoise(p);
+        p *= 2.0;
+        a *= 0.5;
+      }
+      return v;
+    }
+
     void main(){
-      // object-fit: cover semantics — keep image filling without stretch
+      // object-fit: cover semantics
       vec2 uv = (vUv - 0.5) * uImageRatio + 0.5;
 
       vec2 toMouse = uv - uMouse;
       float d = length(toMouse);
 
-      // Magnifying-lens style ripple around the cursor.
-      // exp falloff keeps the effect tight and physical.
-      float lensFalloff = exp(-d * 7.0) * uHover;
-      vec2 lens = -normalize(toMouse + vec2(0.00001)) * lensFalloff * uIntensity;
+      /* Wet-brush drag — pixels around the cursor get pushed in the
+         direction of the mouse's recent motion. exp falloff keeps the
+         smear localized to where the brush is. */
+      float brushFalloff = exp(-d * 5.5);
+      vec2 brushDrag = uVel * brushFalloff * uIntensity * 6.0;
 
-      // Quiet ambient drift — the photo is never quite frozen.
-      vec2 ambient = vec2(
-        sin(uv.y * 5.5 + uTime * 0.35),
-        cos(uv.x * 5.5 + uTime * 0.28)
-      ) * 0.0022;
+      /* Ambient paper-fiber warp — always present, very low amplitude.
+         Keeps the photograph feeling alive even when the cursor is
+         elsewhere. Two octaves of slow-moving fbm in perpendicular
+         channels. */
+      vec2 paperWarp = vec2(
+        fbm(uv * 3.5 + uTime * 0.04),
+        fbm(uv * 3.5 + vec2(100.0, 0.0) + uTime * 0.035)
+      );
+      paperWarp = (paperWarp - 0.5) * 0.006;
 
-      vec2 displaced = uv + lens + ambient;
+      vec2 displaced = uv + brushDrag + paperWarp;
 
-      // Chromatic aberration — picks up with scroll past the section.
-      float chroma = (uScroll * 0.010 + uHover * 0.006) * uChromaOn;
-      vec2 cDir = normalize(toMouse + vec2(0.00001));
-
-      float r = texture2D(tMap, displaced + cDir * chroma).r;
-      float g = texture2D(tMap, displaced).g;
-      float b = texture2D(tMap, displaced - cDir * chroma).b;
+      vec3 col = texture2D(tMap, displaced).rgb;
       float a = texture2D(tMap, displaced).a;
 
-      vec3 col = vec3(r, g, b);
-
-      // Painterly grain — keeps the surface alive at any scale.
-      float grain = (hash(uv * 800.0 + uTime) - 0.5) * 0.025;
+      /* Painterly film grain — organic, slightly larger than per-pixel.
+         Animated so it twinkles like emulsion. */
+      float grain = (vnoise(uv * 320.0 + uTime * 6.0) - 0.5) * 0.055;
       col += grain;
 
-      // Tasteful saturation + contrast lift to match the editorial look.
+      /* Low-frequency paper texture — gives the image a printed-on
+         substrate quality. Multiplicative, very gentle. */
+      float paperTex = fbm(uv * 22.0) * 0.10 + 0.95;
+      col *= paperTex;
+
+      /* Editorial grade — slight saturation and contrast lift. */
       float lum = dot(col, vec3(0.299, 0.587, 0.114));
       col = mix(vec3(lum), col, 1.06);
       col = (col - 0.5) * 1.04 + 0.5;
 
-      // Vignette — gentle, breathes a touch on hover.
-      float vig = smoothstep(1.15, 0.35, length(vUv - 0.5));
-      col *= mix(0.94, 1.02, vig);
+      /* Vignette — gentle, breathes a touch on hover. */
+      float vig = smoothstep(1.18, 0.30, length(vUv - 0.5));
+      col *= mix(0.93, 1.02, vig);
 
-      // Brightness envelope — small dim-out as scroll passes the section,
-      // keeps us in dialogue with the existing scroll fade choreography.
-      float envelope = mix(1.0, 0.94, smoothstep(0.65, 1.0, uScroll));
+      /* Hover lift — a hair brighter where the brush has touched. */
+      col += brushFalloff * uHover * 0.04;
+
+      /* Brightness envelope — slight dim-out as scroll passes the
+         section, keeps dialogue with existing scroll fade. */
+      float envelope = mix(1.0, 0.93, smoothstep(0.65, 1.0, uScroll));
       col *= envelope;
 
       gl_FragColor = vec4(col, a);
@@ -232,14 +266,13 @@ const {
     const canvas = host.querySelector<HTMLCanvasElement>("[data-gl-canvas]");
     if (!img || !canvas) return;
 
-    const intensity = parseFloat(host.dataset.glIntensity ?? "0.04");
-    const chromaOn = host.dataset.glScrollChroma === "1" ? 1 : 0;
+    const intensity = parseFloat(host.dataset.glIntensity ?? "0.05");
 
     let renderer: ReturnType<typeof makeRenderer>;
     try {
       renderer = makeRenderer(canvas);
     } catch {
-      return; // GL context creation failed — leave img visible
+      return;
     }
     const gl = renderer.gl;
     gl.clearColor(0, 0, 0, 0);
@@ -258,12 +291,12 @@ const {
       uniforms: {
         tMap: { value: texture },
         uMouse: { value: [0.5, 0.5] },
+        uVel: { value: [0, 0] },
         uTime: { value: 0 },
         uScroll: { value: 0 },
         uHover: { value: 0 },
         uIntensity: { value: intensity },
         uImageRatio: { value: [1, 1] },
-        uChromaOn: { value: chromaOn },
       },
       transparent: true,
     });
@@ -301,23 +334,40 @@ const {
     const ro = new ResizeObserver(resize);
     ro.observe(host);
 
-    // Pointer state — both target and lerped current
+    /* Pointer state — track position AND velocity (for the brush drag).
+       Velocity is computed from frame-to-frame target deltas, then
+       lerped + decayed each frame so the smear settles when the mouse
+       stops moving. */
     let mouseX = 0.5, mouseY = 0.5;
     let mouseTargetX = 0.5, mouseTargetY = 0.5;
+    let lastTargetX = 0.5, lastTargetY = 0.5;
+    let velX = 0, velY = 0;
+    let velTargetX = 0, velTargetY = 0;
     let hover = 0, hoverTarget = 0;
 
+    // Listen on the host (which receives pointer events on hover-capable
+    // devices). Track widely on the document so the brush can follow
+    // the cursor even when it momentarily passes over child overlays.
     const onMove = (e: PointerEvent) => {
       const r = host.getBoundingClientRect();
-      mouseTargetX = (e.clientX - r.left) / r.width;
-      mouseTargetY = 1 - (e.clientY - r.top) / r.height;
+      // Clamp to plane bounds so we don't accidentally drag from offscreen
+      const nx = (e.clientX - r.left) / r.width;
+      const ny = 1 - (e.clientY - r.top) / r.height;
+      if (nx < -0.05 || nx > 1.05 || ny < -0.05 || ny > 1.05) {
+        hoverTarget = 0;
+        return;
+      }
+      mouseTargetX = Math.max(0, Math.min(1, nx));
+      mouseTargetY = Math.max(0, Math.min(1, ny));
       hoverTarget = 1;
     };
     const onLeave = () => { hoverTarget = 0; };
     host.addEventListener("pointermove", onMove);
     host.addEventListener("pointerleave", onLeave);
+    // Catch broader page motion so the brush still tracks when the cursor
+    // glides through overlapping UI (the title, etc).
+    document.addEventListener("pointermove", onMove);
 
-    // Section-relative scroll progress: 0 when entering bottom of viewport,
-    // 1 when fully past the top.
     let scrollProgress = 0;
     function readScroll() {
       const r = host.getBoundingClientRect();
@@ -330,7 +380,6 @@ const {
     window.addEventListener("scroll", readScroll, { passive: true });
     window.addEventListener("resize", readScroll);
 
-    // Only render while the plane is in or near the viewport.
     let inView = true;
     const visIO = new IntersectionObserver(
       ([entry]) => { inView = entry.isIntersecting; },
@@ -345,12 +394,25 @@ const {
       if (!inView) return;
       const t = (performance.now() - start) * 0.001;
 
-      mouseX = lerp(mouseX, mouseTargetX, 0.07);
-      mouseY = lerp(mouseY, mouseTargetY, 0.07);
-      hover = lerp(hover, hoverTarget, 0.05);
+      // Compute raw frame-to-frame target velocity, then drive a decayed
+      // displayed velocity. The brush "leans" with the cursor and
+      // settles back when motion stops.
+      const dx = mouseTargetX - lastTargetX;
+      const dy = mouseTargetY - lastTargetY;
+      lastTargetX = mouseTargetX;
+      lastTargetY = mouseTargetY;
+      velTargetX = velTargetX * 0.82 + dx * 0.6;
+      velTargetY = velTargetY * 0.82 + dy * 0.6;
+      velX = lerp(velX, velTargetX, 0.35);
+      velY = lerp(velY, velTargetY, 0.35);
+
+      mouseX = lerp(mouseX, mouseTargetX, 0.18);
+      mouseY = lerp(mouseY, mouseTargetY, 0.18);
+      hover = lerp(hover, hoverTarget, 0.06);
 
       program.uniforms.uTime.value = t;
       program.uniforms.uMouse.value = [mouseX, mouseY];
+      program.uniforms.uVel.value = [velX, velY];
       program.uniforms.uHover.value = hover;
       program.uniforms.uScroll.value = scrollProgress;
 
@@ -366,6 +428,7 @@ const {
         visIO.disconnect();
         host.removeEventListener("pointermove", onMove);
         host.removeEventListener("pointerleave", onLeave);
+        document.removeEventListener("pointermove", onMove);
         window.removeEventListener("scroll", readScroll);
         window.removeEventListener("resize", readScroll);
       },
