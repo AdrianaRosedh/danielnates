@@ -22,6 +22,7 @@
  */
 
 import type { Locale } from "../../lib/types";
+import WebGLPlane from "../motion/WebGLPlane.astro";
 
 interface Spread {
   recto: string;                   // "I" .. "V"
@@ -202,7 +203,13 @@ function sketchSvg(kind: Spread["sketch"]): string {
           <div class="spread__page spread__page--right">
             <div class="spread__media">
               {sp.imageUrl ? (
-                <img src={sp.imageUrl} alt={sp.caption} loading="lazy" />
+                <WebGLPlane
+                  src={sp.imageUrl}
+                  alt={sp.caption}
+                  className="spread__plane"
+                  intensity={0.055}
+                  scrollChroma={false}
+                />
               ) : (
                 <div class="spread__plate" aria-hidden="true">
                   <span class="spread__plateGlyph">{sp.recto}</span>
@@ -385,6 +392,20 @@ function sketchSvg(kind: Spread["sketch"]): string {
     width: 100%; height: 100%;
     object-fit: cover;
     display: block;
+    filter: saturate(1.04) contrast(1.05);
+  }
+  /* WebGL surface inherits the printed-photo presence — the shader
+     handles the painterly grade; CSS sizes it within the mat. The
+     scene's scroll is pinned, so we suppress scroll-driven chroma
+     and let the mouse alone drive the interaction. */
+  .spread__media .spread__plane{
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+  }
+  .spread__media .spread__plane .gl__img{
     filter: saturate(1.04) contrast(1.05);
   }
   .spread__inner-rule{
