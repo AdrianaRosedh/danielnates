@@ -267,8 +267,8 @@
         },
       });
 
-      // Per-spread: counter update + display-type entrance, scoped to
-      // the page-turn timeline via containerAnimation.
+      // Per-spread: counter update + SVG self-draw, scoped to the
+      // page-turn timeline via containerAnimation.
       spreads.forEach((spread, i) => {
         // Counter
         if (counter) {
@@ -282,34 +282,33 @@
           });
         }
 
-        // Display-type entrance on the left page. The chapter mark
-        // (numeral, rule, word) fades + lifts as the spread crosses
-        // into the viewport. Word lands last for a deliberate beat.
-        const word  = spread.querySelector<HTMLElement>("[data-mark-word]");
-        const index = spread.querySelector<HTMLElement>("[data-mark-index]");
-        const rule  = spread.querySelector<HTMLElement>("[data-mark-rule]");
-
-        if (word) {
-          gsap.set([index, rule, word].filter(Boolean), {
-            autoAlpha: 0,
-            y: 32,
-            filter: "blur(10px)",
+        // SVG self-draw on the left page (drawing).
+        const svgs = spread.querySelectorAll<SVGSVGElement>("[data-sketch] svg");
+        svgs.forEach((svg) => {
+          const lines = svg.querySelectorAll<SVGPathElement | SVGEllipseElement>(
+            "path, ellipse",
+          );
+          // Set initial dasharray/offset so they're invisible.
+          lines.forEach((line) => {
+            const len = (line as SVGGeometryElement).getTotalLength?.() ?? 0;
+            if (!len) return;
+            line.style.strokeDasharray = String(len);
+            line.style.strokeDashoffset = String(len);
           });
-          gsap.set(rule, { width: 0 });
-
-          const tl = gsap.timeline({
+          // Tween to drawn as the spread enters the centre.
+          gsap.to(lines, {
+            strokeDashoffset: 0,
+            ease: "none",
+            stagger: 0.08,
             scrollTrigger: {
               trigger: spread,
               containerAnimation: pageTl,
-              start: "left 70%",
-              once: true,
+              start: "left right",
+              end: "center center",
+              scrub: true,
             },
-            defaults: { ease: FLUID },
           });
-          if (index) tl.to(index, { autoAlpha: 1, y: 0, filter: "blur(0px)", duration: 0.9 }, 0);
-          if (rule)  tl.to(rule,  { autoAlpha: 1, y: 0, filter: "blur(0px)", width: "clamp(56px, 9vw, 110px)", duration: 1.1 }, 0.15);
-          tl.to(word, { autoAlpha: 1, y: 0, filter: "blur(0px)", duration: 1.4 }, 0.30);
-        }
+        });
       });
     });
   }
