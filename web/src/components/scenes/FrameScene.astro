@@ -18,6 +18,7 @@
  */
 
 import type { Locale } from "../../lib/types";
+import WebGLPlane from "../motion/WebGLPlane.astro";
 
 interface Props {
   src: string;
@@ -61,7 +62,12 @@ const isMoss = tone === "moss";
 
   <div class="frame__plate" data-frame-plate>
     <div class="frame__media" style={`aspect-ratio: ${ratio};`}>
-      <img src={src} alt={alt} loading="lazy" decoding="async" />
+      <WebGLPlane
+        src={src}
+        alt={alt}
+        className="frame__plane"
+        intensity={isMoss ? 0.06 : 0.045}
+      />
       <div class="frame__inner-rule" aria-hidden="true"></div>
     </div>
 
@@ -177,6 +183,18 @@ const isMoss = tone === "moss";
     height: 100%;
     object-fit: cover;
     display: block;
+    filter: saturate(1.02) contrast(1.06);
+  }
+  /* WebGL surface inherits the same printed-photo presence — the
+     shader handles displacement + grade; CSS just sizes it. */
+  .frame__media .frame__plane{
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+  }
+  .frame__media .frame__plane .gl__img{
     filter: saturate(1.02) contrast(1.06);
   }
   /* Inner mat hairline — only on bone tone (museum print feel). */

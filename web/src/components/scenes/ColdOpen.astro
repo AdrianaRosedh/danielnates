@@ -1,6 +1,7 @@
 ---
 import TextReveal from "../motion/TextReveal.astro";
 import VoiceMark from "../motion/VoiceMark.astro";
+import WebGLPlane from "../motion/WebGLPlane.astro";
 import type { Locale, VoiceTrack } from "../../lib/types";
 
 interface Props {
@@ -39,7 +40,13 @@ const locale: Locale = propLocale ?? Astro.locals.locale ?? "es";
         <source src={videoUrl} />
       </video>
     ) : posterUrl ? (
-      <img src={posterUrl} alt="" loading="eager" decoding="async" />
+      <WebGLPlane
+        src={posterUrl}
+        alt=""
+        className="cold__plane"
+        intensity={0.05}
+        eager
+      />
     ) : null}
     <div class="cold__scrim"></div>
     <div class="cold__warm" aria-hidden="true"></div>
@@ -110,6 +117,19 @@ const locale: Locale = propLocale ?? Astro.locals.locale ?? "es";
        scrim below handles legibility for the title overlay. */
     opacity: .92;
     filter: saturate(1.02) contrast(1.06);
+  }
+  /* WebGL surface — same envelope as the still img it replaces.
+     The shader handles its own grade; opacity matches for a seamless
+     handoff when GL boots. */
+  .cold__media .cold__plane{
+    width: 100%;
+    height: 100%;
+  }
+  .cold__media .cold__plane .gl__canvas{
+    opacity: 0;
+  }
+  .cold__media .cold__plane[data-gl-active="1"] .gl__canvas{
+    opacity: .96;
   }
   .cold__scrim{
     position: absolute; inset: 0;
