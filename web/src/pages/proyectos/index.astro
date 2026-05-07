@@ -49,15 +49,21 @@ function summaryFor(p: Project): string {
         <div class="projectsList reveal-stagger">
           {projects.map((p) => (
             <a class="projectsRow" href={href(`/${p.slug}`, locale)} data-status={p.status ?? "secondary"}>
-              {p.hero_image_url ? (
-                <img src={p.hero_image_url} alt={p.title} loading="lazy" />
-              ) : (
-                <div class="projectsRow__noimg" aria-hidden="true"></div>
-              )}
+              <div class="projectsRow__cover" data-edit-image-field={`project.${p.slug}.hero_image_url`}>
+                {p.hero_image_url ? (
+                  <img src={p.hero_image_url} alt={p.title} loading="lazy" />
+                ) : (
+                  <div class="projectsRow__noimg" aria-hidden="true"></div>
+                )}
+              </div>
               <div class="projectsRow__body">
                 <p class="projectsRow__status">{statusLabel(p.status)}</p>
-                <h3 class="projectsRow__title">{p.title}</h3>
-                {summaryFor(p) ? <p class="projectsRow__summary">{summaryFor(p)}</p> : null}
+                <h3 class="projectsRow__title" data-edit-field={`project.${p.slug}.title`}>{p.title}</h3>
+                {summaryFor(p) ? (
+                  <p class="projectsRow__summary" data-edit-field={`project.${p.slug}.summary_${locale}`}>{summaryFor(p)}</p>
+                ) : (
+                  <p class="projectsRow__summary" data-edit-field={`project.${p.slug}.summary_${locale}`}></p>
+                )}
               </div>
               <span class="projectsRow__chev" aria-hidden="true">→</span>
             </a>
@@ -91,6 +97,7 @@ function summaryFor(p: Project): string {
     transform: translateY(-1px);
   }
   .projectsRow:hover .projectsRow__chev{ transform: translateX(4px); color: var(--text); }
+  .projectsRow__cover{ width: 120px; height: 140px; }
   .projectsRow img{ width: 120px; height: 140px; object-fit: cover; border-radius: 12px; display: block; }
   .projectsRow__noimg{ width: 120px; height: 140px; border-radius: 12px; background: rgba(244,239,230,.04); }
   .projectsRow__body{ min-width: 0; display: flex; flex-direction: column; gap: 6px; }
@@ -107,7 +114,7 @@ function summaryFor(p: Project): string {
   .projectsRow[data-status="past"]{ opacity: .72; }
   @media (min-width: 880px){
     .projectsRow{ grid-template-columns: 200px 1fr 40px; padding: 18px; gap: 24px; }
-    .projectsRow img, .projectsRow__noimg{ width: 200px; height: 220px; }
+    .projectsRow__cover, .projectsRow img, .projectsRow__noimg{ width: 200px; height: 220px; }
     .projectsRow__title{ font-size: 28px; }
   }
 </style>

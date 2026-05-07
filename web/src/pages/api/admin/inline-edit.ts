@@ -110,11 +110,12 @@ const ENTITY_REGISTRY: Record<string, EntitySpec> = {
     portableCols: ["body_es", "body_en"],
   },
   project: {
-    // Project simple scalars are still served via PROJECT_ENTRIES with
-    // the legacy `project.<slug>.*` paths. Portable bodies are routed
-    // through the entity registry too so admins can edit the long body.
+    // Project text scalars (title, summaries) are still ALSO served
+    // via PROJECT_ENTRIES with the legacy hardcoded slug list — that
+    // takes precedence in resolution. Hero media URLs are only here
+    // so they work for ANY project slug, not just the original three.
     table: "projects",
-    scalarCols: [],
+    scalarCols: ["title", "summary_es", "summary_en", "hero_image_url", "hero_video_url"],
     portableCols: ["body_es", "body_en"],
   },
   art: {
