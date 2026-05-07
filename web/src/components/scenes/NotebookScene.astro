@@ -109,7 +109,21 @@ const defaultSpreads: Spread[] = [
   },
 ];
 
-const items: Spread[] = spreads.length ? spreads : defaultSpreads;
+const allSpreads: Spread[] = spreads.length ? spreads : defaultSpreads;
+
+/** Sort spreads by notebook.order (comma-separated recto list).
+ *  Spreads referenced in the order list render in that order; any
+ *  spreads missing from the list fall through to the end in their
+ *  original sequence. The chrome counter at the top of the scene
+ *  shows scroll position (I/V) — independent of which recto is
+ *  visually first, so reorder is safe to do live. */
+const orderRaw = (copy["notebook.order"] ?? allSpreads.map((s) => s.recto).join(",")).trim();
+const orderList = orderRaw.split(",").map((s) => s.trim()).filter(Boolean);
+const orderIndex = (recto: string) => {
+  const i = orderList.indexOf(recto);
+  return i === -1 ? Number.MAX_SAFE_INTEGER : i;
+};
+const items: Spread[] = [...allSpreads].sort((a, b) => orderIndex(a.recto) - orderIndex(b.recto));
 const total = items.length;
 /* The notebook.<recto>.markWord copy keys are seeded for an upcoming
  * typography variant of the left page — currently the spreads render
@@ -209,9 +223,14 @@ const PEN_FILTERS: { id: string; freq: number; seed: number; scale: number }[] =
   {/* The track — flex row of N spreads, AnimationDirector drives
       its xPercent via scroll. */}
   <div class="notebook__viewport">
-    <div class="notebook__track" data-notebook-track style={`--n: ${total};`}>
+    <div
+      class="notebook__track"
+      data-notebook-track
+      data-edit-list-field="copy.notebook.order"
+      style={`--n: ${total};`}
+    >
       {items.map((sp) => (
-        <article class="spread" data-spread>
+        <article class="spread" data-spread data-edit-list-key={sp.recto}>
 
           {/* Left page — drawing */}
           <div class="spread__page spread__page--left">
