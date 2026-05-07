@@ -9,6 +9,9 @@ interface Props {
   videoUrl?: string | null;
   posterUrl?: string | null;
   transitionKey?: string | null;
+  /** Inline-edit field bindings (e.g. "project.olivea.title"). */
+  titleField?: string | null;
+  subField?: string | null;
 }
 
 const {
@@ -17,6 +20,8 @@ const {
   videoUrl = null,
   posterUrl = null,
   transitionKey = null,
+  titleField = null,
+  subField = null,
 } = Astro.props as Props;
 ---
 
@@ -45,11 +50,12 @@ const {
         <h1
           class="h1"
           transition:name={transitionKey ? `proj-title-${transitionKey}` : undefined}
+          data-edit-field={titleField ?? undefined}
         >
           {title}
         </h1>
       ) : null}
-      {sub ? <p class="sub">{sub}</p> : null}
+      {sub ? <p class="sub" data-edit-field={subField ?? undefined}>{sub}</p> : null}
     </div>
   </div>
 </section>

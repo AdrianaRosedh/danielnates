@@ -87,16 +87,21 @@ if (!framing) framing = fallbackFramings[brand]?.[locale] ?? null;
           videoUrl={heroVideo}
           posterUrl={project.hero_image_url}
           transitionKey={brand}
+          titleField={`project.${brand}.title`}
+          subField={`project.${brand}.${locale === "es" ? "summary_es" : "summary_en"}`}
         />
       </div>
     ) : null}
 
     {framing ? (
       <section class="section reveal">
-        <p class="kicker">{framing.kicker}</p>
-        <p class="lede" style="margin-top: 14px; max-width: 56ch;">{framing.intro}</p>
+        <p class="kicker" data-edit-field={`project.${brand}.${locale === "es" ? "kicker_es" : "kicker_en"}`}>{framing.kicker}</p>
+        <p class="lede" style="margin-top: 14px; max-width: 56ch;" data-edit-field={`project.${brand}.${locale === "es" ? "intro_es" : "intro_en"}`}>{framing.intro}</p>
         {framing.meta ? (
-          <p style="margin-top: 14px; font-family: var(--font-sans); font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: var(--text-3);">
+          <p
+            data-edit-field={`project.${brand}.${locale === "es" ? "meta_es" : "meta_en"}`}
+            style="margin-top: 14px; font-family: var(--font-sans); font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: var(--text-3);"
+          >
             {framing.meta}
           </p>
         ) : null}
