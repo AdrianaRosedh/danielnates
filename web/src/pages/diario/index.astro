@@ -42,7 +42,12 @@ const localizedExcerpt = (a: Article) =>
   locale === "es" ? (a.excerpt_es ?? a.excerpt_en ?? "") : (a.excerpt_en ?? a.excerpt_es ?? "");
 ---
 
-<BaseLayout title={`${ui("diary", locale)} — Daniel Nates`} description={lede} locale={locale}>
+<BaseLayout
+  title={`${ui("diary", locale)} — Daniel Nates`}
+  description={lede}
+  locale={locale}
+  createContext={{ entity: "article", label: "Nueva entrada" }}
+>
   <div class="shell">
     <TopDock locale={locale} />
 

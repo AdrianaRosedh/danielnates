@@ -45,6 +45,7 @@ const localizedLine = (b: Brief) =>
   title={`${locale === "es" ? "Día" : "Day"} — Daniel Nates`}
   description={lede}
   locale={locale}
+  createContext={{ entity: "daily", label: "Nuevo brief" }}
   og={{
     title: locale === "es" ? "Día" : "Day",
     kicker: locale === "es" ? "Brief diario" : "Daily brief",

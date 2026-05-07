@@ -34,6 +34,7 @@ function summaryFor(p: Project): string {
   title={`${ui("projects", locale)} — Daniel Nates`}
   description={lede}
   locale={locale}
+  createContext={{ entity: "project", label: "Nuevo proyecto" }}
 >
   <div class="shell">
     <TopDock locale={locale} />

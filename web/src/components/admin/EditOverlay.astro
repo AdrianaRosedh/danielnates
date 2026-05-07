@@ -30,9 +30,16 @@ interface EditContext {
   published?: boolean;
   indexHref: string;
 }
+interface CreateContext {
+  entity: "article" | "art" | "project" | "daily";
+  label?: string;
+}
 
-interface Props { editContext?: EditContext }
-const { editContext } = Astro.props as Props;
+interface Props {
+  editContext?: EditContext;
+  createContext?: CreateContext;
+}
+const { editContext, createContext } = Astro.props as Props;
 ---
 
 <div
@@ -43,6 +50,7 @@ const { editContext } = Astro.props as Props;
   data-edit-entity={editContext?.entity ?? undefined}
   data-edit-entity-id={editContext?.id ?? undefined}
   data-edit-entity-index={editContext?.indexHref ?? undefined}
+  data-edit-create-entity={createContext?.entity ?? undefined}
 >
   <div class="editbar__row">
     <span class="editbar__dot" aria-hidden="true"></span>
@@ -51,6 +59,12 @@ const { editContext } = Astro.props as Props;
       <span class="editbar__toggleDot" aria-hidden="true"></span>
       <span data-edit-toggle-label>Editar</span>
     </button>
+    {createContext ? (
+      <button class="editbar__create" type="button" data-edit-create>
+        <span aria-hidden="true">+</span>
+        <span>{createContext.label ?? "Nuevo"}</span>
+      </button>
+    ) : null}
     {editContext ? (
       <>
         <span class="editbar__sep" aria-hidden="true"></span>
@@ -225,6 +239,33 @@ const { editContext } = Astro.props as Props;
   }
   .editbar__delete[data-busy="1"],
   .editbar__toggle[data-busy="1"]{
+    opacity: .65;
+    pointer-events: none;
+  }
+  .editbar__create{
+    appearance: none;
+    background: rgba(157, 190, 138, .14);
+    border: 1px solid rgba(157, 190, 138, .55);
+    color: #C8DCBA;
+    font: inherit;
+    font-family: var(--font-sans, system-ui, sans-serif);
+    font-size: 11px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    border-radius: 999px;
+    padding: 5px 12px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: background .2s, border-color .2s, color .2s;
+  }
+  .editbar__create:hover{
+    background: rgba(157, 190, 138, .22);
+    border-color: rgba(157, 190, 138, .8);
+    color: #F4EFE6;
+  }
+  .editbar__create[data-busy="1"]{
     opacity: .65;
     pointer-events: none;
   }
@@ -623,6 +664,39 @@ const { editContext } = Astro.props as Props;
           console.error("[entity-action] publish failed", err);
         } finally {
           delete pubBtn.dataset.busy;
+        }
+      });
+    }
+
+    const createEntity = bar.dataset.editCreateEntity;
+    const createBtn = document.querySelector<HTMLButtonElement>("[data-edit-create]");
+    if (createEntity && createBtn && !(createBtn as HTMLButtonElement & { __dnBound?: boolean }).__dnBound) {
+      (createBtn as HTMLButtonElement & { __dnBound?: boolean }).__dnBound = true;
+      createBtn.addEventListener("click", async () => {
+        createBtn.dataset.busy = "1";
+        if (status) {
+          status.textContent = "Creando…";
+          status.dataset.state = "saving";
+        }
+        try {
+          const res = await fetch("/api/admin/entity-create", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ entity: createEntity }),
+          });
+          if (!res.ok) throw new Error(await res.text());
+          const { url } = (await res.json()) as { url: string };
+          // Persist edit-mode so the new page lands ready to edit.
+          try { localStorage.setItem("dn_edit_mode", "1"); } catch {}
+          window.location.href = url;
+        } catch (err) {
+          if (status) {
+            status.textContent = "Error al crear";
+            status.dataset.state = "error";
+          }
+          // eslint-disable-next-line no-console
+          console.error("[entity-create] failed", err);
+          delete createBtn.dataset.busy;
         }
       });
     }

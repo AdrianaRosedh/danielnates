@@ -42,6 +42,13 @@ interface EditContext {
   indexHref: string;
 }
 
+interface CreateContext {
+  /** Which entity the "+ Nuevo" button on this list page creates. */
+  entity: "article" | "art" | "project" | "daily";
+  /** Spanish label rendered in the toolbar button. */
+  label?: string;
+}
+
 interface Props {
   title?: string;
   description?: string;
@@ -54,6 +61,10 @@ interface Props {
   /** Inline-edit context for slug- or id-keyed detail pages. When
    *  set, the EditOverlay shows Publish + Delete affordances. */
   editContext?: EditContext;
+  /** Inline-create context for list pages. When set, the EditOverlay
+   *  shows a "+ Nueva entrada" button that creates a stub and
+   *  redirects to its detail page. */
+  createContext?: CreateContext;
 }
 const {
   title = "Daniel Nates",
@@ -62,6 +73,7 @@ const {
   entrance: entranceProp,
   og,
   editContext,
+  createContext,
 } = Astro.props as Props;
 const locale = propLocale ?? Astro.locals.locale ?? "es";
 
@@ -165,6 +177,6 @@ const ogImage = `${SITE}/og.png?${ogParams.toString()}`;
     <MenuOverlay locale={locale} daniel={daniel} />
     <ScrollProgress />
     <AnimationDirector />
-    {Astro.locals.isAdmin && <EditOverlay editContext={editContext} />}
+    {Astro.locals.isAdmin && <EditOverlay editContext={editContext} createContext={createContext} />}
   </body>
 </html>

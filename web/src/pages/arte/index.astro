@@ -18,7 +18,12 @@ const lede = locale === "es"
   : "Drawing, painting, marks on paper. The kitchen stopped being the only place I compose.";
 ---
 
-<BaseLayout title={`${ui("art", locale)} — Daniel Nates`} description={lede} locale={locale}>
+<BaseLayout
+  title={`${ui("art", locale)} — Daniel Nates`}
+  description={lede}
+  locale={locale}
+  createContext={{ entity: "art", label: "Nueva pieza" }}
+>
   <div class="shell">
     <TopDock locale={locale} />
 
