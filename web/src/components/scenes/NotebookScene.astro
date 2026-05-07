@@ -53,11 +53,21 @@ const c = (key: string, fallback: string): string => copy[key] ?? fallback;
  * If the parent passes its own spreads array these are skipped. The
  * markWord is now sourced from landing_copy where possible so each
  * spread's hero word is editable inline. */
+/** Per-spread image lookup: empty string in landing_copy means "no
+ *  photo, show the plate glyph" — admin can later swap it via the
+ *  EditOverlay's "Cambiar foto" affordance. */
+const img = (recto: string, fallback: string | null = null): string | null => {
+  const v = copy[`notebook.${recto}.image_url`];
+  if (v == null) return fallback;
+  const trimmed = v.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
 const defaultSpreads: Spread[] = [
   {
     recto: "I",
     sketch: "leaf",
-    imageUrl: "/media/hero/daniel-garden.jpg",
+    imageUrl: img("I", "/media/hero/daniel-garden.jpg"),
     caption: c(`notebook.I.caption_${locale}`, locale === "es" ? "El huerto manda. La carta cambia con la mañana." : "The garden leads. The menu changes with the morning."),
     place: c(`notebook.I.place_${locale}`, "Olivea · Valle de Guadalupe"),
     href: locale === "es" ? "/olivea" : "/en/olivea",
@@ -66,7 +76,7 @@ const defaultSpreads: Spread[] = [
   {
     recto: "II",
     sketch: "cazo",
-    imageUrl: null,
+    imageUrl: img("II"),
     caption: c(`notebook.II.caption_${locale}`, locale === "es" ? "Fritanga poblana, en su forma más contemporánea." : "Poblano fritanga in its most contemporary form."),
     place: c(`notebook.II.place_${locale}`, "Fritanguita · Roma Norte · CDMX"),
     href: locale === "es" ? "/fritanguita" : "/en/fritanguita",
@@ -75,7 +85,7 @@ const defaultSpreads: Spread[] = [
   {
     recto: "III",
     sketch: "milpa",
-    imageUrl: null,
+    imageUrl: img("III"),
     caption: c(`notebook.III.caption_${locale}`, locale === "es" ? "El primer maestro. Lo que aprendí ahí, todavía cocina lo que hago." : "The first teacher. What I learned there still cooks what I do."),
     place: c(`notebook.III.place_${locale}`, "Maizal · Puebla · 2017–2024"),
     href: locale === "es" ? "/maizal" : "/en/maizal",
@@ -84,7 +94,7 @@ const defaultSpreads: Spread[] = [
   {
     recto: "IV",
     sketch: "mano",
-    imageUrl: null,
+    imageUrl: img("IV"),
     caption: c(`notebook.IV.caption_${locale}`, locale === "es" ? "La mano dibuja antes de cocinar. Composición, contraste, intención." : "The hand draws before it cooks. Composition, contrast, intent."),
     place: c(`notebook.IV.place_${locale}`, locale === "es" ? "Atelier · MMXXVI" : "Studio · MMXXVI"),
     href: locale === "es" ? "/arte" : "/en/arte",
@@ -93,7 +103,7 @@ const defaultSpreads: Spread[] = [
   {
     recto: "V",
     sketch: "mesa",
-    imageUrl: null,
+    imageUrl: img("V"),
     caption: c(`notebook.V.caption_${locale}`, locale === "es" ? "La mesa es el último cuadro." : "The table is the last painting."),
     place: c(`notebook.V.place_${locale}`, locale === "es" ? "Daniel Nates · MMXXVI" : "Daniel Nates · MMXXVI"),
   },
@@ -211,9 +221,11 @@ const PEN_FILTERS: { id: string; freq: number; seed: number; scale: number }[] =
           {/* Center binding shadow */}
           <div class="spread__binding" aria-hidden="true"></div>
 
-          {/* Right page — photograph + caption + recto */}
+          {/* Right page — photograph + caption + recto. spread__media
+              is always tagged with data-edit-image-field so admins
+              can attach a photo to a plate-glyph spread. */}
           <div class="spread__page spread__page--right">
-            <div class="spread__media">
+            <div class="spread__media" data-edit-image-field={`copy.notebook.${sp.recto}.image_url`}>
               {sp.imageUrl ? (
                 <WebGLPlane
                   src={sp.imageUrl}
