@@ -33,7 +33,8 @@ interface Props {
   title?: string;
   description?: string;
   locale?: "es" | "en";
-  /** Show the title-card cinematic curtain on first visit. Default true. */
+  /** Show the title-card cinematic curtain on first visit. Auto-detected
+   *  by route (landing page only) unless explicitly overridden. */
   entrance?: boolean;
   /** Override the auto-generated OG card. */
   og?: OgParams;
@@ -42,10 +43,20 @@ const {
   title = "Daniel Nates",
   description = "",
   locale: propLocale,
-  entrance = true,
+  entrance: entranceProp,
   og,
 } = Astro.props as Props;
 const locale = propLocale ?? Astro.locals.locale ?? "es";
+
+/* The "Daniel Nates" title-card entrance is the FILM'S OPENING — it
+ * belongs only on the landing page. Chapter pages and sub-routes get
+ * the lighter ChapterCurtain transition instead. Pages can still opt
+ * in/out by passing `entrance` explicitly. */
+const isLanding =
+  Astro.url.pathname === "/" ||
+  Astro.url.pathname === "/en" ||
+  Astro.url.pathname === "/en/";
+const showEntrance = entranceProp ?? isLanding;
 
 const SITE = import.meta.env.PUBLIC_SITE_URL ?? "https://danielnates.com";
 const canonical = new URL(Astro.url.pathname, SITE).toString();
@@ -102,7 +113,7 @@ const ogImage = `${SITE}/og.png?${ogParams.toString()}`;
     <script is:inline>{`document.documentElement.classList.add('js');`}</script>
   </head>
   <body>
-    {entrance && <CinematicEntrance />}
+    {showEntrance && <CinematicEntrance />}
     <CustomCursor />
     <ChapterCurtain locale={locale} />
     <slot />
