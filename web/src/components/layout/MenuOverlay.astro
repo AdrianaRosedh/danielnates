@@ -155,7 +155,11 @@ function isCurrent(path: string): boolean {
     color: var(--bone);
     display: flex;
     flex-direction: column;
-    padding: clamp(24px, 3vw, 40px) clamp(20px, 5vw, 80px);
+    padding: clamp(20px, 2.4vw, 32px) clamp(20px, 5vw, 80px);
+    /* Belt-and-suspenders: if anything ever overflows on a tiny
+       viewport, the overlay scrolls instead of clipping. */
+    overflow-y: auto;
+    overscroll-behavior: contain;
     opacity: 0;
     transform: translate3d(0, 16px, 0);
     transition:
@@ -171,7 +175,8 @@ function isCurrent(path: string): boolean {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: clamp(40px, 8vw, 100px);
+    margin-bottom: clamp(28px, 4vw, 56px);
+    flex: 0 0 auto;
   }
   .overlay__brand{
     display: inline-flex;
@@ -231,13 +236,19 @@ function isCurrent(path: string): boolean {
   .overlay__closeMark::before{ transform: rotate(45deg); }
   .overlay__closeMark::after{ transform: rotate(-45deg); }
 
-  /* Primary nav — big serif stack */
-  .overlay__nav{ flex: 1; display: flex; align-items: center; }
+  /* Primary nav — big serif stack. Sized off both viewport WIDTH and
+     HEIGHT so 8 items always fit alongside the projects + footer. */
+  .overlay__nav{
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+  }
   .overlay__nav ol{
     list-style: none;
     margin: 0; padding: 0;
     display: flex; flex-direction: column;
-    gap: clamp(4px, 0.6vw, 12px);
+    gap: clamp(2px, 0.3vh, 8px);
     width: 100%;
   }
   .overlay__nav li{
@@ -268,8 +279,11 @@ function isCurrent(path: string): boolean {
     align-items: baseline;
     gap: clamp(16px, 2vw, 32px);
     font-family: var(--font-display);
-    font-size: clamp(48px, 9vw, 132px);
-    line-height: .95;
+    /* min(width, height) so the 8-item stack always fits the viewport
+       even when the window is short. ~5.5svh per line × 8 items keeps
+       us under half the viewport for the nav alone. */
+    font-size: clamp(40px, min(7.2vw, 5.6svh), 96px);
+    line-height: .96;
     letter-spacing: -0.025em;
     color: var(--bone);
     transition: color 800ms var(--ease-fluid), opacity 800ms var(--ease-fluid);
@@ -280,7 +294,7 @@ function isCurrent(path: string): boolean {
     letter-spacing: .14em;
     color: rgba(244,239,230,.4);
     align-self: flex-start;
-    padding-top: clamp(20px, 3vw, 36px);
+    padding-top: clamp(14px, 2vw, 24px);
     transition: color 800ms var(--ease-fluid);
   }
   .overlay__label{
@@ -296,9 +310,10 @@ function isCurrent(path: string): boolean {
 
   /* Projects */
   .overlay__projects{
-    margin-top: clamp(36px, 5vw, 64px);
-    padding-top: clamp(24px, 3vw, 36px);
+    margin-top: clamp(24px, 3vw, 40px);
+    padding-top: clamp(18px, 2vw, 28px);
     border-top: 1px solid rgba(244,239,230,.10);
+    flex: 0 0 auto;
   }
   .overlay__projects ul{
     list-style: none; margin: 12px 0 0; padding: 0;
@@ -340,12 +355,13 @@ function isCurrent(path: string): boolean {
 
   /* Footer */
   .overlay__foot{
-    margin-top: clamp(40px, 5vw, 64px);
-    padding-top: clamp(20px, 2.4vw, 32px);
+    margin-top: clamp(24px, 3vw, 40px);
+    padding-top: clamp(16px, 2vw, 24px);
     border-top: 1px solid rgba(244,239,230,.10);
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 20px;
+    gap: 16px;
+    flex: 0 0 auto;
   }
   @media (min-width: 720px){ .overlay__foot{ grid-template-columns: repeat(4, 1fr); } }
   .overlay__foot-col{ display: flex; flex-direction: column; gap: 8px; min-width: 0; }
