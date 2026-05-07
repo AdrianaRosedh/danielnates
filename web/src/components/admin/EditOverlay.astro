@@ -200,6 +200,51 @@
   html[data-edit-mode="1"] [data-edit-image-field]{
     position: relative;
   }
+
+  /* Sortable lists — each [data-edit-list-field] container has child
+     [data-edit-list-key] items that become drag-reorderable in edit
+     mode. The grip handle is overlaid at the left edge of each item. */
+  html[data-edit-mode="1"] [data-edit-list-field]{
+    position: relative;
+  }
+  html[data-edit-mode="1"] [data-edit-list-key]{
+    position: relative;
+  }
+  html[data-edit-mode="1"] [data-edit-list-key][draggable="true"]{
+    cursor: grab;
+  }
+  html[data-edit-mode="1"] [data-edit-list-key].is-dragging{
+    opacity: .55;
+    cursor: grabbing;
+  }
+  html[data-edit-mode="1"] [data-edit-list-key].is-drop-target{
+    box-shadow: inset 0 2px 0 0 #D9421C;
+  }
+  .editGrip{
+    position: absolute;
+    top: 50%;
+    left: -28px;
+    transform: translateY(-50%);
+    width: 22px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(217, 66, 28, .7);
+    background: rgba(14, 15, 12, .04);
+    border: 1px solid rgba(217, 66, 28, .25);
+    border-radius: 6px;
+    cursor: grab;
+    user-select: none;
+    transition: background .2s, border-color .2s, color .2s;
+    z-index: 4;
+  }
+  .editGrip:hover{
+    background: rgba(217, 66, 28, .12);
+    border-color: rgba(217, 66, 28, .55);
+    color: #D9421C;
+  }
+  .editGrip svg{ width: 12px; height: 12px; display: block; }
 </style>
 
 <script>
@@ -290,6 +335,101 @@
         beginImagePick(host, badge, field);
       });
       host.appendChild(badge);
+    });
+
+    // Sortable lists — each child gets a drag handle and the parent
+    // listens for drops to compute the new order.
+    document.querySelectorAll<HTMLElement>("[data-edit-list-field]").forEach((list) => {
+      const l = list as HTMLElement & { __dnListBound?: boolean };
+      if (l.__dnListBound) return;
+      l.__dnListBound = true;
+      bindSortableList(list);
+    });
+  }
+
+  /** HTML5-drag-based sortable list. Each child must declare
+   *  [data-edit-list-key="<key>"]; the parent's [data-edit-list-field]
+   *  is the field path the new comma-separated order is saved to. */
+  function bindSortableList(list: HTMLElement) {
+    const field = list.dataset.editListField ?? "";
+    if (!field) return;
+
+    const itemSel = "[data-edit-list-key]";
+    let dragKey: string | null = null;
+
+    function getItems(): HTMLElement[] {
+      return Array.from(list.querySelectorAll<HTMLElement>(`:scope > ${itemSel}`));
+    }
+
+    function attachItem(item: HTMLElement) {
+      // Drag handle (only renders once)
+      if (!item.querySelector(":scope > .editGrip")) {
+        const grip = document.createElement("span");
+        grip.className = "editGrip";
+        grip.setAttribute("aria-hidden", "true");
+        grip.innerHTML =
+          '<svg viewBox="0 0 12 12"><circle cx="3" cy="3" r="1" fill="currentColor"/><circle cx="3" cy="6" r="1" fill="currentColor"/><circle cx="3" cy="9" r="1" fill="currentColor"/><circle cx="9" cy="3" r="1" fill="currentColor"/><circle cx="9" cy="6" r="1" fill="currentColor"/><circle cx="9" cy="9" r="1" fill="currentColor"/></svg>';
+        item.appendChild(grip);
+      }
+    }
+
+    function refresh() {
+      const editing = document.documentElement.dataset.editMode === "1";
+      getItems().forEach((item) => {
+        attachItem(item);
+        item.draggable = editing;
+      });
+    }
+    refresh();
+
+    // Re-evaluate when edit mode toggles.
+    const observer = new MutationObserver(refresh);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-edit-mode"] });
+
+    list.addEventListener("dragstart", (ev) => {
+      const target = (ev.target as HTMLElement | null)?.closest(itemSel) as HTMLElement | null;
+      if (!target) return;
+      dragKey = target.dataset.editListKey ?? null;
+      target.classList.add("is-dragging");
+      ev.dataTransfer?.setData("text/plain", dragKey ?? "");
+      if (ev.dataTransfer) ev.dataTransfer.effectAllowed = "move";
+    });
+
+    list.addEventListener("dragend", () => {
+      getItems().forEach((i) => i.classList.remove("is-dragging", "is-drop-target"));
+      dragKey = null;
+    });
+
+    list.addEventListener("dragover", (ev) => {
+      if (!dragKey) return;
+      ev.preventDefault();
+      const over = (ev.target as HTMLElement | null)?.closest(itemSel) as HTMLElement | null;
+      if (!over) return;
+      getItems().forEach((i) => {
+        i.classList.toggle("is-drop-target", i === over && i.dataset.editListKey !== dragKey);
+      });
+    });
+
+    list.addEventListener("drop", async (ev) => {
+      if (!dragKey) return;
+      ev.preventDefault();
+      const over = (ev.target as HTMLElement | null)?.closest(itemSel) as HTMLElement | null;
+      const source = list.querySelector<HTMLElement>(`${itemSel}[data-edit-list-key="${dragKey}"]`);
+      if (!source || !over || source === over) return;
+
+      // Decide insertion side based on cursor Y vs midpoint.
+      const r = over.getBoundingClientRect();
+      const before = ev.clientY < r.top + r.height / 2;
+      list.insertBefore(source, before ? over : over.nextSibling);
+
+      const newOrder = getItems().map((i) => i.dataset.editListKey ?? "").filter(Boolean).join(",");
+      await saveField(field, newOrder, () => {
+        // On error, the previous server-side order is the source of
+        // truth; a reload restores it.
+        window.location.reload();
+      });
+
+      getItems().forEach((i) => i.classList.remove("is-dragging", "is-drop-target"));
     });
   }
 

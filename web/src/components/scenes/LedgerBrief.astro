@@ -48,7 +48,7 @@ const c = (key: string, fallback: string): string => copy[key] ?? fallback;
 
 const finalTitle = title ?? (locale === "es" ? "La Mesa" : "The Table");
 
-const finalEntries: Entry[] = entries ?? [
+const allEntries: Entry[] = entries ?? [
   {
     brand: "olivea",
     project: c("ledger.olivea.project", "Olivea"),
@@ -78,6 +78,17 @@ const finalEntries: Entry[] = entries ?? [
   },
 ];
 
+/** Sort entries by ledger.order (comma-separated brand list).
+ *  Brands present in the list render first in that order; brands
+ *  missing from the list fall through to the end in default order. */
+const orderRaw = (copy["ledger.order"] ?? allEntries.map((e) => e.brand).join(",")).trim();
+const orderList = orderRaw.split(",").map((s) => s.trim()).filter(Boolean);
+const indexOf = (brand: string) => {
+  const i = orderList.indexOf(brand);
+  return i === -1 ? Number.MAX_SAFE_INTEGER : i;
+};
+const finalEntries: Entry[] = [...allEntries].sort((a, b) => indexOf(a.brand) - indexOf(b.brand));
+
 const eyebrow = locale === "es" ? "La Mesa" : "The Table";
 const lede = locale === "es"
   ? "Lo que está pasando ahora — y dónde."
@@ -100,10 +111,15 @@ const lede = locale === "es"
     </header>
 
     {/* The three rows — read as ledger entries, hover reveals
-        a brand-color mark on the left. */}
-    <ul class="ledger__list" role="list">
+        a brand-color mark on the left. The list is sortable in
+        admin edit mode via the EditOverlay's drag handles. */}
+    <ul
+      class="ledger__list"
+      role="list"
+      data-edit-list-field="copy.ledger.order"
+    >
       {finalEntries.map((entry) => (
-        <li class="ledger__item">
+        <li class="ledger__item" data-edit-list-key={entry.brand}>
           <a class="ledger__row" href={entry.href} data-brand={entry.brand}>
             <span class="ledger__mark" aria-hidden="true"></span>
             <span class="ledger__project" data-edit-field={`copy.ledger.${entry.brand}.project`}>{entry.project}</span>
