@@ -111,6 +111,34 @@ const ogImage = `${SITE}/og.png?${ogParams.toString()}`;
 
     <!-- Animations opt-in only when JS is running -->
     <script is:inline>{`document.documentElement.classList.add('js');`}</script>
+
+    {/* CRITICAL — must run before <body> content is parsed.
+       Pre-sets the entrance-active flag and hides body content so the
+       page never flashes into view before the cinematic entrance can
+       cover it. The same skip conditions as CinematicEntrance's body
+       script are checked here so the head and body agree. */}
+    {showEntrance && (
+      <>
+        <script is:inline data-astro-rerun>{`
+          (function(){
+            try {
+              var url = new URL(location.href);
+              var force = url.searchParams.get('intro') === '1';
+              var seen = localStorage.getItem('dn_entered_v1') === '1';
+              var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+              if ((force || !seen) && !reduce) {
+                document.documentElement.dataset.entranceActive = '1';
+              }
+            } catch (_) {}
+          })();
+        `}</script>
+        <style is:inline>{`
+          html[data-entrance-active='1'] body > *:not([data-entrance]) {
+            visibility: hidden !important;
+          }
+        `}</style>
+      </>
+    )}
   </head>
   <body>
     {showEntrance && <CinematicEntrance />}
