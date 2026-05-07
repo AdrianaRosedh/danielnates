@@ -12,6 +12,7 @@ interface Props {
   /** Inline-edit field bindings (e.g. "project.olivea.title"). */
   titleField?: string | null;
   subField?: string | null;
+  imageField?: string | null;
 }
 
 const {
@@ -22,6 +23,7 @@ const {
   transitionKey = null,
   titleField = null,
   subField = null,
+  imageField = null,
 } = Astro.props as Props;
 ---
 
@@ -30,7 +32,12 @@ const {
     class="heroCard"
     transition:name={transitionKey ? `proj-${transitionKey}` : undefined}
   >
-    <div class="heroMedia" data-hero-media aria-hidden="true">
+    <div
+      class="heroMedia"
+      data-hero-media
+      data-edit-image-field={imageField ?? undefined}
+      aria-hidden="true"
+    >
       {posterUrl ? <img src={posterUrl} alt="" loading="eager" decoding="async" /> : null}
       {videoUrl ? (
         <video

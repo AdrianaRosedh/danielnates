@@ -70,15 +70,25 @@ const localizedLine = (b: Brief) =>
             return (
               <li class="dia__cell">
                 <article class="dia__card">
-                  {b.image_url ? (
-                    <img src={b.image_url} alt={line || b.date} loading="lazy" />
-                  ) : (
-                    <div class="dia__noimg" aria-hidden="true"></div>
-                  )}
+                  <div class="dia__cover" data-edit-image-field={`daily.${b.id}.image_url`}>
+                    {b.image_url ? (
+                      <img src={b.image_url} alt={line || b.date} loading="lazy" />
+                    ) : (
+                      <div class="dia__noimg" aria-hidden="true"></div>
+                    )}
+                  </div>
                   <div class="dia__body">
                     <p class="dia__date">{dateFormat(b.date, locale)}</p>
-                    {line ? <p class="dia__line">{line}</p> : null}
-                    {b.place ? <p class="dia__place">{b.place}</p> : null}
+                    {line ? (
+                      <p class="dia__line" data-edit-field={`daily.${b.id}.line_${locale}`}>{line}</p>
+                    ) : (
+                      <p class="dia__line" data-edit-field={`daily.${b.id}.line_${locale}`}></p>
+                    )}
+                    {b.place ? (
+                      <p class="dia__place" data-edit-field={`daily.${b.id}.place`}>{b.place}</p>
+                    ) : (
+                      <p class="dia__place" data-edit-field={`daily.${b.id}.place`}></p>
+                    )}
                   </div>
                 </article>
               </li>
@@ -121,6 +131,7 @@ const localizedLine = (b: Brief) =>
     border-color: color-mix(in srgb, var(--text) 18%, transparent);
     transform: translateY(-2px);
   }
+  .dia__cover{ display: block; width: 100%; aspect-ratio: 4/5; }
   .dia__card img,
   .dia__noimg{
     width: 100%;

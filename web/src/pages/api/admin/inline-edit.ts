@@ -102,6 +102,12 @@ type EntitySpec = {
   table: string;
   scalarCols: string[];
   portableCols: string[];
+  /** PK column the slug maps to. Defaults to "slug"; daily briefs
+   *  and other UUID-keyed entities use "id". */
+  pkColumn?: string;
+  /** Validator for the slug-position part of the path. Defaults to
+   *  the slug regex; UUID-keyed entities pass a UUID matcher. */
+  pkValidator?: (val: string) => boolean;
 };
 const ENTITY_REGISTRY: Record<string, EntitySpec> = {
   article: {
@@ -123,6 +129,13 @@ const ENTITY_REGISTRY: Record<string, EntitySpec> = {
     scalarCols: ["title", "statement_es", "statement_en", "cover_url", "medium", "dimensions"],
     portableCols: [],
   },
+  daily: {
+    table: "daily_briefs",
+    scalarCols: ["line_es", "line_en", "place", "image_url"],
+    portableCols: [],
+    pkColumn: "id",
+    pkValidator: (v) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v),
+  },
 };
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,80}$/;
 type EntityHit = {
@@ -137,7 +150,8 @@ function resolveEntityPath(fieldKey: string): EntityHit | null {
   const [entity, slug, column] = parts;
   const spec = ENTITY_REGISTRY[entity as keyof typeof ENTITY_REGISTRY];
   if (!spec) return null;
-  if (!SLUG_RE.test(slug)) return null;
+  const validator = spec.pkValidator ?? ((v) => SLUG_RE.test(v));
+  if (!validator(slug)) return null;
   if (spec.scalarCols.includes(column))   return { entity: entity as keyof typeof ENTITY_REGISTRY, slug, column, kind: "scalar" };
   if (spec.portableCols.includes(column)) return { entity: entity as keyof typeof ENTITY_REGISTRY, slug, column, kind: "portable" };
   return null;
@@ -187,14 +201,15 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     return new Response(`Value too long for inline edit (>${limit} chars)`, { status: 413 });
   }
 
-  // Slug-keyed entity write — scalar or PortableText conversion.
+  // Slug- or id-keyed entity write — scalar or PortableText conversion.
   if (entityHit) {
     const ent = ENTITY_REGISTRY[entityHit.entity];
+    const pk = ent.pkColumn ?? "slug";
     const writeValue = entityHit.kind === "portable" ? textToBlocks(value) : value;
     const { error } = await auth.supabase
       .from(ent.table)
       .update({ [entityHit.column]: writeValue })
-      .eq("slug", entityHit.slug);
+      .eq(pk, entityHit.slug);
     if (error) return new Response(error.message, { status: 400 });
     return jsonOk({ field: fieldKey, value });
   }

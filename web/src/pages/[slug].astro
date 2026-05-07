@@ -104,6 +104,7 @@ if (!framing) framing = fallbackFramings[brand]?.[locale] ?? null;
           transitionKey={brand}
           titleField={`project.${brand}.title`}
           subField={`project.${brand}.${locale === "es" ? "summary_es" : "summary_en"}`}
+          imageField={`project.${brand}.hero_image_url`}
         />
       </div>
     ) : null}
