@@ -57,15 +57,21 @@ const localizedExcerpt = (a: Article) =>
         <div class="articleList reveal-stagger">
           {articles.map((a) => (
             <a class="articleRow" href={href(`/diario/${a.slug}`, locale)}>
-              {a.cover_url ? (
-                <img src={a.cover_url} alt={a.title} loading="lazy" />
-              ) : (
-                <div class="articleRow__noimg" aria-hidden="true"></div>
-              )}
+              <div class="articleRow__cover" data-edit-image-field={`article.${a.slug}.cover_url`}>
+                {a.cover_url ? (
+                  <img src={a.cover_url} alt={a.title} loading="lazy" />
+                ) : (
+                  <div class="articleRow__noimg" aria-hidden="true"></div>
+                )}
+              </div>
               <div class="articleRow__body">
                 <p class="articleRow__date">{dateFormat(a.date, locale)}</p>
-                <h3 class="articleRow__title">{a.title}</h3>
-                {localizedExcerpt(a) ? <p class="articleRow__excerpt">{localizedExcerpt(a)}</p> : null}
+                <h3 class="articleRow__title" data-edit-field={`article.${a.slug}.title`}>{a.title}</h3>
+                {localizedExcerpt(a) ? (
+                  <p class="articleRow__excerpt" data-edit-field={`article.${a.slug}.excerpt_${locale}`}>{localizedExcerpt(a)}</p>
+                ) : (
+                  <p class="articleRow__excerpt" data-edit-field={`article.${a.slug}.excerpt_${locale}`}></p>
+                )}
               </div>
             </a>
           ))}
@@ -96,6 +102,7 @@ const localizedExcerpt = (a: Article) =>
     background: color-mix(in srgb, var(--text) 5%, transparent);
     transform: translateY(-1px);
   }
+  .articleRow__cover{ width: 96px; height: 96px; }
   .articleRow img{ width: 96px; height: 96px; object-fit: cover; border-radius: 12px; display: block; }
   .articleRow__noimg{ width: 96px; height: 96px; border-radius: 12px; background: rgba(244,239,230,.04); }
   .articleRow__body{ min-width: 0; display: flex; flex-direction: column; gap: 4px; }
@@ -104,6 +111,6 @@ const localizedExcerpt = (a: Article) =>
   .articleRow__excerpt{ margin: 4px 0 0; font-size: 13px; color: var(--text-2); line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   @media (min-width: 880px){
     .articleRow{ grid-template-columns: 140px 1fr; padding: 14px; }
-    .articleRow img, .articleRow__noimg{ width: 140px; height: 140px; }
+    .articleRow__cover, .articleRow img, .articleRow__noimg{ width: 140px; height: 140px; }
   }
 </style>
