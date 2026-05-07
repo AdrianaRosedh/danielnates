@@ -41,7 +41,17 @@ const bodyText = body.length
   : "";
 ---
 
-<BaseLayout title={`${title} — ${ui("diary", locale)}`} description={excerpt} locale={locale}>
+<BaseLayout
+  title={`${title} — ${ui("diary", locale)}`}
+  description={excerpt}
+  locale={locale}
+  editContext={{
+    entity: "article",
+    id: slug,
+    published: !!article.published,
+    indexHref: "/admin/articles",
+  }}
+>
   <div class="shell">
     <TopDock locale={locale} />
 

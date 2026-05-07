@@ -30,6 +30,18 @@ interface OgParams {
   meta?: string;
 }
 
+interface EditContext {
+  /** Entity name in the entity-action / inline-edit registries
+   *  (article | art | project | daily). */
+  entity: "article" | "art" | "project" | "daily";
+  /** Primary key value — slug for slug-keyed entities, UUID for daily. */
+  id: string;
+  /** Current published flag — drives the Publish toggle initial state. */
+  published?: boolean;
+  /** Where to send the admin after deleting (a list page they can return to). */
+  indexHref: string;
+}
+
 interface Props {
   title?: string;
   description?: string;
@@ -39,6 +51,9 @@ interface Props {
   entrance?: boolean;
   /** Override the auto-generated OG card. */
   og?: OgParams;
+  /** Inline-edit context for slug- or id-keyed detail pages. When
+   *  set, the EditOverlay shows Publish + Delete affordances. */
+  editContext?: EditContext;
 }
 const {
   title = "Daniel Nates",
@@ -46,6 +61,7 @@ const {
   locale: propLocale,
   entrance: entranceProp,
   og,
+  editContext,
 } = Astro.props as Props;
 const locale = propLocale ?? Astro.locals.locale ?? "es";
 
@@ -149,6 +165,6 @@ const ogImage = `${SITE}/og.png?${ogParams.toString()}`;
     <MenuOverlay locale={locale} daniel={daniel} />
     <ScrollProgress />
     <AnimationDirector />
-    {Astro.locals.isAdmin && <EditOverlay />}
+    {Astro.locals.isAdmin && <EditOverlay editContext={editContext} />}
   </body>
 </html>

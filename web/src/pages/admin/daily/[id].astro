@@ -1,6 +1,7 @@
 ---
 export const prerender = false;
 import AdminLayout from "../../../components/admin/AdminLayout.astro";
+import InlineEditBanner from "../../../components/admin/InlineEditBanner.astro";
 import DailyBriefForm from "../../../components/admin/DailyBriefForm.tsx";
 import { getSupabaseFromRequest } from "../../../lib/supabase";
 
@@ -35,6 +36,11 @@ function fmt(d: string) {
       <h1 class="admin__title">{fmt(brief.date)}</h1>
     </div>
   </header>
+
+  <InlineEditBanner
+    publicHref={`/dia#brief-${brief.id}`}
+    what="línea, lugar y foto"
+  />
 
   <DailyBriefForm client:load initial={brief} />
 </AdminLayout>

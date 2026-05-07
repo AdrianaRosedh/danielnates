@@ -1,6 +1,7 @@
 ---
 export const prerender = false;
 import AdminLayout from "../../../components/admin/AdminLayout.astro";
+import InlineEditBanner from "../../../components/admin/InlineEditBanner.astro";
 import ArtPieceForm from "../../../components/admin/ArtPieceForm.tsx";
 import { getSupabaseServer } from "../../../lib/supabase";
 
@@ -22,6 +23,11 @@ if (!piece) return Astro.redirect("/admin/art");
       <h1 class="admin__title">{piece.title}</h1>
     </div>
   </header>
+
+  <InlineEditBanner
+    publicHref={`/arte/${piece.slug}`}
+    what="título, statement y portada"
+  />
 
   <ArtPieceForm client:load initial={piece} />
 </AdminLayout>

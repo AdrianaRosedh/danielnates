@@ -1,6 +1,7 @@
 ---
 export const prerender = false;
 import AdminLayout from "../../../components/admin/AdminLayout.astro";
+import InlineEditBanner from "../../../components/admin/InlineEditBanner.astro";
 import ProjectForm from "../../../components/admin/ProjectForm";
 import { getSupabaseServer } from "../../../lib/supabase";
 import type { Project } from "../../../lib/types";
@@ -26,6 +27,11 @@ if (!project) {
       <h1 class="admin__title">{project.title}</h1>
     </div>
   </header>
+
+  <InlineEditBanner
+    publicHref={`/${project.slug}`}
+    what="título, hero, framing y cuerpo"
+  />
 
   <ProjectForm client:load initial={{
     id: project.id,

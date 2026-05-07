@@ -83,6 +83,12 @@ if (!framing) framing = fallbackFramings[brand]?.[locale] ?? null;
   title={title}
   description={summary}
   locale={locale}
+  editContext={{
+    entity: "project",
+    id: slug,
+    published: !!project.published,
+    indexHref: "/admin/projects",
+  }}
   og={{
     title,
     kicker: framing?.kicker ?? title,

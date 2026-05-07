@@ -26,7 +26,17 @@ const titleField     = `art.${slug}.title`;
 const statementField = `art.${slug}.statement_${locale}`;
 ---
 
-<BaseLayout title={`${title} — ${ui("art", locale)}`} description={statement} locale={locale}>
+<BaseLayout
+  title={`${title} — ${ui("art", locale)}`}
+  description={statement}
+  locale={locale}
+  editContext={{
+    entity: "art",
+    id: slug,
+    published: !!piece.published,
+    indexHref: "/admin/art",
+  }}
+>
   <div class="shell">
     <TopDock locale={locale} />
 

@@ -1,6 +1,7 @@
 ---
 export const prerender = false;
 import AdminLayout from "../../../components/admin/AdminLayout.astro";
+import InlineEditBanner from "../../../components/admin/InlineEditBanner.astro";
 import ArticleForm from "../../../components/admin/ArticleForm.tsx";
 import { getSupabaseServer } from "../../../lib/supabase";
 
@@ -37,6 +38,11 @@ const initial = {
       <h1 class="admin__title">{article.title}</h1>
     </div>
   </header>
+
+  <InlineEditBanner
+    publicHref={`/diario/${article.slug}`}
+    what="título, extracto, portada y cuerpo"
+  />
 
   <ArticleForm client:load initial={initial} />
 </AdminLayout>

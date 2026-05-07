@@ -15,11 +15,35 @@
  *   - Escape reverts the field to its pre-edit value
  *   - Save state shown in toolbar ("Guardado · 2s")
  *
+ * When the host page provides editContext (entity + id), two extra
+ * affordances appear in the toolbar:
+ *   - Publish toggle (calls /api/admin/entity-action publish/unpublish)
+ *   - Delete button with confirm (calls entity-action delete, then
+ *     redirects to the indexHref)
+ *
  * Server-rendered as nothing for non-admin visitors.
  */
+
+interface EditContext {
+  entity: "article" | "art" | "project" | "daily";
+  id: string;
+  published?: boolean;
+  indexHref: string;
+}
+
+interface Props { editContext?: EditContext }
+const { editContext } = Astro.props as Props;
 ---
 
-<div class="editbar" data-editbar role="region" aria-label="Editor en línea">
+<div
+  class="editbar"
+  data-editbar
+  role="region"
+  aria-label="Editor en línea"
+  data-edit-entity={editContext?.entity ?? undefined}
+  data-edit-entity-id={editContext?.id ?? undefined}
+  data-edit-entity-index={editContext?.indexHref ?? undefined}
+>
   <div class="editbar__row">
     <span class="editbar__dot" aria-hidden="true"></span>
     <span class="editbar__label">Admin</span>
@@ -27,6 +51,27 @@
       <span class="editbar__toggleDot" aria-hidden="true"></span>
       <span data-edit-toggle-label>Editar</span>
     </button>
+    {editContext ? (
+      <>
+        <span class="editbar__sep" aria-hidden="true"></span>
+        <button
+          class="editbar__toggle editbar__toggle--small"
+          type="button"
+          data-edit-publish
+          aria-pressed={editContext.published ? "true" : "false"}
+          title="Publicar / despublicar"
+        >
+          <span class="editbar__toggleDot" aria-hidden="true"></span>
+          <span data-edit-publish-label>{editContext.published ? "Publicado" : "Borrador"}</span>
+        </button>
+        <button
+          class="editbar__delete"
+          type="button"
+          data-edit-delete
+          title="Borrar para siempre"
+        >Borrar</button>
+      </>
+    ) : null}
     <span class="editbar__status" data-edit-status aria-live="polite"></span>
     <a class="editbar__link" href="/admin">Panel ↗</a>
     <a class="editbar__link" href="/admin/logout">Salir</a>
@@ -136,6 +181,52 @@
   }
   .editbar__toggle[aria-pressed="true"] .editbar__toggleDot{
     background: #D9421C;
+  }
+  .editbar__toggle--small{
+    padding: 4px 10px;
+    font-size: 10.5px;
+    letter-spacing: .12em;
+  }
+  .editbar__toggle[aria-pressed="true"][data-edit-publish] .editbar__toggleDot{
+    background: #9DBE8A;
+  }
+  .editbar__toggle[data-edit-publish]{
+    background: rgba(157, 190, 138, .08);
+    border-color: rgba(157, 190, 138, .35);
+  }
+  .editbar__toggle[data-edit-publish][aria-pressed="false"]{
+    background: transparent;
+    border-color: rgba(244, 239, 230, .22);
+  }
+  .editbar__sep{
+    width: 1px;
+    height: 14px;
+    background: rgba(244, 239, 230, .14);
+  }
+  .editbar__delete{
+    appearance: none;
+    background: transparent;
+    border: 1px solid rgba(226, 125, 90, .35);
+    color: #E27D5A;
+    font: inherit;
+    font-family: var(--font-sans, system-ui, sans-serif);
+    font-size: 10.5px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    border-radius: 999px;
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: background .2s, border-color .2s, color .2s;
+  }
+  .editbar__delete:hover{
+    background: rgba(226, 125, 90, .12);
+    border-color: rgba(226, 125, 90, .7);
+    color: #E27D5A;
+  }
+  .editbar__delete[data-busy="1"],
+  .editbar__toggle[data-busy="1"]{
+    opacity: .65;
+    pointer-events: none;
   }
   .editbar__status{
     font-size: 11px;
@@ -391,6 +482,7 @@
     if (window.__dnInlineEditBooted) {
       // Re-run setup on a swap so newly-rendered fields get bound.
       bindFields();
+      bindEntityActions();
       return;
     }
     window.__dnInlineEditBooted = true;
@@ -425,8 +517,12 @@
     } catch {}
 
     bindFields();
+    bindEntityActions();
 
-    document.addEventListener("astro:page-load", bindFields);
+    document.addEventListener("astro:page-load", () => {
+      bindFields();
+      bindEntityActions();
+    });
   }
 
   function bindFields() {
@@ -476,6 +572,98 @@
       l.__dnListBound = true;
       bindSortableList(list);
     });
+  }
+
+  /** Wire the Publish toggle and Delete button to the entity-action
+   *  endpoint when the page advertises an editContext via data
+   *  attributes on the toolbar. Idempotent — bindEntityActions reads
+   *  the same DOM each call, but flags handlers so we don't double-bind. */
+  function bindEntityActions() {
+    const bar = document.querySelector<HTMLElement>("[data-editbar]");
+    if (!bar) return;
+    const entity = bar.dataset.editEntity;
+    const id = bar.dataset.editEntityId;
+    const indexHref = bar.dataset.editEntityIndex ?? "/admin";
+    if (!entity || !id) return;
+
+    const pubBtn = document.querySelector<HTMLButtonElement>("[data-edit-publish]");
+    const pubLabel = document.querySelector<HTMLElement>("[data-edit-publish-label]");
+    const delBtn = document.querySelector<HTMLButtonElement>("[data-edit-delete]");
+    const status = document.querySelector<HTMLElement>("[data-edit-status]");
+
+    if (pubBtn && !(pubBtn as HTMLButtonElement & { __dnBound?: boolean }).__dnBound) {
+      (pubBtn as HTMLButtonElement & { __dnBound?: boolean }).__dnBound = true;
+      pubBtn.addEventListener("click", async () => {
+        const wasPublished = pubBtn.getAttribute("aria-pressed") === "true";
+        const action = wasPublished ? "unpublish" : "publish";
+        pubBtn.dataset.busy = "1";
+        if (status) {
+          status.textContent = wasPublished ? "Despublicando…" : "Publicando…";
+          status.dataset.state = "saving";
+        }
+        try {
+          const res = await fetch("/api/admin/entity-action", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ entity, id, action }),
+          });
+          if (!res.ok) throw new Error(await res.text());
+          pubBtn.setAttribute("aria-pressed", wasPublished ? "false" : "true");
+          if (pubLabel) pubLabel.textContent = wasPublished ? "Borrador" : "Publicado";
+          if (status) {
+            status.textContent = wasPublished ? "En borrador" : "Publicado";
+            status.dataset.state = "saved";
+          }
+        } catch (err) {
+          if (status) {
+            status.textContent = "Error";
+            status.dataset.state = "error";
+          }
+          // eslint-disable-next-line no-console
+          console.error("[entity-action] publish failed", err);
+        } finally {
+          delete pubBtn.dataset.busy;
+        }
+      });
+    }
+
+    if (delBtn && !(delBtn as HTMLButtonElement & { __dnBound?: boolean }).__dnBound) {
+      (delBtn as HTMLButtonElement & { __dnBound?: boolean }).__dnBound = true;
+      delBtn.addEventListener("click", async () => {
+        const ok = window.confirm(
+          "¿Borrar para siempre? Esta acción no se puede deshacer.",
+        );
+        if (!ok) return;
+        delBtn.dataset.busy = "1";
+        if (status) {
+          status.textContent = "Borrando…";
+          status.dataset.state = "saving";
+        }
+        try {
+          const res = await fetch("/api/admin/entity-action", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ entity, id, action: "delete" }),
+          });
+          if (!res.ok) throw new Error(await res.text());
+          if (status) {
+            status.textContent = "Borrado";
+            status.dataset.state = "saved";
+          }
+          // Redirect to the index page so the admin doesn't sit on a
+          // 404 of a now-deleted detail page.
+          setTimeout(() => { window.location.href = indexHref; }, 400);
+        } catch (err) {
+          if (status) {
+            status.textContent = "Error al borrar";
+            status.dataset.state = "error";
+          }
+          // eslint-disable-next-line no-console
+          console.error("[entity-action] delete failed", err);
+          delete delBtn.dataset.busy;
+        }
+      });
+    }
   }
 
   /** HTML5-drag-based sortable list. Each child must declare
