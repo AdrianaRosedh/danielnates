@@ -20,7 +20,7 @@ export const prerender = false;
 
 type PK = { column: string; value: string };
 type FieldSpec =
-  | { kind: "scalar"; table: string; pk: PK; column: string }
+  | { kind: "scalar"; table: string; pk: PK; column: string; portable?: boolean }
   | { kind: "json"; table: string; pk: PK; column: string; jsonKey: string }
   | { kind: "copy" };
 
@@ -28,6 +28,9 @@ type FieldSpec =
 const DANIEL_PK: PK = { column: "id", value: "daniel" };
 const danielScalars = (col: string): FieldSpec => ({
   kind: "scalar", table: "person", pk: DANIEL_PK, column: col,
+});
+const danielPortable = (col: string): FieldSpec => ({
+  kind: "scalar", table: "person", pk: DANIEL_PK, column: col, portable: true,
 });
 
 /* ── Project framings — JSONB nested keys on projects.framing ───── */
@@ -71,6 +74,8 @@ const ALLOWLIST: Record<string, FieldSpec> = {
   "daniel.subline_en":   danielScalars("subline_en"),
   "daniel.bio_short_es": danielScalars("bio_short_es"),
   "daniel.bio_short_en": danielScalars("bio_short_en"),
+  "daniel.bio_long_es":  danielPortable("bio_long_es"),
+  "daniel.bio_long_en":  danielPortable("bio_long_en"),
   ...PROJECT_ENTRIES,
 };
 
@@ -203,9 +208,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   }
 
   if (spec.kind === "scalar") {
+    const writeValue = spec.portable ? textToBlocks(value) : value;
     const patch: Record<string, unknown> = {
       [spec.pk.column]: spec.pk.value,
-      [spec.column]: value,
+      [spec.column]: writeValue,
     };
     const { error } = await auth.supabase
       .from(spec.table)

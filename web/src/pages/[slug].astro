@@ -30,6 +30,21 @@ const brand = slug;
 const heroVideo = project.hero_video_url;
 const hasBlocks = (project.blocks?.length ?? 0) > 0;
 const legacy = tb2(project.body_es, project.body_en, locale);
+
+/* Plain-text serialization of the legacy body for the popover modal's
+ * initial textarea value. On save the endpoint converts back to blocks
+ * via textToBlocks() before writing. */
+const legacyBodyField = `project.${slug}.body_${locale}`;
+const legacyBodyText = legacy.length
+  ? legacy
+      .map((b) => {
+        const block = b as { _type?: string; children?: { text?: string }[] };
+        if (block?._type !== "block" || !Array.isArray(block.children)) return "";
+        return block.children.map((c) => c?.text ?? "").join("");
+      })
+      .filter(Boolean)
+      .join("\n\n")
+  : "";
 const hasLegacyBody = legacy.length > 0;
 
 type ProjectFramingView = { kicker: string; intro: string; meta?: string };
@@ -113,7 +128,13 @@ if (!framing) framing = fallbackFramings[brand]?.[locale] ?? null;
     {!hasBlocks && hasLegacyBody ? (
       <section class="section reveal">
         <p class="kicker">{ui("chapter", locale)}</p>
-        <div class="projectCard" style="flex-direction:column;gap:12px;">
+        <div
+          class="projectCard"
+          style="flex-direction:column;gap:12px;"
+          data-edit-field={legacyBodyField}
+          data-edit-multi="1"
+          data-edit-source={legacyBodyText}
+        >
           <PortableText value={legacy} />
         </div>
       </section>

@@ -57,6 +57,23 @@ const recs = (kit?.recognitions?.length ? kit.recognitions : defaultRecs)
 const portrait = daniel?.portrait_url ?? null;
 
 const headline = locale === "es" ? "Sobre" : "About";
+
+/* Inline-edit field paths. The bio is PortableText — we serialize
+ * blocks to plain text for the popover modal's textarea source, and
+ * the endpoint converts back to blocks via textToBlocks() on save. */
+const taglineField = `daniel.tagline_${locale}`;
+const sublineField = `daniel.subline_${locale}`;
+const bioField     = `daniel.bio_long_${locale}`;
+const bioText = bioBlocks.length
+  ? bioBlocks
+      .map((b) => {
+        const block = b as { _type?: string; children?: { text?: string }[] };
+        if (block?._type !== "block" || !Array.isArray(block.children)) return "";
+        return block.children.map((c) => c?.text ?? "").join("");
+      })
+      .filter(Boolean)
+      .join("\n\n")
+  : defaultBioParas.join("\n\n");
 ---
 
 <BaseLayout
@@ -87,8 +104,8 @@ const headline = locale === "es" ? "Sobre" : "About";
       <div class="about__heroBody">
         <p class="kicker about__kicker">{locale === "es" ? "Sobre" : "About"}</p>
         <TextReveal as="h1" mode="word" class="about__name">{name}</TextReveal>
-        <p class="about__tagline">{tagline}</p>
-        <p class="about__subline">{subline}</p>
+        <p class="about__tagline" data-edit-field={taglineField}>{tagline}</p>
+        <p class="about__subline" data-edit-field={sublineField}>{subline}</p>
 
         {daniel?.voice ? (
           <div style="margin-top: clamp(28px, 4vw, 48px);">
@@ -110,11 +127,21 @@ const headline = locale === "es" ? "Sobre" : "About";
       <p class="kicker">{locale === "es" ? "Bio" : "Bio"}</p>
 
       {bioBlocks.length ? (
-        <div class="about__bioBlocks">
+        <div
+          class="about__bioBlocks"
+          data-edit-field={bioField}
+          data-edit-multi="1"
+          data-edit-source={bioText}
+        >
           <PortableText value={bioBlocks} />
         </div>
       ) : (
-        <div class="about__bioBlocks">
+        <div
+          class="about__bioBlocks"
+          data-edit-field={bioField}
+          data-edit-multi="1"
+          data-edit-source={bioText}
+        >
           {defaultBioParas.map((p) => <p>{p}</p>)}
         </div>
       )}
