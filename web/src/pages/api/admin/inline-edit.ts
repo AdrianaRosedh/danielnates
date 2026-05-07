@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import { jsonOk, requireAdmin } from "../../../lib/admin-helpers";
+import { jsonOk, requireAdmin, textToBlocks } from "../../../lib/admin-helpers";
 
 /**
  * Inline-edit endpoint for the public-site admin overlay.
@@ -89,6 +89,54 @@ function isWritableCopyKey(rawKey: string): boolean {
   );
 }
 
+/* Slug-keyed entities — paths like `article.my-slug.title` or
+ * `article.my-slug.body_es`. The registry below declares which
+ * columns are scalar vs PortableText for each entity kind. Trying
+ * to write a column not in this list is rejected. */
+type EntitySpec = {
+  table: string;
+  scalarCols: string[];
+  portableCols: string[];
+};
+const ENTITY_REGISTRY: Record<string, EntitySpec> = {
+  article: {
+    table: "articles",
+    scalarCols: ["title", "excerpt_es", "excerpt_en", "cover_url"],
+    portableCols: ["body_es", "body_en"],
+  },
+  project: {
+    // Project simple scalars are still served via PROJECT_ENTRIES with
+    // the legacy `project.<slug>.*` paths. Portable bodies are routed
+    // through the entity registry too so admins can edit the long body.
+    table: "projects",
+    scalarCols: [],
+    portableCols: ["body_es", "body_en"],
+  },
+  art: {
+    table: "art_pieces",
+    scalarCols: ["title", "statement_es", "statement_en", "cover_url", "medium", "dimensions"],
+    portableCols: [],
+  },
+};
+const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,80}$/;
+type EntityHit = {
+  entity: keyof typeof ENTITY_REGISTRY;
+  slug: string;
+  column: string;
+  kind: "scalar" | "portable";
+};
+function resolveEntityPath(fieldKey: string): EntityHit | null {
+  const parts = fieldKey.split(".");
+  if (parts.length !== 3) return null;
+  const [entity, slug, column] = parts;
+  const spec = ENTITY_REGISTRY[entity as keyof typeof ENTITY_REGISTRY];
+  if (!spec) return null;
+  if (!SLUG_RE.test(slug)) return null;
+  if (spec.scalarCols.includes(column))   return { entity: entity as keyof typeof ENTITY_REGISTRY, slug, column, kind: "scalar" };
+  if (spec.portableCols.includes(column)) return { entity: entity as keyof typeof ENTITY_REGISTRY, slug, column, kind: "portable" };
+  return null;
+}
+
 const MAX_LEN = 4000;
 
 export const POST: APIRoute = async ({ request, cookies }) => {
@@ -103,9 +151,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   const fieldKey = (body.field ?? "").trim();
 
   // Copy-table writes (`copy.<key>`) are validated by prefix; everything
-  // else has to be in the explicit ALLOWLIST.
+  // else has to be in the explicit ALLOWLIST or resolve via the entity
+  // registry below.
   let spec: FieldSpec | undefined = ALLOWLIST[fieldKey];
   let copyKey: string | null = null;
+  let entityHit: EntityHit | null = null;
   if (!spec && fieldKey.startsWith("copy.")) {
     const rawKey = fieldKey.slice("copy.".length);
     if (!isWritableCopyKey(rawKey)) {
@@ -115,12 +165,32 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     spec = { kind: "copy" };
   }
   if (!spec) {
+    entityHit = resolveEntityPath(fieldKey);
+    if (entityHit) {
+      spec = { kind: "copy" }; // sentinel — actual write handled below
+    }
+  }
+  if (!spec) {
     return new Response(`Unknown or unwritable field: ${fieldKey}`, { status: 400 });
   }
 
   const value: string | null = body.value == null ? null : String(body.value);
-  if (value && value.length > MAX_LEN) {
-    return new Response(`Value too long for inline edit (>${MAX_LEN} chars)`, { status: 413 });
+  // PortableText bodies can be longer than scalar; bump cap for them.
+  const limit = entityHit?.kind === "portable" ? 40_000 : MAX_LEN;
+  if (value && value.length > limit) {
+    return new Response(`Value too long for inline edit (>${limit} chars)`, { status: 413 });
+  }
+
+  // Slug-keyed entity write — scalar or PortableText conversion.
+  if (entityHit) {
+    const ent = ENTITY_REGISTRY[entityHit.entity];
+    const writeValue = entityHit.kind === "portable" ? textToBlocks(value) : value;
+    const { error } = await auth.supabase
+      .from(ent.table)
+      .update({ [entityHit.column]: writeValue })
+      .eq("slug", entityHit.slug);
+    if (error) return new Response(error.message, { status: 400 });
+    return jsonOk({ field: fieldKey, value });
   }
 
   if (spec.kind === "copy") {

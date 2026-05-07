@@ -21,6 +21,24 @@ if (!article) return Astro.redirect(href("/404", locale));
 const title = article.title;
 const excerpt = t2(article.excerpt_es, article.excerpt_en, locale);
 const body = tb2(article.body_es, article.body_en, locale);
+
+/* Inline-edit field paths. The bodyText is what the popover modal
+ * pre-populates the textarea with — converted from PortableText
+ * blocks to plain text (paragraphs separated by blank lines). On
+ * save, the endpoint converts back to blocks via textToBlocks(). */
+const titleField   = `article.${slug}.title`;
+const excerptField = `article.${slug}.excerpt_${locale}`;
+const bodyField    = `article.${slug}.body_${locale}`;
+const bodyText = body.length
+  ? body
+      .map((b) => {
+        const block = b as { _type?: string; children?: { text?: string }[] };
+        if (block?._type !== "block" || !Array.isArray(block.children)) return "";
+        return block.children.map((c) => c?.text ?? "").join("");
+      })
+      .filter(Boolean)
+      .join("\n\n")
+  : "";
 ---
 
 <BaseLayout title={`${title} — ${ui("diary", locale)}`} description={excerpt} locale={locale}>
@@ -29,12 +47,18 @@ const body = tb2(article.body_es, article.body_en, locale);
 
     <article class="articleHeader reveal">
       <p class="kicker">{ui("diary", locale)} · {dateFormat(article.date, locale)}</p>
-      <h1 class="h1">{title}</h1>
-      {excerpt ? <p class="sub" style="margin-top:14px;">{excerpt}</p> : null}
+      <h1 class="h1" data-edit-field={titleField}>{title}</h1>
+      {excerpt ? <p class="sub" style="margin-top:14px;" data-edit-field={excerptField}>{excerpt}</p> : null}
       {article.cover_url ? <img class="articleHeader__cover" src={article.cover_url} alt={title} /> : null}
     </article>
 
-    {body.length ? <PortableText value={body} /> : null}
+    {body.length ? (
+      <div data-edit-field={bodyField} data-edit-multi="1" data-edit-source={bodyText}>
+        <PortableText value={body} />
+      </div>
+    ) : (
+      <div data-edit-field={bodyField} data-edit-multi="1" data-edit-source="" />
+    )}
     {article.blocks?.length ? <BlockRenderer blocks={article.blocks} locale={locale} /> : null}
   </div>
 </BaseLayout>

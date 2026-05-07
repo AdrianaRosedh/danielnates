@@ -40,6 +40,33 @@
   aria-hidden="true"
 />
 
+<div
+  class="editModal"
+  data-edit-modal
+  role="dialog"
+  aria-modal="true"
+  aria-hidden="true"
+  hidden
+>
+  <div class="editModal__bg" data-edit-modal-bg></div>
+  <div class="editModal__panel">
+    <div class="editModal__head">
+      <p class="editModal__label" data-edit-modal-label>Editar texto</p>
+      <p class="editModal__hint">Cmd ⌘ + Enter para guardar · Esc para cancelar</p>
+    </div>
+    <textarea
+      class="editModal__textarea"
+      data-edit-modal-textarea
+      spellcheck="true"
+      autocomplete="off"
+    ></textarea>
+    <div class="editModal__foot">
+      <button class="editModal__btn editModal__btn--ghost" type="button" data-edit-modal-cancel>Cancelar</button>
+      <button class="editModal__btn editModal__btn--primary" type="button" data-edit-modal-save>Guardar</button>
+    </div>
+  </div>
+</div>
+
 <style is:global>
   .editbar{
     position: fixed;
@@ -245,6 +272,109 @@
     color: #D9421C;
   }
   .editGrip svg{ width: 12px; height: 12px; display: block; }
+
+  /* Popover modal — used for multi-paragraph and PortableText edits.
+     Triggered by clicks on [data-edit-multi]. */
+  .editModal{
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: clamp(20px, 4vw, 56px);
+    color: #F4EFE6;
+  }
+  .editModal[hidden]{ display: none; }
+  .editModal__bg{
+    position: absolute;
+    inset: 0;
+    background: rgba(8, 9, 10, .72);
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+  }
+  .editModal__panel{
+    position: relative;
+    width: min(720px, 100%);
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    background: rgba(14, 15, 12, .96);
+    border: 1px solid rgba(244, 239, 230, .18);
+    border-radius: 14px;
+    box-shadow: 0 32px 70px -20px rgba(0,0,0,.7);
+    padding: 22px 22px 18px;
+  }
+  .editModal__head{ display: flex; flex-direction: column; gap: 4px; }
+  .editModal__label{
+    margin: 0;
+    font-family: var(--font-sans, system-ui, sans-serif);
+    font-size: 11px;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+    color: rgba(244, 239, 230, .6);
+  }
+  .editModal__hint{
+    margin: 0;
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 10.5px;
+    color: rgba(244, 239, 230, .35);
+    letter-spacing: .04em;
+  }
+  .editModal__textarea{
+    flex: 1;
+    width: 100%;
+    min-height: 200px;
+    background: rgba(244, 239, 230, .04);
+    border: 1px solid rgba(244, 239, 230, .14);
+    border-radius: 8px;
+    padding: 14px 16px;
+    color: #F4EFE6;
+    font-family: var(--font-display, "Instrument Serif", serif);
+    font-size: 17px;
+    line-height: 1.55;
+    resize: vertical;
+    outline: none;
+    transition: border-color .2s, background .2s;
+  }
+  .editModal__textarea:focus{
+    border-color: rgba(217, 66, 28, .55);
+    background: rgba(244, 239, 230, .07);
+  }
+  .editModal__foot{
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+  .editModal__btn{
+    appearance: none;
+    border: 1px solid rgba(244, 239, 230, .18);
+    background: transparent;
+    color: #F4EFE6;
+    font: inherit;
+    font-family: var(--font-sans, system-ui, sans-serif);
+    font-size: 11px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    border-radius: 999px;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: background .2s, border-color .2s;
+  }
+  .editModal__btn:hover{ border-color: rgba(244, 239, 230, .45); }
+  .editModal__btn--primary{
+    background: rgba(217, 66, 28, .9);
+    border-color: rgba(217, 66, 28, .9);
+  }
+  .editModal__btn--primary:hover{
+    background: #D9421C;
+    border-color: #D9421C;
+  }
+  .editModal__btn[data-busy="1"]{
+    opacity: .7;
+    pointer-events: none;
+  }
 </style>
 
 <script>
@@ -309,7 +439,8 @@
         if (document.documentElement.dataset.editMode !== "1") return;
         if (el.dataset.editing === "1") return;
         ev.preventDefault();
-        beginEdit(el);
+        if (el.dataset.editMulti === "1") beginModalEdit(el);
+        else beginEdit(el);
       });
     });
 
@@ -491,6 +622,67 @@
 
     el.addEventListener("keydown", onKey);
     el.addEventListener("blur", onBlur);
+  }
+
+  /** Multi-line modal edit. Used when a field is too long for inline
+   *  contentEditable — multi-paragraph copy or PortableText body. The
+   *  initial textarea value is read from data-edit-source if present
+   *  (admin-only attribute carrying the raw text), otherwise from the
+   *  rendered textContent. */
+  function beginModalEdit(el: HTMLElement) {
+    const field = el.dataset.editField;
+    if (!field) return;
+
+    const modal = document.querySelector<HTMLElement>("[data-edit-modal]");
+    const textarea = document.querySelector<HTMLTextAreaElement>("[data-edit-modal-textarea]");
+    const labelEl = document.querySelector<HTMLElement>("[data-edit-modal-label]");
+    const saveBtn = document.querySelector<HTMLButtonElement>("[data-edit-modal-save]");
+    const cancelBtn = document.querySelector<HTMLButtonElement>("[data-edit-modal-cancel]");
+    const bg = document.querySelector<HTMLElement>("[data-edit-modal-bg]");
+    if (!modal || !textarea || !saveBtn || !cancelBtn || !bg) return;
+
+    const sourceText = el.dataset.editSource ?? (el.textContent ?? "").trim();
+    const original = sourceText;
+
+    if (labelEl) labelEl.textContent = `Editar · ${field}`;
+    textarea.value = sourceText;
+    modal.hidden = false;
+    modal.setAttribute("aria-hidden", "false");
+    setTimeout(() => textarea.focus(), 30);
+
+    let closed = false;
+    const close = () => {
+      if (closed) return;
+      closed = true;
+      modal.hidden = true;
+      modal.setAttribute("aria-hidden", "true");
+      saveBtn.removeEventListener("click", onSave);
+      cancelBtn.removeEventListener("click", close);
+      bg.removeEventListener("click", close);
+      window.removeEventListener("keydown", onKey);
+    };
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { e.preventDefault(); close(); }
+      else if ((e.key === "Enter") && (e.metaKey || e.ctrlKey)) { e.preventDefault(); onSave(); }
+    };
+
+    const onSave = async () => {
+      const next = textarea.value;
+      if (next === original) { close(); return; }
+      saveBtn.dataset.busy = "1";
+      await saveField(field, next, () => {});
+      delete saveBtn.dataset.busy;
+      close();
+      // Re-render: the page server-rendered the previous value. Soft
+      // reload so PortableText/scalar fields show the new content.
+      setTimeout(() => window.location.reload(), 250);
+    };
+
+    saveBtn.addEventListener("click", onSave);
+    cancelBtn.addEventListener("click", close);
+    bg.addEventListener("click", close);
+    window.addEventListener("keydown", onKey);
   }
 
   /** Image-pick flow: open the hidden <input type=file>, upload via
