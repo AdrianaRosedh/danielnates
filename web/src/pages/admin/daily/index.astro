@@ -39,7 +39,13 @@ function fmt(d: string) {
       <p class="admin__crumb">Contenido</p>
       <h1 class="admin__title">Brief diario</h1>
     </div>
-    <a class="admin__btn admin__btn--primary" href="/admin/daily/new">+ Nuevo</a>
+    <button
+      class="admin__btn admin__btn--primary"
+      type="button"
+      data-create-entity="daily"
+      data-create-busy-label="Creando…"
+      data-create-error-label="Error al crear"
+    >+ Nuevo</button>
   </header>
 
   {briefs.length ? (
@@ -59,14 +65,20 @@ function fmt(d: string) {
             {b.published ? "Publicado" : "Borrador"}
           </span>
           <span class="admin__rowMeta">{fmt(b.date)}</span>
-          <a class="admin__rowOps" href={`/admin/daily/${b.id}`} onclick="event.stopPropagation();" title="Operaciones — publicar, borrar">⋯</a>
         </a>
       ))}
     </div>
   ) : (
     <div class="admin__list" style="padding: 40px; text-align: center;">
       <p style="margin: 0; color: var(--text-2);">Aún no hay briefs.</p>
-      <a class="admin__btn admin__btn--primary" href="/admin/daily/new" style="margin-top: 16px;">Crear el primero</a>
+      <button
+        class="admin__btn admin__btn--primary"
+        type="button"
+        data-create-entity="daily"
+        data-create-busy-label="Creando…"
+        data-create-error-label="Error al crear"
+        style="margin-top: 16px;"
+      >Crear el primero</button>
     </div>
   )}
 </AdminLayout>

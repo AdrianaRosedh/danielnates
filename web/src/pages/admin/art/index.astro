@@ -42,7 +42,13 @@ if (supabase) {
         )}
       </p>
     </div>
-    <a class="admin__btn admin__btn--primary" href="/admin/art/new">+ {t("Nueva pieza", "New piece")}</a>
+    <button
+      class="admin__btn admin__btn--primary"
+      type="button"
+      data-create-entity="art"
+      data-create-busy-label={t("Creando…", "Creating…")}
+      data-create-error-label={t("Error al crear", "Couldn't create")}
+    >+ {t("Nueva pieza", "New piece")}</button>
   </header>
 
   {rows.length ? (
@@ -66,19 +72,22 @@ if (supabase) {
             <h3 class="card__title">{p.title}</h3>
             {p.dimensions ? <p class="card__meta">{p.dimensions}</p> : null}
             <p class="card__foot">
-              <span>{t("Editar en el sitio", "Edit on site")}</span>
+              <span>{t("Abrir en el sitio", "Open on site")}</span>
               <span aria-hidden="true">→</span>
-            </p>
-            <p class="card__foot card__foot--ops">
-              <a href={`/admin/art/${p.id}`} onclick="event.stopPropagation();" title={t("Operaciones — publicar, borrar", "Operations — publish, delete")}>{t("Operaciones", "Operations")}</a>
             </p>
           </div>
         </a>
       ))}
-      <a class="card card--add" href="/admin/art/new">
+      <button
+        type="button"
+        class="card card--add"
+        data-create-entity="art"
+        data-create-busy-label={t("Creando…", "Creating…")}
+        data-create-error-label={t("Error al crear", "Couldn't create")}
+      >
         <span class="card--add__plus">+</span>
         <span class="card--add__label">{t("Nueva pieza", "New piece")}</span>
-      </a>
+      </button>
     </section>
   ) : (
     <div class="empty" style="margin-top: 32px;">
@@ -92,7 +101,14 @@ if (supabase) {
         "Cada pieza acepta una imagen, año, medio, dimensiones y un statement bilingüe. Crea la primera para empezar.",
         "Each piece takes an image, year, medium, dimensions and a bilingual statement. Create the first to begin."
       )}</p>
-      <a class="admin__btn admin__btn--primary" href="/admin/art/new" style="margin-top: 8px;">+ {t("Crear la primera", "Create the first")}</a>
+      <button
+        class="admin__btn admin__btn--primary"
+        type="button"
+        data-create-entity="art"
+        data-create-busy-label={t("Creando…", "Creating…")}
+        data-create-error-label={t("Error al crear", "Couldn't create")}
+        style="margin-top: 8px;"
+      >+ {t("Crear la primera", "Create the first")}</button>
     </div>
   )}
 </AdminLayout>

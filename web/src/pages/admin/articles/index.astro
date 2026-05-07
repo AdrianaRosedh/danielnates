@@ -49,7 +49,13 @@ function fmt(d: string) {
         )}
       </p>
     </div>
-    <a class="admin__btn admin__btn--primary" href="/admin/articles/new">+ {t("Nueva entrada", "New entry")}</a>
+    <button
+      class="admin__btn admin__btn--primary"
+      type="button"
+      data-create-entity="article"
+      data-create-busy-label={t("Creando…", "Creating…")}
+      data-create-error-label={t("Error al crear", "Couldn't create")}
+    >+ {t("Nueva entrada", "New entry")}</button>
   </header>
 
   {rows.length ? (
@@ -75,19 +81,22 @@ function fmt(d: string) {
               <p class="card__meta">{lang === "en" ? (a.excerpt_en ?? a.excerpt_es) : (a.excerpt_es ?? a.excerpt_en)}</p>
             ) : null}
             <p class="card__foot">
-              <span>{t("Editar en el sitio", "Edit on site")}</span>
+              <span>{t("Abrir en el sitio", "Open on site")}</span>
               <span aria-hidden="true">→</span>
-            </p>
-            <p class="card__foot card__foot--ops">
-              <a href={`/admin/articles/${a.id}`} onclick="event.stopPropagation();" title={t("Operaciones — publicar, borrar, voz", "Operations — publish, delete, voice")}>{t("Operaciones", "Operations")}</a>
             </p>
           </div>
         </a>
       ))}
-      <a class="card card--add" href="/admin/articles/new">
+      <button
+        type="button"
+        class="card card--add"
+        data-create-entity="article"
+        data-create-busy-label={t("Creando…", "Creating…")}
+        data-create-error-label={t("Error al crear", "Couldn't create")}
+      >
         <span class="card--add__plus">+</span>
         <span class="card--add__label">{t("Nueva entrada", "New entry")}</span>
-      </a>
+      </button>
     </section>
   ) : (
     <div class="empty" style="margin-top: 32px;">
@@ -101,7 +110,14 @@ function fmt(d: string) {
         "Cada entrada acepta título, fecha, portada, extracto bilingüe y cuerpo. Crea la primera.",
         "Each entry takes a title, date, cover, bilingual excerpt and body. Create the first."
       )}</p>
-      <a class="admin__btn admin__btn--primary" href="/admin/articles/new" style="margin-top: 8px;">+ {t("Crear la primera", "Create the first")}</a>
+      <button
+        class="admin__btn admin__btn--primary"
+        type="button"
+        data-create-entity="article"
+        data-create-busy-label={t("Creando…", "Creating…")}
+        data-create-error-label={t("Error al crear", "Couldn't create")}
+        style="margin-top: 8px;"
+      >+ {t("Crear la primera", "Create the first")}</button>
     </div>
   )}
 </AdminLayout>

@@ -88,7 +88,13 @@ const headline = app === "fritanguita"
       </p>
     </div>
     {app === "daniel" && isFullAdmin ? (
-      <a class="admin__btn admin__btn--primary" href="/admin/daily/new">+ {t("Brief de hoy", "Today's brief")}</a>
+      <button
+        class="admin__btn admin__btn--primary"
+        type="button"
+        data-create-entity="daily"
+        data-create-busy-label={t("Creando…", "Creating…")}
+        data-create-error-label={t("Error al crear", "Couldn't create")}
+      >+ {t("Brief de hoy", "Today's brief")}</button>
     ) : null}
   </header>
 
@@ -98,8 +104,8 @@ const headline = app === "fritanguita"
       <strong>{t("Editar ocurre en el sitio.", "Editing happens on the site.")}</strong>
       {" "}
       {t(
-        "Abre cualquier tarjeta y se carga la página real con tus controles encima — texto, fotos, orden. Las operaciones (publicar, borrar, voz, bloques) siguen aquí en el panel.",
-        "Open any card and the live page loads with your controls on top — text, photos, order. Operations (publish, delete, voice, blocks) still live here in the panel."
+        "Abre cualquier tarjeta y se carga la página real con la barra de admin encima — texto, fotos, orden, publicar, borrar, todo en su lugar.",
+        "Open any card and the live page loads with the admin bar on top — text, photos, order, publish, delete, all in place."
       )}
     </p>
   </aside>

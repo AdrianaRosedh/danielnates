@@ -42,9 +42,10 @@ if (supabase) {
 
 /* When the list is just one project, jump the user straight into
  * the editor — saves a click and matches the Fritanguita-app mental
- * model ("you only have one page"). */
+ * model ("you only have one page"). The single-project editor is
+ * now the public detail page itself with the EditOverlay. */
 if (isSingleProject && rows.length === 1) {
-  return Astro.redirect(`/admin/projects/${rows[0].id}`);
+  return Astro.redirect(`/${rows[0].slug}`);
 }
 
 function statusLabel(s: string | null) {
@@ -72,7 +73,13 @@ function statusLabel(s: string | null) {
       ) : null}
     </div>
     {isFullAdmin && !isSingleProject ? (
-      <a class="admin__btn admin__btn--primary" href="/admin/projects/new">+ {t("Nuevo proyecto", "New project")}</a>
+      <button
+        class="admin__btn admin__btn--primary"
+        type="button"
+        data-create-entity="project"
+        data-create-busy-label={t("Creando…", "Creating…")}
+        data-create-error-label={t("Error al crear", "Couldn't create")}
+      >+ {t("Nuevo proyecto", "New project")}</button>
     ) : null}
   </header>
 
@@ -99,20 +106,23 @@ function statusLabel(s: string | null) {
               <p class="card__meta">{lang === "en" ? (p.summary_en ?? p.summary_es) : (p.summary_es ?? p.summary_en)}</p>
             ) : null}
             <p class="card__foot">
-              <span>{t("Editar en el sitio", "Edit on site")}</span>
+              <span>{t("Abrir en el sitio", "Open on site")}</span>
               <span>{new Date(p.updated_at).toLocaleDateString(lang === "en" ? "en-US" : "es-ES", { day: "numeric", month: "short" })}</span>
-            </p>
-            <p class="card__foot card__foot--ops">
-              <a href={`/admin/projects/${p.id}`} onclick="event.stopPropagation();" title={t("Operaciones — bloques, voz, links, publicar", "Operations — blocks, voice, links, publish")}>{t("Operaciones", "Operations")}</a>
             </p>
           </div>
         </a>
       ))}
       {isFullAdmin && !isSingleProject ? (
-        <a class="card card--add" href="/admin/projects/new">
+        <button
+          type="button"
+          class="card card--add"
+          data-create-entity="project"
+          data-create-busy-label={t("Creando…", "Creating…")}
+          data-create-error-label={t("Error al crear", "Couldn't create")}
+        >
           <span class="card--add__plus">+</span>
           <span class="card--add__label">{t("Nuevo proyecto", "New project")}</span>
-        </a>
+        </button>
       ) : null}
     </section>
   ) : (

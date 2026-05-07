@@ -189,5 +189,44 @@ const iconSvg = (key: string) =>
     <main class="admin__main">
       <slot />
     </main>
+
+    {/* Global click handler for [data-create-entity] buttons across
+        all admin list pages. Hits /api/admin/entity-create, persists
+        edit-mode, redirects to the new entity's public detail page. */}
+    <script>
+      document.addEventListener("click", async (ev) => {
+        const target = (ev.target as HTMLElement | null)?.closest?.(
+          "[data-create-entity]",
+        ) as HTMLElement | null;
+        if (!target) return;
+        ev.preventDefault();
+        const entity = target.dataset.createEntity;
+        if (!entity) return;
+        const busy = target.dataset.createBusyLabel ?? "Creating…";
+        const errorLabel = target.dataset.createErrorLabel ?? "Couldn't create";
+        const original = target.textContent;
+        target.dataset.busy = "1";
+        if (target instanceof HTMLButtonElement) target.disabled = true;
+        target.textContent = busy;
+        try {
+          const res = await fetch("/api/admin/entity-create", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ entity }),
+          });
+          if (!res.ok) throw new Error(await res.text());
+          const { url } = (await res.json()) as { url: string };
+          try { localStorage.setItem("dn_edit_mode", "1"); } catch {}
+          window.location.href = url;
+        } catch (err) {
+          target.textContent = errorLabel;
+          delete target.dataset.busy;
+          if (target instanceof HTMLButtonElement) target.disabled = false;
+          // eslint-disable-next-line no-console
+          console.error("[entity-create] failed", err);
+          setTimeout(() => { target.textContent = original; }, 2200);
+        }
+      });
+    </script>
   </body>
 </html>
