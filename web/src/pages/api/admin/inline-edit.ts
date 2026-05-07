@@ -21,7 +21,8 @@ export const prerender = false;
 type PK = { column: string; value: string };
 type FieldSpec =
   | { kind: "scalar"; table: string; pk: PK; column: string }
-  | { kind: "json"; table: string; pk: PK; column: string; jsonKey: string };
+  | { kind: "json"; table: string; pk: PK; column: string; jsonKey: string }
+  | { kind: "copy" };
 
 /* ── Person (Daniel) — scalar fields ────────────────────────────── */
 const DANIEL_PK: PK = { column: "id", value: "daniel" };
@@ -73,6 +74,21 @@ const ALLOWLIST: Record<string, FieldSpec> = {
   ...PROJECT_ENTRIES,
 };
 
+/* Landing-copy keys (`copy.<key>`) are accepted as a class — the key
+ * after the `copy.` prefix maps directly into the landing_copy table.
+ * Validation is by namespace prefix to avoid maintaining a duplicate
+ * list of every individual key (the seed in 20260507_landing_copy.sql
+ * is the source of truth). */
+const COPY_KEY_PREFIXES = ["frame.", "notebook.", "ledger.", "closing."] as const;
+function isWritableCopyKey(rawKey: string): boolean {
+  return (
+    rawKey.length > 0 &&
+    rawKey.length <= 200 &&
+    !rawKey.includes(" ") &&
+    COPY_KEY_PREFIXES.some((p) => rawKey.startsWith(p))
+  );
+}
+
 const MAX_LEN = 4000;
 
 export const POST: APIRoute = async ({ request, cookies }) => {
@@ -85,7 +101,19 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   };
 
   const fieldKey = (body.field ?? "").trim();
-  const spec = ALLOWLIST[fieldKey];
+
+  // Copy-table writes (`copy.<key>`) are validated by prefix; everything
+  // else has to be in the explicit ALLOWLIST.
+  let spec: FieldSpec | undefined = ALLOWLIST[fieldKey];
+  let copyKey: string | null = null;
+  if (!spec && fieldKey.startsWith("copy.")) {
+    const rawKey = fieldKey.slice("copy.".length);
+    if (!isWritableCopyKey(rawKey)) {
+      return new Response(`Unknown or unwritable copy key: ${rawKey}`, { status: 400 });
+    }
+    copyKey = rawKey;
+    spec = { kind: "copy" };
+  }
   if (!spec) {
     return new Response(`Unknown or unwritable field: ${fieldKey}`, { status: 400 });
   }
@@ -93,6 +121,15 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   const value: string | null = body.value == null ? null : String(body.value);
   if (value && value.length > MAX_LEN) {
     return new Response(`Value too long for inline edit (>${MAX_LEN} chars)`, { status: 413 });
+  }
+
+  if (spec.kind === "copy") {
+    if (!copyKey) return new Response("Missing copy key", { status: 400 });
+    const { error } = await auth.supabase
+      .from("landing_copy")
+      .upsert({ key: copyKey, value }, { onConflict: "key" });
+    if (error) return new Response(error.message, { status: 400 });
+    return jsonOk({ field: fieldKey, value });
   }
 
   if (spec.kind === "scalar") {

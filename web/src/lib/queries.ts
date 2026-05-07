@@ -46,6 +46,26 @@ export async function getSiteSettings(): Promise<SiteSettings | null> {
   return (data ?? null) as SiteSettings | null;
 }
 
+/* ── Landing copy (key/value editorial strings) ───────────────────── */
+
+/**
+ * Reads the landing_copy table into a flat lookup. Values default to
+ * null on Supabase outage so callers can fall back to component-level
+ * defaults without crashing.
+ */
+export async function getLandingCopy(): Promise<Record<string, string>> {
+  const sb = getSupabase();
+  if (!sb) return {};
+  const { data } = await sb.from("landing_copy").select("key, value");
+  const out: Record<string, string> = {};
+  if (Array.isArray(data)) {
+    for (const row of data as { key: string; value: string | null }[]) {
+      if (row?.key && row.value != null) out[row.key] = row.value;
+    }
+  }
+  return out;
+}
+
 /* ── Projects ─────────────────────────────────────────────────────── */
 
 export async function getProjects(): Promise<Project[]> {

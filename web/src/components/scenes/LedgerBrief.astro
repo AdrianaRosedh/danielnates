@@ -30,6 +30,9 @@ interface Props {
   title?: string;
   entries?: Entry[];
   locale?: Locale;
+  /** Landing-copy lookup. When provided, each row's project, state
+   *  and cta strings prefer ledger.<brand>.* values from the DB. */
+  copy?: Record<string, string>;
 }
 
 const {
@@ -37,38 +40,41 @@ const {
   title,
   entries,
   locale: propLocale,
+  copy = {},
 } = Astro.props as Props;
 const locale: Locale = propLocale ?? Astro.locals.locale ?? "es";
+
+const c = (key: string, fallback: string): string => copy[key] ?? fallback;
 
 const finalTitle = title ?? (locale === "es" ? "La Mesa" : "The Table");
 
 const finalEntries: Entry[] = entries ?? [
   {
     brand: "olivea",
-    project: "Olivea",
-    state: locale === "es"
+    project: c("ledger.olivea.project", "Olivea"),
+    state: c(`ledger.olivea.state_${locale}`, locale === "es"
       ? "Carta del huerto · Valle de Guadalupe"
-      : "Garden menu · Valle de Guadalupe",
+      : "Garden menu · Valle de Guadalupe"),
     href: href("/olivea", locale),
-    cta: locale === "es" ? "Capítulo Olivea" : "Chapter Olivea",
+    cta: c(`ledger.olivea.cta_${locale}`, locale === "es" ? "Capítulo Olivea" : "Chapter Olivea"),
   },
   {
     brand: "fritanguita",
-    project: "Fritanguita",
-    state: locale === "es"
+    project: c("ledger.fritanguita.project", "Fritanguita"),
+    state: c(`ledger.fritanguita.state_${locale}`, locale === "es"
       ? "Roma Norte · CDMX · con Santiago Muñoz"
-      : "Roma Norte · CDMX · with Santiago Muñoz",
+      : "Roma Norte · CDMX · with Santiago Muñoz"),
     href: href("/fritanguita", locale),
-    cta: locale === "es" ? "Capítulo Fritanguita" : "Chapter Fritanguita",
+    cta: c(`ledger.fritanguita.cta_${locale}`, locale === "es" ? "Capítulo Fritanguita" : "Chapter Fritanguita"),
   },
   {
     brand: "maizal",
-    project: "Maizal",
-    state: locale === "es"
+    project: c("ledger.maizal.project", "Maizal"),
+    state: c(`ledger.maizal.state_${locale}`, locale === "es"
       ? "Puebla · 2017–2024 · archivo"
-      : "Puebla · 2017–2024 · archive",
+      : "Puebla · 2017–2024 · archive"),
     href: href("/maizal", locale),
-    cta: locale === "es" ? "Capítulo Maizal" : "Chapter Maizal",
+    cta: c(`ledger.maizal.cta_${locale}`, locale === "es" ? "Capítulo Maizal" : "Chapter Maizal"),
   },
 ];
 
@@ -100,10 +106,10 @@ const lede = locale === "es"
         <li class="ledger__item">
           <a class="ledger__row" href={entry.href} data-brand={entry.brand}>
             <span class="ledger__mark" aria-hidden="true"></span>
-            <span class="ledger__project">{entry.project}</span>
-            <span class="ledger__state">{entry.state}</span>
+            <span class="ledger__project" data-edit-field={`copy.ledger.${entry.brand}.project`}>{entry.project}</span>
+            <span class="ledger__state" data-edit-field={`copy.ledger.${entry.brand}.state_${locale}`}>{entry.state}</span>
             <span class="ledger__cta">
-              <span>{entry.cta}</span>
+              <span data-edit-field={`copy.ledger.${entry.brand}.cta_${locale}`}>{entry.cta}</span>
               <span aria-hidden="true">→</span>
             </span>
           </a>

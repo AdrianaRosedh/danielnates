@@ -38,20 +38,28 @@ interface Props {
   title?: string;                  // "El Cuaderno" / "The Notebook"
   spreads?: Spread[];
   locale?: Locale;
+  /** Landing-copy lookup. When provided, each spread's markWord,
+   *  caption and place prefer the DB value at notebook.<recto>.<key>
+   *  before falling back to the hardcoded default. */
+  copy?: Record<string, string>;
 }
 
-const { title = "El Cuaderno", spreads = [], locale: propLocale } = Astro.props as Props;
+const { title = "El Cuaderno", spreads = [], locale: propLocale, copy = {} } = Astro.props as Props;
 const locale: Locale = propLocale ?? Astro.locals.locale ?? "es";
 
+const c = (key: string, fallback: string): string => copy[key] ?? fallback;
+
 /* Default editorial fallback — five spreads tracing Daniel's arc.
- * If the parent passes its own spreads array these are skipped. */
+ * If the parent passes its own spreads array these are skipped. The
+ * markWord is now sourced from landing_copy where possible so each
+ * spread's hero word is editable inline. */
 const defaultSpreads: Spread[] = [
   {
     recto: "I",
     sketch: "leaf",
     imageUrl: "/media/hero/daniel-garden.jpg",
-    caption: locale === "es" ? "El huerto manda. La carta cambia con la mañana." : "The garden leads. The menu changes with the morning.",
-    place: "Olivea · Valle de Guadalupe",
+    caption: c(`notebook.I.caption_${locale}`, locale === "es" ? "El huerto manda. La carta cambia con la mañana." : "The garden leads. The menu changes with the morning."),
+    place: c(`notebook.I.place_${locale}`, "Olivea · Valle de Guadalupe"),
     href: locale === "es" ? "/olivea" : "/en/olivea",
     hrefLabel: locale === "es" ? "Capítulo Olivea →" : "Chapter Olivea →",
   },
@@ -59,8 +67,8 @@ const defaultSpreads: Spread[] = [
     recto: "II",
     sketch: "cazo",
     imageUrl: null,
-    caption: locale === "es" ? "Fritanga poblana, en su forma más contemporánea." : "Poblano fritanga in its most contemporary form.",
-    place: "Fritanguita · Roma Norte · CDMX",
+    caption: c(`notebook.II.caption_${locale}`, locale === "es" ? "Fritanga poblana, en su forma más contemporánea." : "Poblano fritanga in its most contemporary form."),
+    place: c(`notebook.II.place_${locale}`, "Fritanguita · Roma Norte · CDMX"),
     href: locale === "es" ? "/fritanguita" : "/en/fritanguita",
     hrefLabel: locale === "es" ? "Capítulo Fritanguita →" : "Chapter Fritanguita →",
   },
@@ -68,8 +76,8 @@ const defaultSpreads: Spread[] = [
     recto: "III",
     sketch: "milpa",
     imageUrl: null,
-    caption: locale === "es" ? "El primer maestro. Lo que aprendí ahí, todavía cocina lo que hago." : "The first teacher. What I learned there still cooks what I do.",
-    place: "Maizal · Puebla · 2017–2024",
+    caption: c(`notebook.III.caption_${locale}`, locale === "es" ? "El primer maestro. Lo que aprendí ahí, todavía cocina lo que hago." : "The first teacher. What I learned there still cooks what I do."),
+    place: c(`notebook.III.place_${locale}`, "Maizal · Puebla · 2017–2024"),
     href: locale === "es" ? "/maizal" : "/en/maizal",
     hrefLabel: locale === "es" ? "Capítulo Maizal →" : "Chapter Maizal →",
   },
@@ -77,8 +85,8 @@ const defaultSpreads: Spread[] = [
     recto: "IV",
     sketch: "mano",
     imageUrl: null,
-    caption: locale === "es" ? "La mano dibuja antes de cocinar. Composición, contraste, intención." : "The hand draws before it cooks. Composition, contrast, intent.",
-    place: locale === "es" ? "Atelier · MMXXVI" : "Studio · MMXXVI",
+    caption: c(`notebook.IV.caption_${locale}`, locale === "es" ? "La mano dibuja antes de cocinar. Composición, contraste, intención." : "The hand draws before it cooks. Composition, contrast, intent."),
+    place: c(`notebook.IV.place_${locale}`, locale === "es" ? "Atelier · MMXXVI" : "Studio · MMXXVI"),
     href: locale === "es" ? "/arte" : "/en/arte",
     hrefLabel: locale === "es" ? "Atelier →" : "Studio →",
   },
@@ -86,13 +94,16 @@ const defaultSpreads: Spread[] = [
     recto: "V",
     sketch: "mesa",
     imageUrl: null,
-    caption: locale === "es" ? "La mesa es el último cuadro." : "The table is the last painting.",
-    place: locale === "es" ? "Daniel Nates · MMXXVI" : "Daniel Nates · MMXXVI",
+    caption: c(`notebook.V.caption_${locale}`, locale === "es" ? "La mesa es el último cuadro." : "The table is the last painting."),
+    place: c(`notebook.V.place_${locale}`, locale === "es" ? "Daniel Nates · MMXXVI" : "Daniel Nates · MMXXVI"),
   },
 ];
 
 const items: Spread[] = spreads.length ? spreads : defaultSpreads;
 const total = items.length;
+/* The notebook.<recto>.markWord copy keys are seeded for an upcoming
+ * typography variant of the left page — currently the spreads render
+ * SVG studies, so the markWord values are reserved but unused here. */
 
 /* ────────────────────────────────────────────────────────────────
    SVG line drawings — proper notebook studies. Each subject was
@@ -218,9 +229,9 @@ const PEN_FILTERS: { id: string; freq: number; seed: number; scale: number }[] =
               <div class="spread__inner-rule" aria-hidden="true"></div>
             </div>
             <div class="spread__meta">
-              <p class="spread__caption">{sp.caption}</p>
+              <p class="spread__caption" data-edit-field={`copy.notebook.${sp.recto}.caption_${locale}`}>{sp.caption}</p>
               <div class="spread__foot">
-                <span class="spread__place">{sp.place}</span>
+                <span class="spread__place" data-edit-field={`copy.notebook.${sp.recto}.place_${locale}`}>{sp.place}</span>
                 {sp.href ? (
                   <a class="spread__cta" href={sp.href}>{sp.hrefLabel ?? "→"}</a>
                 ) : null}

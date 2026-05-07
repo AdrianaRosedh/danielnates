@@ -13,8 +13,10 @@ interface Props {
   mode?: Mode;
   class?: string;
   id?: string;
+  /** Inline-edit binding (e.g. "copy.closing.line_es"). */
+  editField?: string | null;
 }
-const { as: Tag = "p", mode = "word", class: cls, id } = Astro.props as Props;
+const { as: Tag = "p", mode = "word", class: cls, id, editField = null } = Astro.props as Props;
 const slot = await Astro.slots.render("default");
 const raw = (slot && slot.replace(/<[^>]+>/g, "").trim()) || "";
 ---
@@ -24,6 +26,7 @@ const raw = (slot && slot.replace(/<[^>]+>/g, "").trim()) || "";
   id={id}
   data-reveal-text
   data-reveal-mode={mode}
+  data-edit-field={editField ?? undefined}
   aria-label={raw}
 >{raw}</Tag>
 

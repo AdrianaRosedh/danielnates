@@ -10,7 +10,7 @@ import ServiceScene from "../components/scenes/ServiceScene.astro";
 import LedgerBrief from "../components/scenes/LedgerBrief.astro";
 import Closing from "../components/scenes/Closing.astro";
 
-import { getDaniel } from "../lib/queries";
+import { getDaniel, getLandingCopy } from "../lib/queries";
 import { t2 } from "../lib/i18n";
 import type { Locale } from "../lib/types";
 
@@ -37,6 +37,12 @@ const locale: Locale = lang ?? Astro.locals.locale ?? "es";
  * that argument; everything else supports it. */
 
 const daniel = await getDaniel();
+const copy = await getLandingCopy();
+
+/** Look up landing-copy by key; fall back to a default if the row
+ *  is missing or empty. Components also receive the localised key
+ *  so they can stamp data-edit-field for inline editing. */
+const c = (key: string, fallback: string): string => copy[key] ?? fallback;
 
 const heroName = daniel?.name ?? "Daniel Nates";
 const heroLine = t2(daniel?.tagline_es, daniel?.tagline_en, locale) || (locale === "es"
@@ -83,6 +89,7 @@ const heroMeta = locale === "es"
   <NotebookScene
     title={locale === "es" ? "El Cuaderno" : "The Notebook"}
     locale={locale}
+    copy={copy}
   />
 
   {/* II · El Huerto — pure photography rest. Moss-tinted ink. The
@@ -92,11 +99,14 @@ const heroMeta = locale === "es"
     src="/media/hero/daniel-garden.jpg"
     alt={heroName}
     tone="moss"
-    index="II"
-    caption={locale === "es"
+    index={c("frame.huerto.index", "II")}
+    indexField="copy.frame.huerto.index"
+    caption={c(`frame.huerto.caption_${locale}`, locale === "es"
       ? "Cuando la cocina escucha al campo primero."
-      : "When the kitchen listens to the field first."}
-    place="Olivea · Valle de Guadalupe · MMXXVI"
+      : "When the kitchen listens to the field first.")}
+    captionField={`copy.frame.huerto.caption_${locale}`}
+    place={c(`frame.huerto.place_${locale}`, "Olivea · Valle de Guadalupe · MMXXVI")}
+    placeField={`copy.frame.huerto.place_${locale}`}
     ratio="16/9"
     locale={locale}
   />
@@ -118,11 +128,12 @@ const heroMeta = locale === "es"
   <LedgerBrief
     index="IV"
     locale={locale}
+    copy={copy}
   />
 
   {/* V · Coda — closing. Mist→ink gradient, the only place the
       mountain blue-gray of the photo gets used. Closes the natural-
       palette loop. */}
-  <Closing locale={locale} daniel={daniel} />
+  <Closing locale={locale} daniel={daniel} copy={copy} />
 
 </BaseLayout>

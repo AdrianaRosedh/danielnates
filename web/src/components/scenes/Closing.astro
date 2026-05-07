@@ -6,14 +6,17 @@ import TextReveal from "../motion/TextReveal.astro";
 interface Props {
   locale?: Locale;
   daniel?: Person | null;
+  /** Landing-copy lookup. When provided, `closing.line_<locale>`
+   *  overrides the hardcoded fallback below. */
+  copy?: Record<string, string>;
 }
-const { locale: propLocale, daniel = null } = Astro.props as Props;
+const { locale: propLocale, daniel = null, copy = {} } = Astro.props as Props;
 const locale: Locale = propLocale ?? Astro.locals.locale ?? "es";
 
 // Closing thought — Daniel as a whole person (cooks, draws, makes).
-const closingLine = locale === "es"
+const closingLine = copy[`closing.line_${locale}`] ?? (locale === "es"
   ? "La mesa es el último cuadro."
-  : "The table is the last painting.";
+  : "The table is the last painting.");
 
 const sigName = daniel?.name ?? "Daniel Nates";
 const place = locale === "es"
@@ -28,7 +31,7 @@ const ig2 = daniel?.social?.fritanguita_instagram ?? null;
   <div class="closing__inner">
     <span class="closing__rule" aria-hidden="true"></span>
 
-    <TextReveal as="p" mode="word" class="closing__line">
+    <TextReveal as="p" mode="word" class="closing__line" editField={`copy.closing.line_${locale}`}>
       {closingLine}
     </TextReveal>
 

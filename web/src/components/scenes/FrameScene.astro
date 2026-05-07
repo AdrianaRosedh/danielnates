@@ -35,6 +35,10 @@ interface Props {
    *                      world recedes around it) */
   tone?: "bone" | "moss";
   locale?: Locale;
+  /** Inline-edit field bindings (e.g. "copy.frame.huerto.caption_es"). */
+  indexField?: string | null;
+  captionField?: string | null;
+  placeField?: string | null;
 }
 
 const {
@@ -45,6 +49,9 @@ const {
   place = null,
   ratio = "4/5",
   tone = "bone",
+  indexField = null,
+  captionField = null,
+  placeField = null,
 } = Astro.props as Props;
 const isMoss = tone === "moss";
 ---
@@ -73,9 +80,9 @@ const isMoss = tone === "moss";
 
     {(index || caption || place) ? (
       <div class="frame__meta">
-        {index ? <span class="frame__num">{index}</span> : null}
-        {caption ? <span class="frame__caption">{caption}</span> : null}
-        {place ? <span class="frame__place">{place}</span> : null}
+        {index ? <span class="frame__num" data-edit-field={indexField ?? undefined}>{index}</span> : null}
+        {caption ? <span class="frame__caption" data-edit-field={captionField ?? undefined}>{caption}</span> : null}
+        {place ? <span class="frame__place" data-edit-field={placeField ?? undefined}>{place}</span> : null}
       </div>
     ) : null}
   </div>
