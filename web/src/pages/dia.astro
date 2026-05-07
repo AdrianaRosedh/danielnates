@@ -68,7 +68,7 @@ const localizedLine = (b: Brief) =>
           {briefs.map((b) => {
             const line = localizedLine(b);
             return (
-              <li class="dia__cell">
+              <li class="dia__cell" id={`brief-${b.id}`}>
                 <article class="dia__card">
                   <div class="dia__cover" data-edit-image-field={`daily.${b.id}.image_url`}>
                     {b.image_url ? (

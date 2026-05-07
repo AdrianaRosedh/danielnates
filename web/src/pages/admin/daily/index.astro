@@ -45,7 +45,7 @@ function fmt(d: string) {
   {briefs.length ? (
     <div class="admin__list">
       {briefs.map((b) => (
-        <a class="admin__row" href={`/admin/daily/${b.id}`}>
+        <a class="admin__row" href={`/dia#brief-${b.id}`} title="Abrir y editar en /dia">
           {b.image_url ? (
             <img src={b.image_url} alt="" loading="lazy" />
           ) : (
@@ -59,6 +59,7 @@ function fmt(d: string) {
             {b.published ? "Publicado" : "Borrador"}
           </span>
           <span class="admin__rowMeta">{fmt(b.date)}</span>
+          <a class="admin__rowOps" href={`/admin/daily/${b.id}`} onclick="event.stopPropagation();" title="Operaciones — publicar, borrar">⋯</a>
         </a>
       ))}
     </div>

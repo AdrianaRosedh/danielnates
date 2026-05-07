@@ -751,6 +751,76 @@
   text-transform: uppercase;
   color: var(--text-3);
 }
+/* Secondary "Operations" link inside a card — dim and unobtrusive,
+   accessible without dominating the primary "Edit on site" CTA. */
+.card__foot--ops{
+  margin: 6px 0 0;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(244,239,230,.06);
+  font-size: 10px;
+  letter-spacing: .12em;
+  justify-content: flex-end;
+}
+.card__foot--ops a{
+  color: var(--text-3);
+  text-decoration: none;
+  transition: color .25s;
+}
+.card__foot--ops a:hover{ color: var(--text); }
+
+/* Compact "operations" three-dot link on row-style admin lists
+   (currently used by /admin/daily). Sits at the right edge after
+   the date and pill so the row body stays a single click target. */
+.admin__rowOps{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px; height: 28px;
+  margin-left: 8px;
+  border-radius: 8px;
+  color: var(--text-3);
+  background: transparent;
+  font-size: 18px;
+  line-height: 1;
+  transition: background .2s, color .2s;
+  text-decoration: none;
+}
+.admin__rowOps:hover{
+  background: rgba(244,239,230,.08);
+  color: var(--text);
+}
+
+/* Floating callout on the admin home that explains the
+   visual-editing-on-the-site model. */
+.admin__hint{
+  display: grid;
+  grid-template-columns: 8px 1fr;
+  gap: 12px;
+  align-items: start;
+  padding: 14px 18px 16px;
+  border: 1px solid rgba(244,239,230,.10);
+  border-radius: 10px;
+  background: rgba(244,239,230,.02);
+}
+.admin__hint p{
+  margin: 0;
+  color: var(--text-2);
+  font-family: var(--font-display);
+  font-size: 15px;
+  line-height: 1.55;
+}
+.admin__hint p strong{
+  color: var(--text);
+  font-weight: 500;
+  font-style: italic;
+}
+.admin__hintDot{
+  width: 8px; height: 8px;
+  margin-top: 8px;
+  border-radius: 999px;
+  background: var(--ember, #D9421C);
+  box-shadow: 0 0 0 4px rgba(217, 66, 28, .14);
+}
 
 /* "+ New" tile that lives inside the same grid as the cards. */
 .card--add{

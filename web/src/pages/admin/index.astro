@@ -92,6 +92,18 @@ const headline = app === "fritanguita"
     ) : null}
   </header>
 
+  <aside class="admin__hint" style="margin-top: 24px;">
+    <span class="admin__hintDot" aria-hidden="true"></span>
+    <p>
+      <strong>{t("Editar ocurre en el sitio.", "Editing happens on the site.")}</strong>
+      {" "}
+      {t(
+        "Abre cualquier tarjeta y se carga la página real con tus controles encima — texto, fotos, orden. Las operaciones (publicar, borrar, voz, bloques) siguen aquí en el panel.",
+        "Open any card and the live page loads with your controls on top — text, photos, order. Operations (publish, delete, voice, blocks) still live here in the panel."
+      )}
+    </p>
+  </aside>
+
   <section class="cardgrid" style="margin-top: 32px;">
     {tiles.map((tile) => (
       <a class="card" href={tile.href} aria-label={`${tile.label} — ${tile.count}`}>

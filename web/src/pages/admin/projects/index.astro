@@ -79,7 +79,7 @@ function statusLabel(s: string | null) {
   {rows.length ? (
     <section class="cardgrid" style="margin-top: 32px;">
       {rows.map((p) => (
-        <a class="card" href={`/admin/projects/${p.id}`}>
+        <a class="card" href={`/${p.slug}`} title={t("Abrir y editar en el sitio", "Open and edit on the site")}>
           <div class={`card__media${p.hero_image_url ? "" : " card__media--placeholder"}`}>
             {p.hero_image_url ? (
               <img src={p.hero_image_url} alt={p.title} loading="lazy" />
@@ -99,8 +99,11 @@ function statusLabel(s: string | null) {
               <p class="card__meta">{lang === "en" ? (p.summary_en ?? p.summary_es) : (p.summary_es ?? p.summary_en)}</p>
             ) : null}
             <p class="card__foot">
-              <span>{t("Editar", "Edit")}</span>
+              <span>{t("Editar en el sitio", "Edit on site")}</span>
               <span>{new Date(p.updated_at).toLocaleDateString(lang === "en" ? "en-US" : "es-ES", { day: "numeric", month: "short" })}</span>
+            </p>
+            <p class="card__foot card__foot--ops">
+              <a href={`/admin/projects/${p.id}`} onclick="event.stopPropagation();" title={t("Operaciones — bloques, voz, links, publicar", "Operations — blocks, voice, links, publish")}>{t("Operaciones", "Operations")}</a>
             </p>
           </div>
         </a>

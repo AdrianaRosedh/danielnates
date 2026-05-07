@@ -55,7 +55,7 @@ function fmt(d: string) {
   {rows.length ? (
     <section class="cardgrid" style="margin-top: 32px;">
       {rows.map((a) => (
-        <a class="card" href={`/admin/articles/${a.id}`}>
+        <a class="card" href={`/diario/${a.slug}`} title={t("Abrir y editar en el sitio", "Open and edit on the site")}>
           <div class={`card__media${a.cover_url ? "" : " card__media--placeholder"}`}>
             {a.cover_url ? (
               <img src={a.cover_url} alt={a.title} loading="lazy" />
@@ -75,8 +75,11 @@ function fmt(d: string) {
               <p class="card__meta">{lang === "en" ? (a.excerpt_en ?? a.excerpt_es) : (a.excerpt_es ?? a.excerpt_en)}</p>
             ) : null}
             <p class="card__foot">
-              <span>{t("Editar", "Edit")}</span>
+              <span>{t("Editar en el sitio", "Edit on site")}</span>
               <span aria-hidden="true">→</span>
+            </p>
+            <p class="card__foot card__foot--ops">
+              <a href={`/admin/articles/${a.id}`} onclick="event.stopPropagation();" title={t("Operaciones — publicar, borrar, voz", "Operations — publish, delete, voice")}>{t("Operaciones", "Operations")}</a>
             </p>
           </div>
         </a>

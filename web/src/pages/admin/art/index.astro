@@ -48,7 +48,7 @@ if (supabase) {
   {rows.length ? (
     <section class="cardgrid" style="margin-top: 32px;">
       {rows.map((p) => (
-        <a class="card" href={`/admin/art/${p.id}`}>
+        <a class="card" href={`/arte/${p.slug}`} title={t("Abrir y editar en el sitio", "Open and edit on the site")}>
           <div class={`card__media card__media--art${p.cover_url ? "" : " card__media--placeholder"}`}>
             {p.cover_url ? (
               <img src={p.cover_url} alt={p.title} loading="lazy" />
@@ -66,8 +66,11 @@ if (supabase) {
             <h3 class="card__title">{p.title}</h3>
             {p.dimensions ? <p class="card__meta">{p.dimensions}</p> : null}
             <p class="card__foot">
-              <span>{t("Editar", "Edit")}</span>
+              <span>{t("Editar en el sitio", "Edit on site")}</span>
               <span aria-hidden="true">→</span>
+            </p>
+            <p class="card__foot card__foot--ops">
+              <a href={`/admin/art/${p.id}`} onclick="event.stopPropagation();" title={t("Operaciones — publicar, borrar", "Operations — publish, delete")}>{t("Operaciones", "Operations")}</a>
             </p>
           </div>
         </a>
