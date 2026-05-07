@@ -69,6 +69,7 @@ const heroMeta = locale === "es"
   <ColdOpen
     name={heroName}
     signature={heroSig}
+    signatureField={`daniel.${locale === "es" ? "subline_es" : "subline_en"}`}
     meta={heroMeta}
     posterUrl="/media/hero/daniel-garden.jpg"
     voice={daniel?.voice ?? null}

@@ -33,6 +33,26 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
     // Effective admin app: cookie-driven for full admins, scope-locked
     // for scoped users. This drives the sidebar nav + filtered views.
     context.locals.adminApp = effectiveAdminApp(context.cookies, scope);
+    context.locals.isAdmin = true;
+  }
+  // Resolve admin status on PUBLIC pages too — non-blocking. If the
+  // visitor is signed in AND in admin_emails, the public BaseLayout
+  // mounts the inline-edit overlay so they can edit content directly
+  // on the live site. Skip for static assets and API routes.
+  else if (
+    !path.startsWith("/api/") &&
+    !path.startsWith("/_") &&
+    !/\.[a-z0-9]+$/i.test(path)
+  ) {
+    const user = await getUserFromRequest(context.cookies);
+    if (user) {
+      const scope = await getAdminScopeFor(user.email);
+      if (scope) {
+        context.locals.user = user;
+        context.locals.adminScope = scope;
+        context.locals.isAdmin = true;
+      }
+    }
   }
 
   return next();

@@ -4,6 +4,7 @@ import CustomCursor from "../motion/CustomCursor.astro";
 import CinematicEntrance from "../motion/CinematicEntrance.astro";
 import AnimationDirector from "../motion/AnimationDirector.astro";
 import ChapterCurtain from "../motion/ChapterCurtain.astro";
+import EditOverlay from "../admin/EditOverlay.astro";
 import MenuOverlay from "./MenuOverlay.astro";
 import ScrollProgress from "../motion/ScrollProgress.astro";
 import { getDaniel } from "../../lib/queries";
@@ -148,5 +149,6 @@ const ogImage = `${SITE}/og.png?${ogParams.toString()}`;
     <MenuOverlay locale={locale} daniel={daniel} />
     <ScrollProgress />
     <AnimationDirector />
+    {Astro.locals.isAdmin && <EditOverlay />}
   </body>
 </html>

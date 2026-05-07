@@ -1,0 +1,314 @@
+---
+/**
+ * EditOverlay — inline-edit affordance for admins on the public site.
+ *
+ * Mounted by BaseLayout when Astro.locals.isAdmin is true. Renders a
+ * floating toolbar at the bottom-right and attaches click-to-edit
+ * behaviour to every element on the page that carries a
+ * data-edit-field="entity.field" attribute.
+ *
+ * UX:
+ *   - "Editar" toggle in the toolbar turns edit mode on/off
+ *   - Hovered editable element: subtle outline, dotted underline
+ *   - Click in edit mode: element becomes contentEditable
+ *   - Enter (or blur) commits via /api/admin/inline-edit
+ *   - Escape reverts the field to its pre-edit value
+ *   - Save state shown in toolbar ("Guardado · 2s")
+ *
+ * Server-rendered as nothing for non-admin visitors.
+ */
+---
+
+<div class="editbar" data-editbar role="region" aria-label="Editor en línea">
+  <div class="editbar__row">
+    <span class="editbar__dot" aria-hidden="true"></span>
+    <span class="editbar__label">Admin</span>
+    <button class="editbar__toggle" type="button" data-edit-toggle aria-pressed="false">
+      <span class="editbar__toggleDot" aria-hidden="true"></span>
+      <span data-edit-toggle-label>Editar</span>
+    </button>
+    <span class="editbar__status" data-edit-status aria-live="polite"></span>
+    <a class="editbar__link" href="/admin">Panel ↗</a>
+    <a class="editbar__link" href="/admin/logout">Salir</a>
+  </div>
+</div>
+
+<style is:global>
+  .editbar{
+    position: fixed;
+    right: clamp(16px, 2vw, 28px);
+    bottom: clamp(16px, 2vw, 28px);
+    z-index: 1100;
+    pointer-events: auto;
+    color: #F4EFE6;
+    background: rgba(14, 15, 12, .92);
+    border: 1px solid rgba(244, 239, 230, .14);
+    border-radius: 999px;
+    padding: 8px 14px;
+    box-shadow:
+      0 18px 40px -12px rgba(0,0,0,.55),
+      0 0 0 1px rgba(244,239,230,.04) inset;
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    font-family: var(--font-sans, system-ui, sans-serif);
+    font-size: 12px;
+    letter-spacing: .04em;
+  }
+  .editbar__row{
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    height: 28px;
+  }
+  .editbar__dot{
+    width: 7px; height: 7px;
+    border-radius: 999px;
+    background: #D9421C;
+    box-shadow: 0 0 0 3px rgba(217, 66, 28, .18);
+  }
+  .editbar__label{
+    font-size: 10.5px;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+    color: rgba(244, 239, 230, .55);
+  }
+  .editbar__toggle{
+    appearance: none;
+    background: transparent;
+    border: 1px solid rgba(244, 239, 230, .22);
+    color: #F4EFE6;
+    border-radius: 999px;
+    padding: 5px 12px;
+    font: inherit;
+    font-size: 11px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: background .25s, border-color .25s;
+  }
+  .editbar__toggle:hover{ border-color: rgba(244, 239, 230, .45); }
+  .editbar__toggle[aria-pressed="true"]{
+    background: rgba(217, 66, 28, .14);
+    border-color: rgba(217, 66, 28, .55);
+  }
+  .editbar__toggleDot{
+    width: 6px; height: 6px;
+    border-radius: 999px;
+    background: rgba(244, 239, 230, .35);
+    transition: background .25s;
+  }
+  .editbar__toggle[aria-pressed="true"] .editbar__toggleDot{
+    background: #D9421C;
+  }
+  .editbar__status{
+    font-size: 11px;
+    color: rgba(244, 239, 230, .55);
+    min-width: 0;
+    transition: color .25s, opacity .35s;
+  }
+  .editbar__status[data-state="saving"]{ color: rgba(244, 239, 230, .75); }
+  .editbar__status[data-state="saved"]{ color: #9DBE8A; }
+  .editbar__status[data-state="error"]{ color: #E27D5A; }
+  .editbar__link{
+    font-size: 11px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: rgba(244, 239, 230, .55);
+    transition: color .25s;
+  }
+  .editbar__link:hover{ color: #F4EFE6; }
+
+  /* Visual affordance applied to editable fields when edit mode is on.
+     Scoped to <html data-edit-mode="1"> so the public site is untouched
+     when the toggle is off. */
+  html[data-edit-mode="1"] [data-edit-field]{
+    outline: 1px dashed rgba(217, 66, 28, .35);
+    outline-offset: 4px;
+    cursor: text;
+    transition: outline-color .25s, background-color .25s;
+  }
+  html[data-edit-mode="1"] [data-edit-field]:hover{
+    outline-color: rgba(217, 66, 28, .85);
+    background-color: rgba(217, 66, 28, .04);
+  }
+  html[data-edit-mode="1"] [data-edit-field][data-editing="1"]{
+    outline-style: solid;
+    outline-color: #D9421C;
+    background-color: rgba(217, 66, 28, .08);
+  }
+</style>
+
+<script>
+  /* Inline-edit script — runs once per page load. Idempotent across
+   * Astro ClientRouter swaps via a window flag + page-load rebind. */
+
+  declare global {
+    interface Window {
+      __dnInlineEditBooted?: boolean;
+    }
+  }
+
+  function boot() {
+    if (window.__dnInlineEditBooted) {
+      // Re-run setup on a swap so newly-rendered fields get bound.
+      bindFields();
+      return;
+    }
+    window.__dnInlineEditBooted = true;
+
+    const toggleBtn = document.querySelector<HTMLButtonElement>("[data-edit-toggle]");
+    const toggleLabel = document.querySelector<HTMLElement>("[data-edit-toggle-label]");
+    const statusEl = document.querySelector<HTMLElement>("[data-edit-status]");
+
+    function setStatus(text: string, state: "" | "saving" | "saved" | "error" = "") {
+      if (!statusEl) return;
+      statusEl.textContent = text;
+      if (state) statusEl.dataset.state = state;
+      else delete statusEl.dataset.state;
+    }
+
+    function setMode(on: boolean) {
+      document.documentElement.dataset.editMode = on ? "1" : "";
+      if (toggleBtn) toggleBtn.setAttribute("aria-pressed", on ? "true" : "false");
+      if (toggleLabel) toggleLabel.textContent = on ? "Editando" : "Editar";
+      if (!on) setStatus("");
+    }
+
+    toggleBtn?.addEventListener("click", () => {
+      const on = document.documentElement.dataset.editMode !== "1";
+      setMode(on);
+      try { localStorage.setItem("dn_edit_mode", on ? "1" : "0"); } catch {}
+    });
+
+    // Persist toggle state across navigations.
+    try {
+      if (localStorage.getItem("dn_edit_mode") === "1") setMode(true);
+    } catch {}
+
+    bindFields();
+
+    document.addEventListener("astro:page-load", bindFields);
+  }
+
+  function bindFields() {
+    document.querySelectorAll<HTMLElement>("[data-edit-field]").forEach((el) => {
+      const e = el as HTMLElement & { __dnEditBound?: boolean };
+      if (e.__dnEditBound) return;
+      e.__dnEditBound = true;
+
+      el.addEventListener("click", (ev) => {
+        if (document.documentElement.dataset.editMode !== "1") return;
+        if (el.dataset.editing === "1") return;
+        ev.preventDefault();
+        beginEdit(el);
+      });
+    });
+  }
+
+  function beginEdit(el: HTMLElement) {
+    const field = el.dataset.editField;
+    if (!field) return;
+
+    const original = (el.textContent ?? "").trim();
+    el.dataset.editing = "1";
+    el.contentEditable = "plaintext-only";
+    el.spellcheck = true;
+    el.focus();
+
+    // Place caret at end.
+    try {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+    } catch {}
+
+    let cancelled = false;
+
+    const cleanup = () => {
+      el.contentEditable = "false";
+      delete el.dataset.editing;
+      el.removeEventListener("keydown", onKey);
+      el.removeEventListener("blur", onBlur);
+    };
+
+    const commit = async () => {
+      const value = (el.textContent ?? "").trim();
+      cleanup();
+      if (cancelled || value === original) return;
+      await saveField(field, value, () => {
+        // Revert if save fails.
+        el.textContent = original;
+      });
+    };
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        el.blur();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        cancelled = true;
+        el.textContent = original;
+        el.blur();
+      }
+    };
+
+    const onBlur = () => {
+      // Defer commit so onKey for Enter fires first.
+      queueMicrotask(commit);
+    };
+
+    el.addEventListener("keydown", onKey);
+    el.addEventListener("blur", onBlur);
+  }
+
+  let saveTimer: ReturnType<typeof setTimeout> | null = null;
+  async function saveField(field: string, value: string, onError: () => void) {
+    const status = document.querySelector<HTMLElement>("[data-edit-status]");
+    if (status) {
+      status.textContent = "Guardando…";
+      status.dataset.state = "saving";
+    }
+    try {
+      const res = await fetch("/api/admin/inline-edit", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ field, value }),
+      });
+      if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(msg || `${res.status}`);
+      }
+      if (status) {
+        status.textContent = "Guardado";
+        status.dataset.state = "saved";
+      }
+      // Fade the status back out after 2.5s.
+      if (saveTimer) clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        if (status) {
+          status.textContent = "";
+          delete status.dataset.state;
+        }
+      }, 2500);
+    } catch (err) {
+      if (status) {
+        status.textContent = "Error al guardar";
+        status.dataset.state = "error";
+      }
+      onError();
+      // eslint-disable-next-line no-console
+      console.error("[inline-edit] save failed", err);
+    }
+  }
+
+  if (document.readyState === "complete") boot();
+  else window.addEventListener("load", boot, { once: true });
+  document.addEventListener("astro:page-load", boot);
+</script>

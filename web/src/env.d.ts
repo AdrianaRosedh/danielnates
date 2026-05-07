@@ -14,6 +14,10 @@ declare namespace App {
      *  this is read from the dn_admin_app cookie; for scoped users it
      *  is derived from their scope (they cannot switch). */
     adminApp?: "daniel" | "fritanguita";
+    /** True on PUBLIC pages when the visitor is signed in as an admin.
+     *  Lets the public site mount the inline-edit overlay without
+     *  redirecting through /admin. */
+    isAdmin?: boolean;
   }
 }
 

@@ -7,6 +7,8 @@ import type { Locale, VoiceTrack } from "../../lib/types";
 interface Props {
   name?: string;
   signature?: string | null;
+  /** Inline-edit binding for the signature line (e.g. "daniel.tagline_es"). */
+  signatureField?: string | null;
   videoUrl?: string | null;
   posterUrl?: string | null;
   meta?: string | null;
@@ -18,6 +20,7 @@ interface Props {
 const {
   name = "Daniel Nates",
   signature = null,
+  signatureField = null,
   videoUrl = null,
   posterUrl = null,
   meta = "Querétaro · MMXXVI",
@@ -85,7 +88,7 @@ const locale: Locale = propLocale ?? Astro.locals.locale ?? "es";
     <h1 class="cold__name">
       <TextReveal as="span" mode="letter" class="cold__nameText">{name}</TextReveal>
     </h1>
-    <p class="cold__sig">{signature ?? "Técnica global. Territorio local."}</p>
+    <p class="cold__sig" data-edit-field={signatureField ?? undefined}>{signature ?? "Técnica global. Territorio local."}</p>
   </div>
 </section>
 
