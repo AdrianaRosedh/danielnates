@@ -49,7 +49,9 @@ const bodyText = body.length
       <p class="kicker">{ui("diary", locale)} · {dateFormat(article.date, locale)}</p>
       <h1 class="h1" data-edit-field={titleField}>{title}</h1>
       {excerpt ? <p class="sub" style="margin-top:14px;" data-edit-field={excerptField}>{excerpt}</p> : null}
-      {article.cover_url ? <img class="articleHeader__cover" src={article.cover_url} alt={title} /> : null}
+      <div class="articleHeader__coverWrap" data-edit-image-field={`article.${slug}.cover_url`}>
+        {article.cover_url ? <img class="articleHeader__cover" src={article.cover_url} alt={title} /> : null}
+      </div>
     </article>
 
     {body.length ? (
@@ -65,5 +67,6 @@ const bodyText = body.length
 
 <style>
   .articleHeader{ margin: 14px 0 18px; }
-  .articleHeader__cover{ width: 100%; height: auto; border-radius: var(--r-3); margin-top: 22px; display: block; }
+  .articleHeader__coverWrap{ display: block; margin-top: 22px; }
+  .articleHeader__cover{ width: 100%; height: auto; border-radius: var(--r-3); display: block; }
 </style>

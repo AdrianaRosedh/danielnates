@@ -33,9 +33,11 @@ const lede = locale === "es"
         <div class="artGrid reveal-stagger">
           {pieces.map((p) => (
             <a class="artCard" href={href(`/arte/${p.slug}`, locale)}>
-              {p.cover_url ? <img src={p.cover_url} alt={p.title} loading="lazy" /> : null}
+              <div class="artCard__cover" data-edit-image-field={`art.${p.slug}.cover_url`}>
+                {p.cover_url ? <img src={p.cover_url} alt={p.title} loading="lazy" /> : null}
+              </div>
               <div class="artCard__meta">
-                <p class="artCard__title">{p.title}</p>
+                <p class="artCard__title" data-edit-field={`art.${p.slug}.title`}>{p.title}</p>
                 <p class="artCard__sub">{[p.year, p.medium].filter(Boolean).join(" · ")}</p>
               </div>
             </a>
@@ -62,6 +64,7 @@ const lede = locale === "es"
     transition: transform 600ms var(--ease-fluid), border-color 600ms var(--ease-fluid);
   }
   .artCard:hover{ transform: translateY(-2px); border-color: var(--line-2); }
+  .artCard__cover{ display: block; width: 100%; aspect-ratio: 4/5; }
   .artCard img{ width: 100%; aspect-ratio: 4/5; object-fit: cover; display: block; }
   .artCard__meta{ padding: 12px 12px 14px; }
   .artCard__title{ margin: 0; font-size: 14px; letter-spacing: -0.01em; font-family: var(--font-display); }

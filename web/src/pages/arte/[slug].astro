@@ -33,7 +33,9 @@ const statementField = `art.${slug}.statement_${locale}`;
     <article class="artHeader reveal">
       <p class="kicker">{ui("art", locale)}{meta ? ` · ${meta}` : ""}</p>
       <h1 class="h1" data-edit-field={titleField}>{title}</h1>
-      {piece.cover_url ? <img class="artHeader__cover" src={piece.cover_url} alt={title} /> : null}
+      <div class="artHeader__coverWrap" data-edit-image-field={`art.${slug}.cover_url`}>
+        {piece.cover_url ? <img class="artHeader__cover" src={piece.cover_url} alt={title} /> : null}
+      </div>
       {statement ? (
         <p
           class="sub"
@@ -51,5 +53,6 @@ const statementField = `art.${slug}.statement_${locale}`;
 
 <style>
   .artHeader{ margin: 14px 0 18px; }
-  .artHeader__cover{ width: 100%; height: auto; border-radius: var(--r-3); margin-top: 22px; display: block; }
+  .artHeader__coverWrap{ display: block; margin-top: 22px; }
+  .artHeader__cover{ width: 100%; height: auto; border-radius: var(--r-3); display: block; }
 </style>
