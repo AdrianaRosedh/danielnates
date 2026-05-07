@@ -93,7 +93,7 @@ const bioText = bioBlocks.length
   {/* ── Hero — portrait + name + signature ───────────────────── */}
   <section class="about__hero scene--ink" data-scene="ink">
     <div class="about__heroGrid">
-      <div class="about__heroMedia">
+      <div class="about__heroMedia" data-edit-image-field="daniel.portrait_url">
         {portrait ? (
           <img src={portrait} alt={name} loading="eager" />
         ) : (
@@ -103,7 +103,7 @@ const bioText = bioBlocks.length
 
       <div class="about__heroBody">
         <p class="kicker about__kicker">{locale === "es" ? "Sobre" : "About"}</p>
-        <TextReveal as="h1" mode="word" class="about__name">{name}</TextReveal>
+        <TextReveal as="h1" mode="word" class="about__name" editField="daniel.name">{name}</TextReveal>
         <p class="about__tagline" data-edit-field={taglineField}>{tagline}</p>
         <p class="about__subline" data-edit-field={sublineField}>{subline}</p>
 

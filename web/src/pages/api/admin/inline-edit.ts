@@ -33,6 +33,21 @@ const danielPortable = (col: string): FieldSpec => ({
   kind: "scalar", table: "person", pk: DANIEL_PK, column: col, portable: true,
 });
 
+/* ── Press kit — scalar fields ──────────────────────────────────── */
+const PRESS_KIT_PK: PK = { column: "id", value: "singleton" };
+const pressKitScalar = (col: string): FieldSpec => ({
+  kind: "scalar", table: "press_kit", pk: PRESS_KIT_PK, column: col,
+});
+const pressKitPortable = (col: string): FieldSpec => ({
+  kind: "scalar", table: "press_kit", pk: PRESS_KIT_PK, column: col, portable: true,
+});
+
+/* ── Site settings — scalar fields ──────────────────────────────── */
+const SITE_PK: PK = { column: "id", value: "singleton" };
+const siteScalar = (col: string): FieldSpec => ({
+  kind: "scalar", table: "site_settings", pk: SITE_PK, column: col,
+});
+
 /* ── Project framings — JSONB nested keys on projects.framing ───── */
 function projectScalar(slug: string, col: string): FieldSpec {
   return {
@@ -76,6 +91,24 @@ const ALLOWLIST: Record<string, FieldSpec> = {
   "daniel.bio_short_en": danielScalars("bio_short_en"),
   "daniel.bio_long_es":  danielPortable("bio_long_es"),
   "daniel.bio_long_en":  danielPortable("bio_long_en"),
+  "daniel.portrait_url": danielScalars("portrait_url"),
+
+  /* Press kit — bilingual bios + press contact details. */
+  "press_kit.bio_one_line_es": pressKitScalar("bio_one_line_es"),
+  "press_kit.bio_one_line_en": pressKitScalar("bio_one_line_en"),
+  "press_kit.bio_short_es":    pressKitScalar("bio_short_es"),
+  "press_kit.bio_short_en":    pressKitScalar("bio_short_en"),
+  "press_kit.bio_long_es":     pressKitPortable("bio_long_es"),
+  "press_kit.bio_long_en":     pressKitPortable("bio_long_en"),
+  "press_kit.press_email":     pressKitScalar("press_email"),
+  "press_kit.press_pdf_url":   pressKitScalar("press_pdf_url"),
+
+  /* Site settings — global copy + contact. Most singletons live in
+   *  landing_copy under the copy.* prefix, but a handful belong to
+   *  site_settings (footer line, primary contact email). */
+  "site.contact_email":        siteScalar("contact_email"),
+  "site.footer_line_es":       siteScalar("footer_line_es"),
+  "site.footer_line_en":       siteScalar("footer_line_en"),
   ...PROJECT_ENTRIES,
 };
 
@@ -84,7 +117,7 @@ const ALLOWLIST: Record<string, FieldSpec> = {
  * Validation is by namespace prefix to avoid maintaining a duplicate
  * list of every individual key (the seed in 20260507_landing_copy.sql
  * is the source of truth). */
-const COPY_KEY_PREFIXES = ["frame.", "notebook.", "ledger.", "closing.", "cold."] as const;
+const COPY_KEY_PREFIXES = ["frame.", "notebook.", "ledger.", "closing.", "cold.", "contact.", "press.", "sobre."] as const;
 function isWritableCopyKey(rawKey: string): boolean {
   return (
     rawKey.length > 0 &&

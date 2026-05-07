@@ -87,6 +87,24 @@ const bioOneLine = t2(kit?.bio_one_line_es, kit?.bio_one_line_en, locale) || def
 const bioShort = t2(kit?.bio_short_es, kit?.bio_short_en, locale) || defaultBioShort;
 const bioLong = tb2(kit?.bio_long_es, kit?.bio_long_en, locale);
 const recognitions = kit?.recognitions?.length ? kit.recognitions : defaultRecognitions;
+
+/* Inline-edit field paths. Bio text uses the popover modal so multi-
+ * paragraph edits work. The long bio is PortableText — converted to
+ * plain text for the modal source, back to blocks on save. */
+const bioOneLineField = `press_kit.bio_one_line_${locale}`;
+const bioShortField   = `press_kit.bio_short_${locale}`;
+const bioLongField    = `press_kit.bio_long_${locale}`;
+const pressEmailField = "press_kit.press_email";
+const bioLongText = bioLong.length
+  ? bioLong
+      .map((b) => {
+        const block = b as { _type?: string; children?: { text?: string }[] };
+        if (block?._type !== "block" || !Array.isArray(block.children)) return "";
+        return block.children.map((c) => c?.text ?? "").join("");
+      })
+      .filter(Boolean)
+      .join("\n\n")
+  : "";
 /* Mentions live in the press_mentions table (admin: /admin/press). Fall back
  * to the researched defaults when the table is empty so the page is presentable
  * from day one. */
@@ -129,20 +147,41 @@ const lede = locale === "es"
 
       <div class="press__bioBlock">
         <p class="press__bioLabel">{locale === "es" ? "Una línea" : "One line"}</p>
-        <p class="press__bioText">{bioOneLine}</p>
+        <p class="press__bioText" data-edit-field={bioOneLineField}>{bioOneLine}</p>
       </div>
 
       <div class="press__bioBlock">
         <p class="press__bioLabel">{locale === "es" ? "Párrafo" : "Paragraph"}</p>
-        <p class="press__bioText">{bioShort}</p>
+        <p
+          class="press__bioText"
+          data-edit-field={bioShortField}
+          data-edit-multi="1"
+          data-edit-source={bioShort}
+        >{bioShort}</p>
       </div>
 
-      {bioLong.length ? (
-        <div class="press__bioBlock">
-          <p class="press__bioLabel">{locale === "es" ? "Larga" : "Long"}</p>
-          <PortableText value={bioLong} />
-        </div>
-      ) : null}
+      <div class="press__bioBlock">
+        <p class="press__bioLabel">{locale === "es" ? "Larga" : "Long"}</p>
+        {bioLong.length ? (
+          <div
+            data-edit-field={bioLongField}
+            data-edit-multi="1"
+            data-edit-source={bioLongText}
+          >
+            <PortableText value={bioLong} />
+          </div>
+        ) : (
+          <div
+            data-edit-field={bioLongField}
+            data-edit-multi="1"
+            data-edit-source=""
+            class="press__bioText"
+            style="color: var(--text-3); font-style: italic;"
+          >
+            {locale === "es" ? "(añade la bio larga)" : "(add the long bio)"}
+          </div>
+        )}
+      </div>
     </section>
 
     {/* Recognitions */}
@@ -220,10 +259,14 @@ const lede = locale === "es"
       <p class="kicker">{locale === "es" ? "Contacto de prensa" : "Press contact"}</p>
       <div class="press__contactRow">
         {pressEmail ? (
-          <a class="cta cta--primary" href={`mailto:${pressEmail}?subject=${encodeURIComponent("Prensa — Daniel Nates")}`}>
+          <a class="cta cta--primary" href={`mailto:${pressEmail}?subject=${encodeURIComponent("Prensa — Daniel Nates")}`} data-edit-field={pressEmailField}>
             {pressEmail}
           </a>
-        ) : null}
+        ) : (
+          <span class="cta cta--ghost" data-edit-field={pressEmailField} style="font-style: italic; color: var(--text-3);">
+            {locale === "es" ? "(añadir email de prensa)" : "(add press email)"}
+          </span>
+        )}
         {pressPdfUrl ? (
           <a class="cta cta--ghost" href={pressPdfUrl} target="_blank" rel="noreferrer">
             {locale === "es" ? "Kit completo (PDF) ↓" : "Full kit (PDF) ↓"}
