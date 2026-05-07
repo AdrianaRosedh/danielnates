@@ -77,7 +77,8 @@ const heroMeta = locale === "es"
     signature={heroSig}
     signatureField={`daniel.${locale === "es" ? "subline_es" : "subline_en"}`}
     meta={heroMeta}
-    posterUrl="/media/hero/daniel-garden.jpg"
+    posterUrl={c("cold.poster.image_url", "/media/hero/daniel-garden.jpg")}
+    posterField="copy.cold.poster.image_url"
     voice={daniel?.voice ?? null}
     locale={locale}
   />
@@ -96,7 +97,8 @@ const heroMeta = locale === "es"
       garden image enters BIG (scale 1.18) and slowly settles back —
       inverse parallax. The world recedes. */}
   <FrameScene
-    src="/media/hero/daniel-garden.jpg"
+    src={c("frame.huerto.image_url", "/media/hero/daniel-garden.jpg")}
+    imageField="copy.frame.huerto.image_url"
     alt={heroName}
     tone="moss"
     index={c("frame.huerto.index", "II")}

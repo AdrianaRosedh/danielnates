@@ -39,6 +39,9 @@ interface Props {
   indexField?: string | null;
   captionField?: string | null;
   placeField?: string | null;
+  /** Inline-edit binding for the photo URL — admin can swap the
+   *  image inline via the EditOverlay. */
+  imageField?: string | null;
 }
 
 const {
@@ -52,6 +55,7 @@ const {
   indexField = null,
   captionField = null,
   placeField = null,
+  imageField = null,
 } = Astro.props as Props;
 const isMoss = tone === "moss";
 ---
@@ -68,7 +72,7 @@ const isMoss = tone === "moss";
   </div>
 
   <div class="frame__plate" data-frame-plate>
-    <div class="frame__media" style={`aspect-ratio: ${ratio};`}>
+    <div class="frame__media" style={`aspect-ratio: ${ratio};`} data-edit-image-field={imageField ?? undefined}>
       <WebGLPlane
         src={src}
         alt={alt}

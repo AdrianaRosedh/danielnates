@@ -11,6 +11,10 @@ interface Props {
   signatureField?: string | null;
   videoUrl?: string | null;
   posterUrl?: string | null;
+  /** Inline-edit binding for the poster image URL. When set, the
+   *  EditOverlay shows a "change photo" badge over the media in
+   *  admin mode. */
+  posterField?: string | null;
   meta?: string | null;
   index?: string | null;
   voice?: VoiceTrack | null;
@@ -23,6 +27,7 @@ const {
   signatureField = null,
   videoUrl = null,
   posterUrl = null,
+  posterField = null,
   meta = "Querétaro · MMXXVI",
   index = "I / VII",
   voice = null,
@@ -33,7 +38,12 @@ const locale: Locale = propLocale ?? Astro.locals.locale ?? "es";
 ---
 
 <section class="cold scene--ink" data-scene="ink" data-hero-scroll>
-  <div class="cold__media" data-hero-media aria-hidden="true">
+  <div
+    class="cold__media"
+    data-hero-media
+    data-edit-image-field={posterField ?? undefined}
+    aria-hidden="true"
+  >
     {videoUrl ? (
       <video
         data-hero-video

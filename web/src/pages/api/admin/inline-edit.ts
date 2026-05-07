@@ -79,7 +79,7 @@ const ALLOWLIST: Record<string, FieldSpec> = {
  * Validation is by namespace prefix to avoid maintaining a duplicate
  * list of every individual key (the seed in 20260507_landing_copy.sql
  * is the source of truth). */
-const COPY_KEY_PREFIXES = ["frame.", "notebook.", "ledger.", "closing."] as const;
+const COPY_KEY_PREFIXES = ["frame.", "notebook.", "ledger.", "closing.", "cold."] as const;
 function isWritableCopyKey(rawKey: string): boolean {
   return (
     rawKey.length > 0 &&

@@ -32,6 +32,13 @@
     <a class="editbar__link" href="/admin/logout">Salir</a>
   </div>
 </div>
+<input
+  type="file"
+  accept="image/*"
+  data-edit-image-input
+  hidden
+  aria-hidden="true"
+/>
 
 <style is:global>
   .editbar{
@@ -139,6 +146,60 @@
     outline-color: #D9421C;
     background-color: rgba(217, 66, 28, .08);
   }
+
+  /* Image-edit affordance — a "Cambiar foto" badge overlaid on any
+     element with data-edit-image-field. Scoped the same way so it
+     only appears in admin edit mode. */
+  html[data-edit-mode="1"] [data-edit-image-field]{
+    outline: 1px dashed rgba(217, 66, 28, .35);
+    outline-offset: 0;
+  }
+  html[data-edit-mode="1"] [data-edit-image-field]:hover{
+    outline-color: rgba(217, 66, 28, .85);
+  }
+  .editImageBadge{
+    position: absolute;
+    top: clamp(12px, 2vw, 24px);
+    left: clamp(12px, 2vw, 24px);
+    z-index: 5;
+    appearance: none;
+    background: rgba(14, 15, 12, .92);
+    color: #F4EFE6;
+    border: 1px solid rgba(244, 239, 230, .22);
+    border-radius: 999px;
+    padding: 8px 14px;
+    font-family: var(--font-sans, system-ui, sans-serif);
+    font-size: 11px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 0 12px 28px -10px rgba(0,0,0,.5);
+    backdrop-filter: blur(10px) saturate(140%);
+    -webkit-backdrop-filter: blur(10px) saturate(140%);
+    transition: background .25s, border-color .25s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .editImageBadge:hover{
+    background: rgba(217, 66, 28, .85);
+    border-color: rgba(217, 66, 28, .9);
+  }
+  .editImageBadge[data-busy="1"]{
+    pointer-events: none;
+    opacity: .7;
+  }
+  .editImageBadge__dot{
+    width: 6px; height: 6px;
+    border-radius: 999px;
+    background: #D9421C;
+    box-shadow: 0 0 0 3px rgba(217, 66, 28, .25);
+  }
+  /* The badge needs an absolute parent. Most data-edit-image-field
+     elements are already positioned (cold__media, frame__media). */
+  html[data-edit-mode="1"] [data-edit-image-field]{
+    position: relative;
+  }
 </style>
 
 <script>
@@ -206,6 +267,30 @@
         beginEdit(el);
       });
     });
+
+    // Image fields — render a "Cambiar foto" badge overlay so the
+    // image surface itself stays clean. Click → opens the file picker.
+    document.querySelectorAll<HTMLElement>("[data-edit-image-field]").forEach((host) => {
+      const h = host as HTMLElement & { __dnImgBound?: boolean };
+      if (h.__dnImgBound) return;
+      h.__dnImgBound = true;
+
+      const field = host.dataset.editImageField ?? "";
+      if (!field) return;
+
+      const badge = document.createElement("button");
+      badge.type = "button";
+      badge.className = "editImageBadge";
+      badge.innerHTML =
+        '<span class="editImageBadge__dot" aria-hidden="true"></span>' +
+        '<span>Cambiar foto</span>';
+      badge.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        beginImagePick(host, badge, field);
+      });
+      host.appendChild(badge);
+    });
   }
 
   function beginEdit(el: HTMLElement) {
@@ -266,6 +351,56 @@
 
     el.addEventListener("keydown", onKey);
     el.addEventListener("blur", onBlur);
+  }
+
+  /** Image-pick flow: open the hidden <input type=file>, upload via
+   *  /api/admin/upload, save the URL via /api/admin/inline-edit, then
+   *  reload so the new asset paints (WebGLPlane regenerates its
+   *  texture; CSS backgrounds re-fetch). */
+  function beginImagePick(host: HTMLElement, badge: HTMLButtonElement, field: string) {
+    const input = document.querySelector<HTMLInputElement>("[data-edit-image-input]");
+    if (!input) return;
+
+    const onChange = async () => {
+      input.removeEventListener("change", onChange);
+      const file = input.files?.[0];
+      input.value = "";
+      if (!file) return;
+
+      badge.dataset.busy = "1";
+      const status = document.querySelector<HTMLElement>("[data-edit-status]");
+      if (status) {
+        status.textContent = "Subiendo foto…";
+        status.dataset.state = "saving";
+      }
+
+      try {
+        const fd = new FormData();
+        fd.append("file", file);
+        fd.append("folder", "landing");
+        const upRes = await fetch("/api/admin/upload", { method: "POST", body: fd });
+        if (!upRes.ok) throw new Error(await upRes.text());
+        const { url } = (await upRes.json()) as { url?: string };
+        if (!url) throw new Error("Upload returned no URL");
+
+        await saveField(field, url, () => {});
+        // Soft reload so the WebGLPlane / posters reflect the new src.
+        // Defer slightly so the user sees the "Guardado" status briefly.
+        setTimeout(() => window.location.reload(), 600);
+      } catch (err) {
+        if (status) {
+          status.textContent = "Error subiendo foto";
+          status.dataset.state = "error";
+        }
+        // eslint-disable-next-line no-console
+        console.error("[inline-edit] image upload failed", err);
+      } finally {
+        delete badge.dataset.busy;
+        void host;
+      }
+    };
+    input.addEventListener("change", onChange);
+    input.click();
   }
 
   let saveTimer: ReturnType<typeof setTimeout> | null = null;
