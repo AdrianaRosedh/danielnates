@@ -52,8 +52,9 @@ async function projectCover(): Promise<string | null> {
   return ((data as { hero_image_url: string | null } | null)?.hero_image_url) ?? null;
 }
 
-/* Daniel-app tiles: full-admin gets every content type, all the
- * Daniel-only items first, then the shared Projects entry. */
+/* Daniel-app tiles: every content type that has a list view backed
+ * by a public page. Singletons (Daniel, site settings, press kit)
+ * are edited inline now — no dashboard tile needed. */
 const danielTiles: Tile[] = [
   { href: "/admin/daily",       label: t("Día · brief", "Day · brief"),     hint: t("Una imagen, una línea — hoy.", "One image, one line — today."),       count: await count("daily_briefs"),     cover: await latestCover("daily_briefs", "image_url"), scope: "all" },
   { href: "/admin/articles",    label: t("Artículos", "Articles"),          hint: t("Notas, ensayos, lecturas.", "Notes, essays, readings."),               count: await count("articles"),         cover: await latestCover("articles", "cover_url"),     scope: "all" },
@@ -61,7 +62,6 @@ const danielTiles: Tile[] = [
   { href: "/admin/projects",    label: t("Proyectos", "Projects"),          hint: t("Olivea, Fritanguita, Maizal.", "Olivea, Fritanguita, Maizal."),         count: await projectCount(),            cover: await projectCover(),                            scope: "all" },
   { href: "/admin/field-notes", label: "Field Notes",                       hint: t("Apuntes rápidos del cuaderno.", "Quick notes from the sketchbook."),    count: await count("field_notes"),      glyph: "FN", scope: "all" },
   { href: "/admin/press",       label: t("Press menciones", "Press mentions"), hint: t("Lo que escriben sobre Daniel.", "What people write about Daniel."), count: await count("press_mentions"),   glyph: "PR", scope: "all" },
-  { href: "/admin/messages",    label: t("Mensajes", "Messages"),           hint: t("Contacto recibido.", "Contact received."),                              count: await count("contact_messages"), glyph: "✉",  scope: "all" },
 ];
 
 /* Fritanguita-app tiles: only what the Fritanguita team can edit. */
