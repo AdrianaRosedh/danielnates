@@ -6,7 +6,7 @@ import { txFor, type AdminLang } from "../../lib/admin-i18n";
 
 interface Props {
   title?: string;
-  active?: "dashboard" | "daniel" | "press_kit" | "site" | "projects" | "articles" | "art" | "daily" | "field_notes" | "press" | "messages";
+  active?: "dashboard" | "projects" | "articles" | "art" | "daily";
 }
 const { title = "Admin · Daniel Nates", active } = Astro.props as Props;
 const user = Astro.locals.user;
@@ -53,16 +53,12 @@ const danielNav: NavSection[] = [
   { section: t("Diario", "Journal"), items: [
       { href: "/admin/daily",       label: t("Día · brief", "Day · brief"),       key: "daily",       icon: "sun" },
       { href: "/admin/articles",    label: t("Artículos", "Articles"),            key: "articles",    icon: "doc" },
-      { href: "/admin/field-notes", label: "Field Notes",                          key: "field_notes", icon: "note" },
   ]},
   { section: t("Arte", "Art"), items: [
       { href: "/admin/art",         label: t("Piezas", "Pieces"),                 key: "art",        icon: "art" },
   ]},
   { section: t("Proyectos", "Projects"), items: [
       { href: "/admin/projects",    label: t("Todos", "All"),                     key: "projects",   icon: "stack" },
-  ]},
-  { section: t("Prensa", "Press"), items: [
-      { href: "/admin/press",       label: t("Menciones", "Mentions"),            key: "press",      icon: "quote" },
   ]},
 ];
 

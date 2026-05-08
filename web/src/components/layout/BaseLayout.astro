@@ -33,7 +33,7 @@ interface OgParams {
 interface EditContext {
   /** Entity name in the entity-action / inline-edit registries
    *  (article | art | project | daily). */
-  entity: "article" | "art" | "project" | "daily";
+  entity: "article" | "art" | "project" | "daily" | "press_mention";
   /** Primary key value — slug for slug-keyed entities, UUID for daily. */
   id: string;
   /** Current published flag — drives the Publish toggle initial state. */
@@ -44,7 +44,7 @@ interface EditContext {
 
 interface CreateContext {
   /** Which entity the "+ Nuevo" button on this list page creates. */
-  entity: "article" | "art" | "project" | "daily";
+  entity: "article" | "art" | "project" | "daily" | "press_mention";
   /** Spanish label rendered in the toolbar button. */
   label?: string;
 }

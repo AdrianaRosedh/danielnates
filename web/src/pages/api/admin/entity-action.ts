@@ -17,17 +17,18 @@ import { jsonOk, requireAdmin } from "../../../lib/admin-helpers";
 
 export const prerender = false;
 
-type EntityKey = "article" | "art" | "project" | "daily";
+type EntityKey = "article" | "art" | "project" | "daily" | "press_mention";
 type EntityCfg = { table: string; pkColumn: string; pkValidator: (v: string) => boolean };
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,80}$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const REGISTRY: Record<EntityKey, EntityCfg> = {
-  article: { table: "articles",      pkColumn: "slug", pkValidator: (v) => SLUG_RE.test(v) },
-  art:     { table: "art_pieces",    pkColumn: "slug", pkValidator: (v) => SLUG_RE.test(v) },
-  project: { table: "projects",      pkColumn: "slug", pkValidator: (v) => SLUG_RE.test(v) },
-  daily:   { table: "daily_briefs",  pkColumn: "id",   pkValidator: (v) => UUID_RE.test(v) },
+  article:       { table: "articles",       pkColumn: "slug", pkValidator: (v) => SLUG_RE.test(v) },
+  art:           { table: "art_pieces",     pkColumn: "slug", pkValidator: (v) => SLUG_RE.test(v) },
+  project:       { table: "projects",       pkColumn: "slug", pkValidator: (v) => SLUG_RE.test(v) },
+  daily:         { table: "daily_briefs",   pkColumn: "id",   pkValidator: (v) => UUID_RE.test(v) },
+  press_mention: { table: "press_mentions", pkColumn: "id",   pkValidator: (v) => UUID_RE.test(v) },
 };
 
 export const POST: APIRoute = async ({ request, cookies }) => {

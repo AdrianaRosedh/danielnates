@@ -124,6 +124,7 @@ const lede = locale === "es"
   title={`${locale === "es" ? "Prensa" : "Press"} — Daniel Nates`}
   description={bioOneLine}
   locale={locale}
+  createContext={{ entity: "press_mention", label: locale === "es" ? "Nueva mención" : "New mention" }}
   og={{
     title: locale === "es" ? "Prensa" : "Press",
     kicker: "Daniel Nates",
@@ -232,16 +233,24 @@ const lede = locale === "es"
       </section>
     ) : null}
 
-    {/* Mentions */}
+    {/* Mentions — inline-editable per row when admin. Each DB row
+        carries an id; legacy default fixtures don't, so we render
+        them as plain (read-only) entries when the table is empty. */}
     {mentions.length ? (
       <section class="section reveal">
         <p class="kicker">{locale === "es" ? "Menciones" : "Mentions"}</p>
         <ul class="press__mentions">
           {mentions.map((m) => (
-            <li class="press__mention">
+            <li class="press__mention" id={m.id ? `mention-${m.id}` : undefined}>
               <a href={m.url} target="_blank" rel="noreferrer">
-                <span class="press__outlet">{m.outlet}</span>
-                {m.title ? <span class="press__mentionTitle">{m.title}</span> : null}
+                <span class="press__outlet" data-edit-field={m.id ? `press_mention.${m.id}.outlet` : undefined}>{m.outlet}</span>
+                {m.title ? (
+                  <span class="press__mentionTitle" data-edit-field={m.id ? `press_mention.${m.id}.title` : undefined}>{m.title}</span>
+                ) : m.id ? (
+                  <span class="press__mentionTitle" data-edit-field={`press_mention.${m.id}.title`} style="color: var(--text-3); font-style: italic;">
+                    {locale === "es" ? "(añadir título)" : "(add title)"}
+                  </span>
+                ) : null}
                 <span class="press__mentionMeta">
                   {m.date ? dateFormat(m.date, locale) : null}
                   {m.language ? ` · ${m.language.toUpperCase()}` : null}

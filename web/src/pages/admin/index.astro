@@ -60,8 +60,6 @@ const danielTiles: Tile[] = [
   { href: "/admin/articles",    label: t("Artículos", "Articles"),          hint: t("Notas, ensayos, lecturas.", "Notes, essays, readings."),               count: await count("articles"),         cover: await latestCover("articles", "cover_url"),     scope: "all" },
   { href: "/admin/art",         label: t("Arte", "Art"),                    hint: t("Lo que la mano hace cuando no cocina.", "What the hand does when it isn't cooking."), count: await count("art_pieces"),       cover: await latestCover("art_pieces", "cover_url"),   scope: "all" },
   { href: "/admin/projects",    label: t("Proyectos", "Projects"),          hint: t("Olivea, Fritanguita, Maizal.", "Olivea, Fritanguita, Maizal."),         count: await projectCount(),            cover: await projectCover(),                            scope: "all" },
-  { href: "/admin/field-notes", label: "Field Notes",                       hint: t("Apuntes rápidos del cuaderno.", "Quick notes from the sketchbook."),    count: await count("field_notes"),      glyph: "FN", scope: "all" },
-  { href: "/admin/press",       label: t("Press menciones", "Press mentions"), hint: t("Lo que escriben sobre Daniel.", "What people write about Daniel."), count: await count("press_mentions"),   glyph: "PR", scope: "all" },
 ];
 
 /* Fritanguita-app tiles: only what the Fritanguita team can edit. */

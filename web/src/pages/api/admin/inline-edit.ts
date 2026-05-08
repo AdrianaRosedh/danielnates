@@ -169,6 +169,13 @@ const ENTITY_REGISTRY: Record<string, EntitySpec> = {
     pkColumn: "id",
     pkValidator: (v) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v),
   },
+  press_mention: {
+    table: "press_mentions",
+    scalarCols: ["outlet", "title", "url", "date", "language"],
+    portableCols: [],
+    pkColumn: "id",
+    pkValidator: (v) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v),
+  },
 };
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,80}$/;
 type EntityHit = {

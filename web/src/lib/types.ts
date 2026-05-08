@@ -106,6 +106,10 @@ export interface PressRecognition {
 }
 
 export interface PressMention {
+  /** Optional because the legacy default fixtures on /prensa don't
+   *  carry an id — only DB rows do. The id is what enables inline
+   *  editing per row. */
+  id?: string;
   outlet: string;
   title?: string | null;
   url: string;
@@ -214,15 +218,3 @@ export interface DailyBrief {
   updated_at: string;
 }
 
-export type FieldNoteCategory = "ingredient" | "territory" | "technique" | "influence";
-
-export interface FieldNote {
-  id: string;
-  title: string;
-  date: string;
-  category: FieldNoteCategory | null;
-  body_es: PortableTextBlock[] | null;
-  body_en: PortableTextBlock[] | null;
-  external_link: string | null;
-  published: boolean;
-}

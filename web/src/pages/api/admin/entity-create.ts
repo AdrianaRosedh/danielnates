@@ -20,7 +20,7 @@ import { jsonOk, requireAdmin } from "../../../lib/admin-helpers";
 
 export const prerender = false;
 
-type Entity = "article" | "art" | "project" | "daily";
+type Entity = "article" | "art" | "project" | "daily" | "press_mention";
 
 /** A short, URL-safe, time-sorted unique stub. Daniel can rename
  *  it from the legacy form when ready. */
@@ -137,6 +137,23 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       .single();
     if (error) return new Response(error.message, { status: 400 });
     return jsonOk({ url: `/dia#brief-${data.id}`, id: data.id });
+  }
+
+  if (entity === "press_mention") {
+    const row = {
+      outlet: "Nuevo medio",
+      title: null,
+      url: "https://",
+      date: todayISO(),
+      language: null,
+    };
+    const { data, error } = await auth.supabase
+      .from("press_mentions")
+      .insert(row)
+      .select("id")
+      .single();
+    if (error) return new Response(error.message, { status: 400 });
+    return jsonOk({ url: `/prensa#mention-${data.id}`, id: data.id });
   }
 
   return new Response(`Unknown entity: ${entity}`, { status: 400 });

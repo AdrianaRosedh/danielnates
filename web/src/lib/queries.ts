@@ -10,7 +10,6 @@ import type {
   Article,
   ArtPiece,
   DailyBrief,
-  FieldNote,
   Person,
   PressKit,
   Project,
@@ -188,19 +187,6 @@ export async function getLatestDailyBrief(): Promise<DailyBrief | null> {
   return (data ?? null) as DailyBrief | null;
 }
 
-/* ── Field Notes ──────────────────────────────────────────────────── */
-
-export async function getFieldNotes(): Promise<FieldNote[]> {
-  const sb = getSupabase();
-  if (!sb) return [];
-  const { data } = await sb
-    .from("field_notes")
-    .select("*")
-    .eq("published", true)
-    .order("date", { ascending: false });
-  return (data ?? []) as FieldNote[];
-}
-
 /* ── Press Mentions ───────────────────────────────────────────────── */
 
 export async function getPressMentions(): Promise<import("./types").PressMention[]> {
@@ -208,7 +194,7 @@ export async function getPressMentions(): Promise<import("./types").PressMention
   if (!sb) return [];
   const { data } = await sb
     .from("press_mentions")
-    .select("outlet, title, url, date, language")
+    .select("id, outlet, title, url, date, language")
     .order("date", { ascending: false, nullsFirst: false })
     .limit(500);
   return (data ?? []) as import("./types").PressMention[];

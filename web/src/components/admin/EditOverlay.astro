@@ -25,13 +25,13 @@
  */
 
 interface EditContext {
-  entity: "article" | "art" | "project" | "daily";
+  entity: "article" | "art" | "project" | "daily" | "press_mention";
   id: string;
   published?: boolean;
   indexHref: string;
 }
 interface CreateContext {
-  entity: "article" | "art" | "project" | "daily";
+  entity: "article" | "art" | "project" | "daily" | "press_mention";
   label?: string;
 }
 
