@@ -4,14 +4,30 @@ export const prerender = false;
 import BaseLayout from "../../components/layout/BaseLayout.astro";
 import TopDock from "../../components/layout/TopDock.astro";
 import { getProjects } from "../../lib/queries";
+import { getSupabaseServer } from "../../lib/supabase";
 import { href, t2, ui } from "../../lib/i18n";
 import type { Locale, Project, ProjectStatus } from "../../lib/types";
 
 interface PageProps { lang?: Locale }
 const { lang } = Astro.props as PageProps;
 const locale: Locale = lang ?? Astro.locals.locale ?? "es";
+const isAdmin = Astro.locals.isAdmin === true;
 
-const projects = await getProjects();
+/* Admins see drafts (with a pill) on top of published projects. */
+let projects: Project[] = [];
+if (isAdmin) {
+  const sb = getSupabaseServer(Astro.cookies);
+  if (sb) {
+    const { data } = await sb
+      .from("projects")
+      .select("id, slug, title, status, summary_es, summary_en, hero_image_url, hero_video_url, body_es, body_en, blocks, links, voice, framing, published, created_at, updated_at")
+      .order("status", { ascending: true })
+      .order("updated_at", { ascending: false });
+    projects = (data ?? []) as Project[];
+  }
+} else {
+  projects = await getProjects();
+}
 
 const headline = locale === "es" ? "Lugares donde está mi cocina." : "Places where my cooking lives.";
 const lede = locale === "es"
@@ -56,6 +72,9 @@ function summaryFor(p: Project): string {
                 ) : (
                   <div class="projectsRow__noimg" aria-hidden="true"></div>
                 )}
+                {isAdmin && !p.published ? (
+                  <span class="projectsRow__draftPill">Borrador</span>
+                ) : null}
               </div>
               <div class="projectsRow__body">
                 <p class="projectsRow__status">{statusLabel(p.status)}</p>
@@ -98,7 +117,20 @@ function summaryFor(p: Project): string {
     transform: translateY(-1px);
   }
   .projectsRow:hover .projectsRow__chev{ transform: translateX(4px); color: var(--text); }
-  .projectsRow__cover{ width: 120px; height: 140px; }
+  .projectsRow__cover{ width: 120px; height: 140px; position: relative; }
+  .projectsRow__draftPill{
+    position: absolute;
+    top: 6px; left: 6px;
+    background: rgba(217, 66, 28, .9);
+    color: #F4EFE6;
+    font-family: var(--font-sans);
+    font-size: 9px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    padding: 3px 7px;
+    border-radius: 999px;
+    pointer-events: none;
+  }
   .projectsRow img{ width: 120px; height: 140px; object-fit: cover; border-radius: 12px; display: block; }
   .projectsRow__noimg{ width: 120px; height: 140px; border-radius: 12px; background: rgba(244,239,230,.04); }
   .projectsRow__body{ min-width: 0; display: flex; flex-direction: column; gap: 6px; }

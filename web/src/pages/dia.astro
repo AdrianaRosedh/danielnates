@@ -3,13 +3,14 @@ export const prerender = false;
 
 import BaseLayout from "../components/layout/BaseLayout.astro";
 import TopDock from "../components/layout/TopDock.astro";
-import { getSupabase } from "../lib/supabase";
+import { getSupabase, getSupabaseServer } from "../lib/supabase";
 import { dateFormat } from "../lib/i18n";
 import type { Locale } from "../lib/types";
 
 interface PageProps { lang?: Locale }
 const { lang } = Astro.props as PageProps;
 const locale: Locale = lang ?? Astro.locals.locale ?? "es";
+const isAdmin = Astro.locals.isAdmin === true;
 
 interface Brief {
   id: string;
@@ -18,17 +19,21 @@ interface Brief {
   line_es: string | null;
   line_en: string | null;
   place: string | null;
+  published: boolean;
 }
 
-const supabase = getSupabase();
+/* Admins fetch via authenticated client and see drafts (with a pill);
+ * everyone else hits anon + published-only. */
+const supabase = isAdmin ? getSupabaseServer(Astro.cookies) : getSupabase();
 let briefs: Brief[] = [];
 if (supabase) {
-  const { data } = await supabase
+  let q = supabase
     .from("daily_briefs")
-    .select("id, date, image_url, line_es, line_en, place")
-    .eq("published", true)
+    .select("id, date, image_url, line_es, line_en, place, published")
     .order("date", { ascending: false })
     .limit(120);
+  if (!isAdmin) q = q.eq("published", true);
+  const { data } = await q;
   briefs = (data ?? []) as Brief[];
 }
 
@@ -77,6 +82,9 @@ const localizedLine = (b: Brief) =>
                     ) : (
                       <div class="dia__noimg" aria-hidden="true"></div>
                     )}
+                    {isAdmin && !b.published ? (
+                      <span class="dia__draftPill">Borrador</span>
+                    ) : null}
                   </div>
                   <div class="dia__body">
                     <p class="dia__date">{dateFormat(b.date, locale)}</p>
@@ -132,7 +140,20 @@ const localizedLine = (b: Brief) =>
     border-color: color-mix(in srgb, var(--text) 18%, transparent);
     transform: translateY(-2px);
   }
-  .dia__cover{ display: block; width: 100%; aspect-ratio: 4/5; }
+  .dia__cover{ display: block; width: 100%; aspect-ratio: 4/5; position: relative; }
+  .dia__draftPill{
+    position: absolute;
+    top: 8px; left: 8px;
+    background: rgba(217, 66, 28, .9);
+    color: #F4EFE6;
+    font-family: var(--font-sans);
+    font-size: 9px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    padding: 3px 7px;
+    border-radius: 999px;
+    pointer-events: none;
+  }
   .dia__card img,
   .dia__noimg{
     width: 100%;

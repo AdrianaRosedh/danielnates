@@ -4,14 +4,30 @@ export const prerender = false;
 import BaseLayout from "../../components/layout/BaseLayout.astro";
 import TopDock from "../../components/layout/TopDock.astro";
 import { getArtPieces } from "../../lib/queries";
+import { getSupabaseServer } from "../../lib/supabase";
 import { href, ui } from "../../lib/i18n";
-import type { Locale } from "../../lib/types";
+import type { ArtPiece, Locale } from "../../lib/types";
 
 interface PageProps { lang?: Locale }
 const { lang } = Astro.props as PageProps;
 const locale: Locale = lang ?? Astro.locals.locale ?? "es";
+const isAdmin = Astro.locals.isAdmin === true;
 
-const pieces = await getArtPieces();
+/* Admins see drafts in the list (with a pill), public visitors see
+ * only published pieces. */
+let pieces: ArtPiece[] = [];
+if (isAdmin) {
+  const sb = getSupabaseServer(Astro.cookies);
+  if (sb) {
+    const { data } = await sb
+      .from("art_pieces")
+      .select("id, slug, title, cover_url, year, medium, dimensions, statement_es, statement_en, voice, blocks, published, created_at, updated_at")
+      .order("created_at", { ascending: false });
+    pieces = (data ?? []) as ArtPiece[];
+  }
+} else {
+  pieces = await getArtPieces();
+}
 const headline = locale === "es" ? "Lo que la mano también hace." : "What the hand also does.";
 const lede = locale === "es"
   ? "Dibujo, pintura, marcas en papel. La cocina dejó de ser el único lugar donde compongo."
@@ -40,6 +56,9 @@ const lede = locale === "es"
             <a class="artCard" href={href(`/arte/${p.slug}`, locale)}>
               <div class="artCard__cover" data-edit-image-field={`art.${p.slug}.cover_url`}>
                 {p.cover_url ? <img src={p.cover_url} alt={p.title} loading="lazy" /> : null}
+                {isAdmin && !p.published ? (
+                  <span class="artCard__draftPill">Borrador</span>
+                ) : null}
               </div>
               <div class="artCard__meta">
                 <p class="artCard__title" data-edit-field={`art.${p.slug}.title`}>{p.title}</p>
@@ -69,7 +88,20 @@ const lede = locale === "es"
     transition: transform 600ms var(--ease-fluid), border-color 600ms var(--ease-fluid);
   }
   .artCard:hover{ transform: translateY(-2px); border-color: var(--line-2); }
-  .artCard__cover{ display: block; width: 100%; aspect-ratio: 4/5; }
+  .artCard__cover{ display: block; width: 100%; aspect-ratio: 4/5; position: relative; }
+  .artCard__draftPill{
+    position: absolute;
+    top: 8px; left: 8px;
+    background: rgba(217, 66, 28, .9);
+    color: #F4EFE6;
+    font-family: var(--font-sans);
+    font-size: 9px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    padding: 3px 7px;
+    border-radius: 999px;
+    pointer-events: none;
+  }
   .artCard img{ width: 100%; aspect-ratio: 4/5; object-fit: cover; display: block; }
   .artCard__meta{ padding: 12px 12px 14px; }
   .artCard__title{ margin: 0; font-size: 14px; letter-spacing: -0.01em; font-family: var(--font-display); }

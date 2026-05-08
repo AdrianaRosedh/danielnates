@@ -1,135 +1,230 @@
 ---
 export const prerender = false;
-import AdminLayout from "../../components/admin/AdminLayout.astro";
-import { getSupabaseFromRequest } from "../../lib/supabase";
+import { getUserFromRequest } from "../../lib/supabase";
 import { txFor, type AdminLang } from "../../lib/admin-i18n";
 
-const supabase = getSupabaseFromRequest(Astro.cookies);
-const scope = Astro.locals.adminScope ?? "all";
-const isFullAdmin = scope === "all";
+/* Admin landing — a thin launcher. The visual editor on the public
+ * site IS the admin. This page exists only to:
+ *   - confirm the visitor is signed in (or prompt login)
+ *   - link out to the four list pages where drafts surface
+ *   - sign out
+ *
+ * The auth gate is enforced by middleware.ts; if we reach this
+ * render the visitor is already verified as an admin. */
+
+const user = await getUserFromRequest(Astro.cookies);
 const lang: AdminLang = Astro.locals.adminLang ?? "es";
 const t = txFor(lang);
-const app = Astro.locals.adminApp ?? "daniel";          // 'daniel' | 'fritanguita'
-const projectSlug = app === "fritanguita" ? "fritanguita" : (!isFullAdmin ? scope : null);
+const scope = Astro.locals.adminScope ?? "all";
+const isFullAdmin = scope === "all";
 
-interface Tile {
-  href: string;
-  label: string;
-  hint: string;
-  count: number;
-  cover?: string | null;
-  /* For visually empty content types we use a typographic plate. */
-  glyph?: string;
-  scope: "all" | "scoped";
-}
-
-async function count(table: string): Promise<number> {
-  if (!supabase) return 0;
-  const { count } = await supabase.from(table).select("*", { count: "exact", head: true });
-  return count ?? 0;
-}
-
-async function latestCover(table: string, col: string, extra?: { eq?: [string, string] }): Promise<string | null> {
-  if (!supabase) return null;
-  let q = supabase.from(table).select(`${col}`).not(col, "is", null).order("created_at", { ascending: false }).limit(1);
-  if (extra?.eq) q = q.eq(extra.eq[0], extra.eq[1]);
-  const { data } = await q.maybeSingle();
-  return ((data as Record<string, unknown> | null)?.[col] as string | null) ?? null;
-}
-
-async function projectCount(): Promise<number> {
-  if (!supabase) return 0;
-  let q = supabase.from("projects").select("*", { count: "exact", head: true });
-  if (projectSlug) q = q.eq("slug", projectSlug);
-  const { count } = await q;
-  return count ?? 0;
-}
-async function projectCover(): Promise<string | null> {
-  if (!supabase) return null;
-  let q = supabase.from("projects").select("hero_image_url").not("hero_image_url", "is", null).order("updated_at", { ascending: false }).limit(1);
-  if (projectSlug) q = q.eq("slug", projectSlug);
-  const { data } = await q.maybeSingle();
-  return ((data as { hero_image_url: string | null } | null)?.hero_image_url) ?? null;
-}
-
-/* Daniel-app tiles: every content type that has a list view backed
- * by a public page. Singletons (Daniel, site settings, press kit)
- * are edited inline now — no dashboard tile needed. */
-const danielTiles: Tile[] = [
-  { href: "/admin/daily",       label: t("Día · brief", "Day · brief"),     hint: t("Una imagen, una línea — hoy.", "One image, one line — today."),       count: await count("daily_briefs"),     cover: await latestCover("daily_briefs", "image_url"), scope: "all" },
-  { href: "/admin/articles",    label: t("Artículos", "Articles"),          hint: t("Notas, ensayos, lecturas.", "Notes, essays, readings."),               count: await count("articles"),         cover: await latestCover("articles", "cover_url"),     scope: "all" },
-  { href: "/admin/art",         label: t("Arte", "Art"),                    hint: t("Lo que la mano hace cuando no cocina.", "What the hand does when it isn't cooking."), count: await count("art_pieces"),       cover: await latestCover("art_pieces", "cover_url"),   scope: "all" },
-  { href: "/admin/projects",    label: t("Proyectos", "Projects"),          hint: t("Olivea, Fritanguita, Maizal.", "Olivea, Fritanguita, Maizal."),         count: await projectCount(),            cover: await projectCover(),                            scope: "all" },
-];
-
-/* Fritanguita-app tiles: only what the Fritanguita team can edit. */
-const fritanguitaTiles: Tile[] = [
-  { href: "/admin/projects",    label: t("Página principal", "Main page"),  hint: t("Editar el hero, los bloques, la framing.", "Edit the hero, blocks, framing."), count: await projectCount(), cover: await projectCover(), scope: "scoped" },
-];
-
-const tiles: Tile[] = app === "fritanguita" ? fritanguitaTiles : danielTiles;
-
-const headline = app === "fritanguita"
-  ? t("La página de Fritanguita vive aquí. Lo que publicas se ve en /fritanguita.", "The Fritanguita page lives here. What you publish shows at /fritanguita.")
-  : isFullAdmin
-    ? t("Todo lo que aparece en danielnates.com vive aquí.", "Everything that appears on danielnates.com lives here.")
-    : t(`Bienvenido. Tu acceso edita la página de ${scope}.`, `Welcome. Your access edits the ${scope} page.`);
+interface Tile { href: string; label: string; hint: string }
+const tiles: Tile[] = isFullAdmin
+  ? [
+      { href: "/dia",       label: t("Día · brief", "Day · brief"),     hint: t("Una imagen, una línea — hoy.", "One image, one line — today.") },
+      { href: "/diario",    label: t("Diario", "Journal"),              hint: t("Notas, ensayos, lecturas.", "Notes, essays, readings.") },
+      { href: "/arte",      label: t("Arte", "Art"),                    hint: t("Lo que la mano hace cuando no cocina.", "What the hand does when it isn't cooking.") },
+      { href: "/proyectos", label: t("Proyectos", "Projects"),          hint: t("Olivea, Fritanguita, Maizal.", "Olivea, Fritanguita, Maizal.") },
+      { href: "/sobre",     label: "Sobre",                              hint: t("Bio, retrato, voz.", "Bio, portrait, voice.") },
+      { href: "/prensa",    label: t("Prensa", "Press"),                hint: t("Bio kit + menciones.", "Bio kit + mentions.") },
+      { href: "/contacto",  label: t("Contacto", "Contact"),            hint: t("Formulario y mensajes.", "Form and messages.") },
+    ]
+  : [
+      { href: `/${scope}`, label: t("Tu página", "Your page"), hint: t("Editar en su lugar.", "Edit in place.") },
+    ];
 ---
 
-<AdminLayout title="Admin · Dashboard" active="dashboard">
-  <header class="admin__head">
-    <div>
-      <p class="admin__crumb">{app === "fritanguita" ? "Fritanguita" : "Daniel Nates"}</p>
-      <h1 class="admin__title">Dashboard</h1>
-      <p class="admin__lede" style="margin-top: 8px; max-width: 60ch; color: var(--text-2); font-family: var(--font-display); font-size: 16px; line-height: 1.5;">
-        {headline}
-      </p>
-    </div>
-    {app === "daniel" && isFullAdmin ? (
-      <button
-        class="admin__btn admin__btn--primary"
-        type="button"
-        data-create-entity="daily"
-        data-create-busy-label={t("Creando…", "Creating…")}
-        data-create-error-label={t("Error al crear", "Couldn't create")}
-      >+ {t("Brief de hoy", "Today's brief")}</button>
-    ) : null}
-  </header>
-
-  <aside class="admin__hint" style="margin-top: 24px;">
-    <span class="admin__hintDot" aria-hidden="true"></span>
-    <p>
-      <strong>{t("Editar ocurre en el sitio.", "Editing happens on the site.")}</strong>
-      {" "}
-      {t(
-        "Abre cualquier tarjeta y se carga la página real con la barra de admin encima — texto, fotos, orden, publicar, borrar, todo en su lugar.",
-        "Open any card and the live page loads with the admin bar on top — text, photos, order, publish, delete, all in place."
-      )}
-    </p>
-  </aside>
-
-  <section class="cardgrid" style="margin-top: 32px;">
-    {tiles.map((tile) => (
-      <a class="card" href={tile.href} aria-label={`${tile.label} — ${tile.count}`}>
-        <div class={`card__media${tile.cover ? "" : " card__media--placeholder"}`}>
-          {tile.cover ? (
-            <img src={tile.cover} alt="" loading="lazy" />
-          ) : (
-            <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family: var(--font-display); font-size: 64px; color: rgba(244,239,230,.18); letter-spacing: -0.04em;">
-              {tile.glyph ?? tile.label.charAt(0)}
-            </div>
+<!doctype html>
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Admin · Daniel Nates</title>
+    <link rel="icon" href="/favicon.ico" />
+    <style is:global>{`
+      :root{
+        --ink: #0E0F0C;
+        --bone: #F4EFE6;
+        --moss: #4F5B49;
+        --ember: #D9421C;
+        --line: rgba(244,239,230,.10);
+        --line-2: rgba(244,239,230,.22);
+        --text: #F4EFE6;
+        --text-2: rgba(244,239,230,.78);
+        --text-3: rgba(244,239,230,.5);
+      }
+      *,*::before,*::after{ box-sizing: border-box; }
+      body{
+        margin: 0;
+        background:
+          radial-gradient(60% 50% at 50% 0%, color-mix(in srgb, var(--moss) 6%, var(--ink)), var(--ink) 70%),
+          var(--ink);
+        color: var(--text);
+        font-family: 'Inter Variable', system-ui, sans-serif;
+        font-size: 15px;
+        line-height: 1.55;
+        min-height: 100svh;
+      }
+      a{ color: inherit; text-decoration: none; }
+    `}</style>
+  </head>
+  <body>
+    <main class="adminLanding">
+      <header class="adminLanding__head">
+        <p class="adminLanding__crumb">
+          <span class="adminLanding__dot" aria-hidden="true"></span>
+          Admin
+        </p>
+        <h1 class="adminLanding__title">{t("La edición vive en el sitio.", "Editing lives on the site.")}</h1>
+        <p class="adminLanding__lede">
+          {t(
+            "Abre cualquiera de las páginas. Aparecerá la barra de admin abajo: editar, publicar, borrar — todo en su lugar.",
+            "Open any of the pages. The admin bar appears at the bottom: edit, publish, delete — all in place."
           )}
+        </p>
+      </header>
+
+      <section class="adminLanding__grid">
+        {tiles.map((tile) => (
+          <a class="adminLanding__tile" href={tile.href}>
+            <span class="adminLanding__tileHref">{tile.href}</span>
+            <span class="adminLanding__tileLabel">{tile.label}</span>
+            <span class="adminLanding__tileHint">{tile.hint}</span>
+            <span class="adminLanding__tileArrow" aria-hidden="true">→</span>
+          </a>
+        ))}
+      </section>
+
+      <footer class="adminLanding__foot">
+        <p class="adminLanding__footEmail">{user?.email}</p>
+        <div class="adminLanding__footLinks">
+          <a class="adminLanding__footLink" href={`/api/admin/lang?lang=${lang === "es" ? "en" : "es"}&from=${encodeURIComponent("/admin")}`}>
+            {lang === "es" ? "EN" : "ES"} ↗
+          </a>
+          <a class="adminLanding__footLink" href="/" target="_blank" rel="noreferrer">
+            {t("Ver el sitio", "View site")} ↗
+          </a>
+          <a class="adminLanding__footLink" href="/admin/logout">
+            {t("Cerrar sesión", "Sign out")}
+          </a>
         </div>
-        <div class="card__body">
-          <p class="card__kicker">{tile.count} {lang === "es" ? (tile.count === 1 ? "elemento" : "elementos") : (tile.count === 1 ? "item" : "items")}</p>
-          <h3 class="card__title">{tile.label}</h3>
-          <p class="card__meta">{tile.hint}</p>
-          <p class="card__foot">
-            <span>{t("Abrir", "Open")}</span>
-            <span aria-hidden="true">→</span>
-          </p>
-        </div>
-      </a>
-    ))}
-  </section>
-</AdminLayout>
+      </footer>
+    </main>
+
+    <style>
+      .adminLanding{
+        max-width: 880px;
+        margin: 0 auto;
+        padding: clamp(48px, 9vh, 96px) clamp(20px, 5vw, 56px) 80px;
+        min-height: 100svh;
+        display: grid;
+        gap: clamp(40px, 6vw, 72px);
+        align-content: start;
+      }
+      .adminLanding__head{ display: grid; gap: 14px; max-width: 56ch; }
+      .adminLanding__crumb{
+        margin: 0;
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 11px;
+        letter-spacing: .26em;
+        text-transform: uppercase;
+        color: var(--text-3);
+      }
+      .adminLanding__dot{
+        width: 7px; height: 7px;
+        border-radius: 999px;
+        background: var(--ember);
+        box-shadow: 0 0 0 3px rgba(217, 66, 28, .18);
+      }
+      .adminLanding__title{
+        margin: 0;
+        font-family: 'Instrument Serif', serif;
+        font-style: italic;
+        font-size: clamp(40px, 5vw, 64px);
+        line-height: 1.05;
+        letter-spacing: -0.025em;
+      }
+      .adminLanding__lede{
+        margin: 0;
+        font-family: 'Instrument Serif', serif;
+        font-size: clamp(17px, 1.5vw, 20px);
+        color: var(--text-2);
+        line-height: 1.55;
+      }
+      .adminLanding__grid{
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1px;
+        background: var(--line);
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+      }
+      @media (min-width: 720px){ .adminLanding__grid{ grid-template-columns: 1fr 1fr; } }
+      .adminLanding__tile{
+        display: grid;
+        grid-template-columns: 96px 1fr 24px;
+        gap: 18px;
+        align-items: baseline;
+        padding: 20px 4px;
+        background: var(--ink);
+        transition: background .25s, padding-left .35s ease;
+      }
+      .adminLanding__tile:hover{
+        background: rgba(244,239,230,.03);
+        padding-left: 12px;
+      }
+      .adminLanding__tile:hover .adminLanding__tileArrow{ transform: translateX(4px); color: var(--text); }
+      .adminLanding__tileHref{
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        font-size: 11px;
+        color: var(--text-3);
+        letter-spacing: .04em;
+      }
+      .adminLanding__tileLabel{
+        font-family: 'Instrument Serif', serif;
+        font-size: 22px;
+        letter-spacing: -0.01em;
+      }
+      .adminLanding__tileHint{
+        grid-column: 2;
+        font-family: 'Instrument Serif', serif;
+        font-size: 14px;
+        color: var(--text-3);
+        line-height: 1.4;
+        margin-top: 2px;
+      }
+      .adminLanding__tileArrow{
+        align-self: center;
+        color: var(--text-3);
+        transition: transform .35s ease, color .25s;
+      }
+      .adminLanding__foot{
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 14px;
+        padding-top: 20px;
+        border-top: 1px solid var(--line);
+        flex-wrap: wrap;
+      }
+      .adminLanding__footEmail{
+        margin: 0;
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        font-size: 12px;
+        color: var(--text-2);
+      }
+      .adminLanding__footLinks{ display: flex; gap: 16px; flex-wrap: wrap; }
+      .adminLanding__footLink{
+        font-size: 11px;
+        letter-spacing: .14em;
+        text-transform: uppercase;
+        color: var(--text-3);
+        transition: color .25s;
+      }
+      .adminLanding__footLink:hover{ color: var(--text); }
+    </style>
+  </body>
+</html>
