@@ -2,93 +2,87 @@
  * Public-page data fetchers — all backed by Supabase.
  *
  * Convention:
- *   - All getters return null / [] gracefully if Supabase isn't configured
- *     (so the build works in CI without env vars set).
- *   - Public reads use the anon client; RLS limits SELECT to published rows.
+ *   - Every getter degrades gracefully (null / [] / {}) when Supabase is
+ *     unconfigured, slow or failing — the page renders its defaults.
+ *   - Failures are logged server-side with the query label; they are
+ *     never silent (a missing column once emptied every article page).
+ *   - Public reads use the shared anon client; RLS limits SELECT to
+ *     published rows.
+ *   - Reads are memoized per request (see request-cache): the layout,
+ *     menu and page share one round-trip per query.
  */
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   Article,
   ArtPiece,
   DailyBrief,
   Person,
   PressKit,
+  PressMention,
   Project,
   SiteSettings,
 } from "./types";
 import { getSupabase } from "./supabase";
+import { memo } from "./request-cache";
 
 const ARTICLE_COLS = "id, slug, title, date, excerpt_es, excerpt_en, cover_url, tags, body_es, body_en, voice, blocks, published, created_at, updated_at";
 const PROJECT_COLS = "id, slug, title, status, summary_es, summary_en, hero_image_url, hero_video_url, body_es, body_en, blocks, links, voice, framing, published, created_at, updated_at";
 const ART_COLS = "id, slug, title, cover_url, year, medium, dimensions, statement_es, statement_en, voice, blocks, published, created_at, updated_at";
 const BRIEF_COLS = "id, date, image_url, line_es, line_en, place, voice, published, created_at, updated_at";
+const MENTION_COLS = "id, outlet, title, url, date, language";
+
+type QueryResult = { data: unknown; error: { message: string } | null };
+
+/** Runs one read with logging + graceful fallback, memoized per request. */
+function read<T>(
+  key: string,
+  run: (sb: SupabaseClient) => PromiseLike<QueryResult>,
+  fallback: T,
+): Promise<T> {
+  return memo(key, async () => {
+    const sb = getSupabase();
+    if (!sb) return fallback;
+    try {
+      const { data, error } = await run(sb);
+      if (error) {
+        console.error(`[queries] ${key} failed:`, error.message);
+        return fallback;
+      }
+      return (data ?? fallback) as T;
+    } catch (err) {
+      console.error(`[queries] ${key} threw:`, err instanceof Error ? err.message : err);
+      return fallback;
+    }
+  });
+}
 
 /* ── Singletons ───────────────────────────────────────────────────── */
 
-export async function getDaniel(): Promise<Person | null> {
-  const sb = getSupabase();
-  if (!sb) return null;
-  const { data } = await sb.from("person").select("*").eq("id", "daniel").maybeSingle();
-  return (data ?? null) as Person | null;
-}
+export const getDaniel = () =>
+  read<Person | null>("person:daniel", (sb) => sb.from("person").select("*").eq("id", "daniel").maybeSingle(), null);
 
-export async function getPressKit(): Promise<PressKit | null> {
-  const sb = getSupabase();
-  if (!sb) return null;
-  const { data } = await sb.from("press_kit").select("*").eq("id", "singleton").maybeSingle();
-  return (data ?? null) as PressKit | null;
-}
+export const getPressKit = () =>
+  read<PressKit | null>("press_kit", (sb) => sb.from("press_kit").select("*").eq("id", "singleton").maybeSingle(), null);
 
-export async function getSiteSettings(): Promise<SiteSettings | null> {
-  const sb = getSupabase();
-  if (!sb) return null;
-  const { data } = await sb.from("site_settings").select("*").eq("id", "singleton").maybeSingle();
-  return (data ?? null) as SiteSettings | null;
-}
+export const getSiteSettings = () =>
+  read<SiteSettings | null>("site_settings", (sb) => sb.from("site_settings").select("*").eq("id", "singleton").maybeSingle(), null);
 
 /* ── Landing copy (key/value editorial strings) ───────────────────── */
 
-/**
- * Reads the landing_copy table into a flat lookup. Values default to
- * null on Supabase outage so callers can fall back to component-level
- * defaults without crashing.
- */
+/** landing_copy as a flat lookup; callers fall back to their own
+ *  defaults for any missing key. */
 export async function getLandingCopy(): Promise<Record<string, string>> {
-  const sb = getSupabase();
-  if (!sb) return {};
-  const { data } = await sb.from("landing_copy").select("key, value");
+  const rows = await read<{ key: string; value: string | null }[]>(
+    "landing_copy",
+    (sb) => sb.from("landing_copy").select("key, value"),
+    [],
+  );
   const out: Record<string, string> = {};
-  if (Array.isArray(data)) {
-    for (const row of data as { key: string; value: string | null }[]) {
-      if (row?.key && row.value != null) out[row.key] = row.value;
-    }
-  }
+  for (const row of rows) if (row?.key && row.value != null) out[row.key] = row.value;
   return out;
 }
 
 /* ── Projects ─────────────────────────────────────────────────────── */
-
-export async function getProjects(): Promise<Project[]> {
-  const sb = getSupabase();
-  if (!sb) return [];
-  const { data } = await sb
-    .from("projects")
-    .select(PROJECT_COLS)
-    .eq("published", true)
-    .order("status", { ascending: true });
-  return ((data ?? []) as Project[]).sort((a, b) => statusOrder(a.status) - statusOrder(b.status));
-}
-
-export async function getProject(slug: string): Promise<Project | null> {
-  const sb = getSupabase();
-  if (!sb) return null;
-  const { data } = await sb
-    .from("projects")
-    .select(PROJECT_COLS)
-    .eq("slug", slug)
-    .eq("published", true)
-    .maybeSingle();
-  return (data ?? null) as Project | null;
-}
 
 function statusOrder(s: Project["status"]): number {
   if (s === "primary") return 0;
@@ -97,105 +91,89 @@ function statusOrder(s: Project["status"]): number {
   return 3;
 }
 
+export async function getProjects(): Promise<Project[]> {
+  const rows = await read<Project[]>(
+    "projects",
+    (sb) => sb.from("projects").select(PROJECT_COLS).eq("published", true).order("status", { ascending: true }),
+    [],
+  );
+  return [...rows].sort((a, b) => statusOrder(a.status) - statusOrder(b.status));
+}
+
+export const getProject = (slug: string) =>
+  read<Project | null>(
+    `project:${slug}`,
+    (sb) => sb.from("projects").select(PROJECT_COLS).eq("slug", slug).eq("published", true).maybeSingle(),
+    null,
+  );
+
 /* ── Articles ─────────────────────────────────────────────────────── */
 
-export async function getArticles(): Promise<Article[]> {
-  const sb = getSupabase();
-  if (!sb) return [];
-  const { data } = await sb
-    .from("articles")
-    .select(ARTICLE_COLS)
-    .eq("published", true)
-    .order("date", { ascending: false });
-  return (data ?? []) as Article[];
-}
+export const getArticles = () =>
+  read<Article[]>(
+    "articles",
+    (sb) => sb.from("articles").select(ARTICLE_COLS).eq("published", true).order("date", { ascending: false }),
+    [],
+  );
 
-export async function getLatestArticles(limit = 3): Promise<Article[]> {
-  const sb = getSupabase();
-  if (!sb) return [];
-  const { data } = await sb
-    .from("articles")
-    .select(ARTICLE_COLS)
-    .eq("published", true)
-    .order("date", { ascending: false })
-    .limit(limit);
-  return (data ?? []) as Article[];
-}
+export const getLatestArticles = (limit = 3) =>
+  read<Article[]>(
+    `articles:latest:${limit}`,
+    (sb) => sb.from("articles").select(ARTICLE_COLS).eq("published", true).order("date", { ascending: false }).limit(limit),
+    [],
+  );
 
-export async function getArticle(slug: string): Promise<Article | null> {
-  const sb = getSupabase();
-  if (!sb) return null;
-  const { data } = await sb
-    .from("articles")
-    .select(ARTICLE_COLS)
-    .eq("slug", slug)
-    .eq("published", true)
-    .maybeSingle();
-  return (data ?? null) as Article | null;
-}
+export const getArticle = (slug: string) =>
+  read<Article | null>(
+    `article:${slug}`,
+    (sb) => sb.from("articles").select(ARTICLE_COLS).eq("slug", slug).eq("published", true).maybeSingle(),
+    null,
+  );
 
 /* ── Art ──────────────────────────────────────────────────────────── */
 
-export async function getArtPieces(): Promise<ArtPiece[]> {
-  const sb = getSupabase();
-  if (!sb) return [];
-  const { data } = await sb
-    .from("art_pieces")
-    .select(ART_COLS)
-    .eq("published", true)
-    .order("year", { ascending: false, nullsFirst: false })
-    .order("created_at", { ascending: false });
-  return (data ?? []) as ArtPiece[];
-}
+export const getArtPieces = () =>
+  read<ArtPiece[]>(
+    "art_pieces",
+    (sb) =>
+      sb
+        .from("art_pieces")
+        .select(ART_COLS)
+        .eq("published", true)
+        .order("year", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false }),
+    [],
+  );
 
-export async function getArtPiece(slug: string): Promise<ArtPiece | null> {
-  const sb = getSupabase();
-  if (!sb) return null;
-  const { data } = await sb
-    .from("art_pieces")
-    .select(ART_COLS)
-    .eq("slug", slug)
-    .eq("published", true)
-    .maybeSingle();
-  return (data ?? null) as ArtPiece | null;
-}
+export const getArtPiece = (slug: string) =>
+  read<ArtPiece | null>(
+    `art_piece:${slug}`,
+    (sb) => sb.from("art_pieces").select(ART_COLS).eq("slug", slug).eq("published", true).maybeSingle(),
+    null,
+  );
 
 /* ── Daily Brief ──────────────────────────────────────────────────── */
 
-export async function getDailyBriefs(limit = 120): Promise<DailyBrief[]> {
-  const sb = getSupabase();
-  if (!sb) return [];
-  const { data } = await sb
-    .from("daily_briefs")
-    .select(BRIEF_COLS)
-    .eq("published", true)
-    .order("date", { ascending: false })
-    .limit(limit);
-  return (data ?? []) as DailyBrief[];
-}
+export const getDailyBriefs = (limit = 120) =>
+  read<DailyBrief[]>(
+    `daily_briefs:${limit}`,
+    (sb) => sb.from("daily_briefs").select(BRIEF_COLS).eq("published", true).order("date", { ascending: false }).limit(limit),
+    [],
+  );
 
-export async function getLatestDailyBrief(): Promise<DailyBrief | null> {
-  const sb = getSupabase();
-  if (!sb) return null;
-  const { data } = await sb
-    .from("daily_briefs")
-    .select(BRIEF_COLS)
-    .eq("published", true)
-    .order("date", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  return (data ?? null) as DailyBrief | null;
-}
+export const getLatestDailyBrief = () =>
+  read<DailyBrief | null>(
+    "daily_briefs:latest",
+    (sb) =>
+      sb.from("daily_briefs").select(BRIEF_COLS).eq("published", true).order("date", { ascending: false }).limit(1).maybeSingle(),
+    null,
+  );
 
 /* ── Press Mentions ───────────────────────────────────────────────── */
 
-export async function getPressMentions(): Promise<import("./types").PressMention[]> {
-  const sb = getSupabase();
-  if (!sb) return [];
-  const { data } = await sb
-    .from("press_mentions")
-    .select("id, outlet, title, url, date, language")
-    .order("date", { ascending: false, nullsFirst: false })
-    .limit(500);
-  return (data ?? []) as import("./types").PressMention[];
-}
+export const getPressMentions = () =>
+  read<PressMention[]>(
+    "press_mentions",
+    (sb) => sb.from("press_mentions").select(MENTION_COLS).order("date", { ascending: false, nullsFirst: false }).limit(500),
+    [],
+  );

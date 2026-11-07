@@ -23,6 +23,8 @@ export interface Pillar {
 }
 
 export interface Social {
+  /** Daniel's own Instagram profile. */
+  instagram?: string | null;
   olivea_instagram?: string | null;
   fritanguita_instagram?: string | null;
   email?: string | null;

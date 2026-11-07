@@ -4,9 +4,12 @@ export const prerender = false;
 import BaseLayout from "../components/layout/BaseLayout.astro";
 import TopDock from "../components/layout/TopDock.astro";
 import PortableText from "../components/content/PortableText.astro";
+import NextChapter from "../components/content/NextChapter.astro";
+import SmartImage from "../components/content/SmartImage.astro";
 
 import { getDaniel, getPressKit, getPressMentions } from "../lib/queries";
-import { dateFormat, t2, tb2 } from "../lib/i18n";
+import { dateFormat, href, t2, tb2 } from "../lib/i18n";
+import { MEDIA } from "../lib/site";
 import type { Locale, PressMention, PressRecognition } from "../lib/types";
 
 interface PageProps { lang?: Locale }
@@ -88,23 +91,13 @@ const bioShort = t2(kit?.bio_short_es, kit?.bio_short_en, locale) || defaultBioS
 const bioLong = tb2(kit?.bio_long_es, kit?.bio_long_en, locale);
 const recognitions = kit?.recognitions?.length ? kit.recognitions : defaultRecognitions;
 
-/* Inline-edit field paths. Bio text uses the popover modal so multi-
- * paragraph edits work. The long bio is PortableText — converted to
- * plain text for the modal source, back to blocks on save. */
+/* Inline-edit field paths. The short bio uses the popover modal; the
+ * long bio is PortableText and is edited in place with the rich
+ * toolbar (formatting and links survive the round-trip). */
 const bioOneLineField = `press_kit.bio_one_line_${locale}`;
 const bioShortField   = `press_kit.bio_short_${locale}`;
 const bioLongField    = `press_kit.bio_long_${locale}`;
 const pressEmailField = "press_kit.press_email";
-const bioLongText = bioLong.length
-  ? bioLong
-      .map((b) => {
-        const block = b as { _type?: string; children?: { text?: string }[] };
-        if (block?._type !== "block" || !Array.isArray(block.children)) return "";
-        return block.children.map((c) => c?.text ?? "").join("");
-      })
-      .filter(Boolean)
-      .join("\n\n")
-  : "";
 /* Mentions live in the press_mentions table (admin: /admin/press). Fall back
  * to the researched defaults when the table is empty so the page is presentable
  * from day one. */
@@ -114,6 +107,18 @@ const pressEmail = kit?.press_email || daniel?.social?.email || null;
 const pressPdfUrl = kit?.press_pdf_url ?? null;
 
 const headline = locale === "es" ? "Prensa." : "Press.";
+const es = locale === "es";
+/* Until a press photo set is uploaded, offer the garden portrait — the
+ * full-resolution original (7008 × 4672) ships in /public. */
+const pressPhotos = photos.length
+  ? photos
+  : [{
+      url: MEDIA.portrait,
+      caption: es ? "Daniel Nates en el huerto de Olivea, Valle de Guadalupe." : "Daniel Nates in the Olivea garden, Valle de Guadalupe.",
+      credit: null as string | null,
+      meta: MEDIA.portraitMeta,
+    }];
+
 const lede = locale === "es"
   ? "Bio, fotografías de alta resolución, reconocimientos y menciones recientes. Para entrevistas, escribe directo."
   : "Bio, hi-res photographs, recognitions and recent mentions. For interviews, write directly.";
@@ -136,277 +141,310 @@ const lede = locale === "es"
   <div class="shell">
     <TopDock locale={locale} />
 
-    <section class="section reveal">
-      <p class="kicker">{locale === "es" ? "Prensa" : "Press"}</p>
-      <h1 class="h1" style="margin-bottom: 18px;">{headline}</h1>
-      <p class="lede" style="max-width: 60ch;">{lede}</p>
-    </section>
+    <div class="press ui-paper scene--bone" data-scene="bone">
+      <header class="press__head">
+        <p class="press__kicker ui-label">{es ? "Prensa" : "Press"}</p>
+        <h1 class="press__title" data-reveal-text data-reveal-mode="letter" aria-label={headline}>{headline}</h1>
+        <p class="press__lede reveal">{lede}</p>
+        <nav class="press__jump reveal" aria-label={es ? "En esta página" : "On this page"}>
+          <a class="ui-pill ui-pill--sm" href="#bio">Bio</a>
+          <a class="ui-pill ui-pill--sm" href="#fotos">{es ? "Fotografías" : "Photographs"}</a>
+          <a class="ui-pill ui-pill--sm" href="#reconocimientos">{es ? "Reconocimientos" : "Recognitions"}</a>
+          <a class="ui-pill ui-pill--sm" href="#menciones">{es ? "Menciones" : "Mentions"}</a>
+          <a class="ui-pill ui-pill--sm" href="#contacto-prensa">{es ? "Contacto" : "Contact"}</a>
+        </nav>
+      </header>
 
-    {/* Bio — three lengths, expandable */}
-    <section class="section press__bio reveal">
-      <p class="kicker">{locale === "es" ? "Bio" : "Bio"}</p>
-
-      <div class="press__bioBlock">
-        <p class="press__bioLabel">{locale === "es" ? "Una línea" : "One line"}</p>
-        <p class="press__bioText" data-edit-field={bioOneLineField}>{bioOneLine}</p>
-      </div>
-
-      <div class="press__bioBlock">
-        <p class="press__bioLabel">{locale === "es" ? "Párrafo" : "Paragraph"}</p>
-        <p
-          class="press__bioText"
-          data-edit-field={bioShortField}
-          data-edit-multi="1"
-          data-edit-source={bioShort}
-        >{bioShort}</p>
-      </div>
-
-      <div class="press__bioBlock">
-        <p class="press__bioLabel">{locale === "es" ? "Larga" : "Long"}</p>
-        {bioLong.length ? (
-          <div
-            data-edit-field={bioLongField}
-            data-edit-multi="1"
-            data-edit-source={bioLongText}
-          >
-            <PortableText value={bioLong} />
+      {/* Bio — three lengths, each one click from the clipboard. */}
+      <section class="press__sec" id="bio">
+        <h2 class="press__secTitle ui-label">Bio</h2>
+        <div class="press__bioRow reveal">
+          <div class="press__bioMeta">
+            <p class="ui-label">{es ? "Una línea" : "One line"}</p>
+            <button class="press__copy ui-pill ui-pill--sm" type="button" data-copy="#bio-one">{es ? "Copiar" : "Copy"}</button>
           </div>
-        ) : (
-          <div
-            data-edit-field={bioLongField}
-            data-edit-multi="1"
-            data-edit-source=""
-            class="press__bioText"
-            style="color: var(--text-3); font-style: italic;"
-          >
-            {locale === "es" ? "(añade la bio larga)" : "(add the long bio)"}
+          <p class="press__one" id="bio-one" data-edit-field={bioOneLineField}>{bioOneLine}</p>
+        </div>
+        <div class="press__bioRow reveal">
+          <div class="press__bioMeta">
+            <p class="ui-label">{es ? "Párrafo" : "Paragraph"}</p>
+            <button class="press__copy ui-pill ui-pill--sm" type="button" data-copy="#bio-short">{es ? "Copiar" : "Copy"}</button>
           </div>
-        )}
-      </div>
-    </section>
-
-    {/* Recognitions */}
-    {recognitions.length ? (
-      <section class="section reveal">
-        <p class="kicker">{locale === "es" ? "Reconocimientos" : "Recognitions"}</p>
-        <ol class="press__recList">
-          {recognitions.map((r) => (
-            <li class="press__rec">
-              <span class="press__recYear">{r.year}</span>
-              <div class="press__recBody">
-                <p class="press__recLabel">
-                  {r.url ? <a href={r.url} target="_blank" rel="noreferrer">{r.label}</a> : r.label}
-                </p>
-                {r.org ? <p class="press__recOrg">{r.org}</p> : null}
-              </div>
-            </li>
-          ))}
-        </ol>
-      </section>
-    ) : null}
-
-    {/* Photos — downloadable */}
-    {photos.length ? (
-      <section class="section reveal">
-        <p class="kicker">{locale === "es" ? "Fotografías (alta resolución)" : "Photographs (hi-res)"}</p>
-        <div class="press__photos reveal-stagger">
-          {photos.map((p) => {
-            const src = p.url;
-            return src ? (
-              <figure class="press__photo">
-                <img
-                  src={src}
-                  alt={p.caption ?? ""}
-                  loading="lazy"
-                />
-                <figcaption>
-                  {p.caption ? <span>{p.caption}</span> : null}
-                  {p.credit ? <span class="press__credit">© {p.credit}</span> : null}
-                  <a class="press__download" href={src} download target="_blank" rel="noreferrer">
-                    {locale === "es" ? "Descargar ↓" : "Download ↓"}
-                  </a>
-                </figcaption>
-              </figure>
-            ) : null;
-          })}
+          <p
+            class="press__short"
+            id="bio-short"
+            data-edit-field={bioShortField}
+            data-edit-multi="1"
+            data-edit-source={bioShort}
+          >{bioShort}</p>
+        </div>
+        <div class="press__bioRow reveal">
+          <div class="press__bioMeta">
+            <p class="ui-label">{es ? "Larga" : "Long"}</p>
+            {bioLong.length ? <button class="press__copy ui-pill ui-pill--sm" type="button" data-copy="#bio-long">{es ? "Copiar" : "Copy"}</button> : null}
+          </div>
+          {bioLong.length ? (
+            <div id="bio-long" data-edit-field={bioLongField} data-edit-portable="1">
+              <PortableText value={bioLong} />
+            </div>
+          ) : (
+            <div
+              data-edit-field={bioLongField}
+              data-edit-portable="1"
+              data-edit-empty="1"
+              class="press__short"
+              style="color: var(--text-3); font-style: italic;"
+            >
+              {es ? "(añade la bio larga)" : "(add the long bio)"}
+            </div>
+          )}
         </div>
       </section>
-    ) : null}
 
-    {/* Mentions — inline-editable per row when admin. Each DB row
-        carries an id; legacy default fixtures don't, so we render
-        them as plain (read-only) entries when the table is empty. */}
-    {mentions.length ? (
-      <section class="section reveal">
-        <p class="kicker">{locale === "es" ? "Menciones" : "Mentions"}</p>
-        <ul class="press__mentions">
-          {mentions.map((m) => (
-            <li class="press__mention" id={m.id ? `mention-${m.id}` : undefined}>
-              <a href={m.url} target="_blank" rel="noreferrer">
-                <span class="press__outlet" data-edit-field={m.id ? `press_mention.${m.id}.outlet` : undefined}>{m.outlet}</span>
-                {m.title ? (
-                  <span class="press__mentionTitle" data-edit-field={m.id ? `press_mention.${m.id}.title` : undefined}>{m.title}</span>
-                ) : m.id ? (
-                  <span class="press__mentionTitle" data-edit-field={`press_mention.${m.id}.title`} style="color: var(--text-3); font-style: italic;">
-                    {locale === "es" ? "(añadir título)" : "(add title)"}
-                  </span>
-                ) : null}
-                <span class="press__mentionMeta">
-                  {m.date ? dateFormat(m.date, locale) : null}
-                  {m.language ? ` · ${m.language.toUpperCase()}` : null}
-                  <span aria-hidden="true"> ↗</span>
-                </span>
-              </a>
-            </li>
-          ))}
-        </ul>
+      {/* Photographs — downloadable originals. */}
+      <section class="press__sec" id="fotos">
+        <h2 class="press__secTitle ui-label">{es ? "Fotografías" : "Photographs"}</h2>
+        <div class="press__photos reveal-stagger">
+          {pressPhotos.map((p) => p.url ? (
+            <figure class="press__photo">
+              <div class="press__photoImg">
+                <SmartImage src={p.url} alt={p.caption ?? ""} widths={[800, 1200]} sizes="(min-width: 880px) 60vw, 100vw" />
+              </div>
+              <figcaption>
+                {p.caption ? <span class="press__photoCap">{p.caption}</span> : null}
+                {"meta" in p && p.meta ? <span class="press__photoMeta">{p.meta}</span> : null}
+                {p.credit ? <span class="press__photoMeta">© {p.credit}</span> : null}
+                <a class="press__download ui-pill ui-pill--solid ui-pill--sm" href={p.url} download>
+                  {es ? "Descargar original" : "Download original"} <span aria-hidden="true">↓</span>
+                </a>
+              </figcaption>
+            </figure>
+          ) : null)}
+        </div>
       </section>
-    ) : null}
 
-    {/* Contact + downloads */}
-    <section class="section reveal press__contact">
-      <p class="kicker">{locale === "es" ? "Contacto de prensa" : "Press contact"}</p>
-      <div class="press__contactRow">
-        {pressEmail ? (
-          <a class="cta cta--primary" href={`mailto:${pressEmail}?subject=${encodeURIComponent("Prensa — Daniel Nates")}`} data-edit-field={pressEmailField}>
-            {pressEmail}
-          </a>
-        ) : (
-          <span class="cta cta--ghost" data-edit-field={pressEmailField} style="font-style: italic; color: var(--text-3);">
-            {locale === "es" ? "(añadir email de prensa)" : "(add press email)"}
-          </span>
-        )}
-        {pressPdfUrl ? (
-          <a class="cta cta--ghost" href={pressPdfUrl} target="_blank" rel="noreferrer">
-            {locale === "es" ? "Kit completo (PDF) ↓" : "Full kit (PDF) ↓"}
-          </a>
+      {/* Recognitions and mentions, side by side. */}
+      <div class="press__two">
+        {recognitions.length ? (
+          <section class="press__sec" id="reconocimientos">
+            <h2 class="press__secTitle ui-label">{es ? "Reconocimientos" : "Recognitions"}</h2>
+            <ol class="press__recList">
+              {recognitions.map((r) => (
+                <li class="press__rec reveal">
+                  <span class="press__recYear">{r.year}</span>
+                  <div>
+                    <p class="press__recLabel">
+                      {r.url ? <a href={r.url} target="_blank" rel="noreferrer">{r.label}</a> : r.label}
+                    </p>
+                    {r.org ? <p class="press__recOrg">{r.org}</p> : null}
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </section>
+        ) : null}
+
+        {mentions.length ? (
+          <section class="press__sec" id="menciones">
+            <h2 class="press__secTitle ui-label">{es ? "Menciones" : "Mentions"}</h2>
+            <ul class="press__mentions">
+              {mentions.map((m) => (
+                <li class="press__mention reveal" id={m.id ? `mention-${m.id}` : undefined}>
+                  <a href={m.url} target="_blank" rel="noreferrer">
+                    <span class="press__outlet" data-edit-field={m.id ? `press_mention.${m.id}.outlet` : undefined}>{m.outlet}</span>
+                    {m.title ? (
+                      <span class="press__mentionTitle" data-edit-field={m.id ? `press_mention.${m.id}.title` : undefined}>{m.title}</span>
+                    ) : m.id ? (
+                      <span class="press__mentionTitle" data-edit-field={`press_mention.${m.id}.title`} style="color: var(--text-3); font-style: italic;">
+                        {es ? "(añadir título)" : "(add title)"}
+                      </span>
+                    ) : null}
+                    <span class="press__mentionMeta">
+                      {m.date ? dateFormat(m.date, locale) : null}
+                      {m.date && m.language ? " · " : null}
+                      {m.language ? m.language.toUpperCase() : null}
+                      <span aria-hidden="true"> ↗</span>
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
         ) : null}
       </div>
-    </section>
+
+      {/* Contact — always a way through. */}
+      <section class="press__sec press__contact" id="contacto-prensa">
+        <h2 class="press__secTitle ui-label">{es ? "Contacto de prensa" : "Press contact"}</h2>
+        <p class="press__contactLine">{es ? "Entrevistas, fotografía, visitas a la cocina." : "Interviews, photography, kitchen visits."}</p>
+        <div class="press__contactRow">
+          {pressEmail ? (
+            <a class="ui-pill ui-pill--solid" href={`mailto:${pressEmail}?subject=${encodeURIComponent("Prensa — Daniel Nates")}`} data-edit-field={pressEmailField}>{pressEmail}</a>
+          ) : (
+            <a class="ui-pill ui-pill--solid" href={`${href("/contacto", locale)}?tema=prensa`}>{es ? "Escribir a prensa" : "Write to press"} <span aria-hidden="true">→</span></a>
+          )}
+          {pressPdfUrl ? (
+            <a class="ui-pill" href={pressPdfUrl} target="_blank" rel="noreferrer">{es ? "Kit completo (PDF)" : "Full kit (PDF)"} <span aria-hidden="true">↓</span></a>
+          ) : null}
+          {!pressEmail && Astro.locals.isAdmin ? (
+            <span class="press__adminHint" data-edit-field={pressEmailField}>{es ? "(añadir email de prensa)" : "(add press email)"}</span>
+          ) : null}
+        </div>
+      </section>
+    </div>
+
+    <NextChapter current="prensa" locale={locale} />
   </div>
 </BaseLayout>
 
 <style>
-  .press__bio{ display: grid; gap: clamp(28px, 4vw, 48px); }
-  .press__bioBlock{
-    display: grid; gap: 10px;
-    padding-top: 18px;
+  .press > *{ max-width: 1240px; margin-inline: auto; }
+
+  .press__title{
+    margin: clamp(16px, 2.6vh, 28px) 0 0;
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(80px, 13vw, 240px);
+    line-height: .84;
+    letter-spacing: -0.05em;
+  }
+  .press__lede{
+    margin: clamp(22px, 3.4vh, 36px) 0 0;
+    max-width: 40ch;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: clamp(21px, 1.8vw, 30px);
+    line-height: 1.3;
+    color: var(--text-2);
+  }
+  .press__jump{
+    margin-top: clamp(32px, 5vh, 56px);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .press__sec{
+    margin-top: clamp(80px, 13vh, 150px);
+    padding-top: clamp(20px, 3vh, 30px);
+    border-top: 1px solid var(--line);
+    scroll-margin-top: 110px;
+  }
+  .press__secTitle{ margin-bottom: clamp(28px, 4vh, 44px); }
+
+  /* Bio rows */
+  .press__bioRow{
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 9fr);
+    gap: clamp(20px, 4vw, 72px);
+    padding: clamp(24px, 3.4vh, 36px) 0;
     border-top: 1px solid var(--line);
   }
-  .press__bioLabel{
+  .press__bioRow:first-of-type{ border-top: 0; padding-top: 0; }
+  .press__bioMeta{ display: grid; gap: 12px; align-content: start; justify-items: start; }
+  .press__download{ margin-top: 8px; }
+  .press__copy[data-copied]{ background: var(--olivar); border-color: var(--olivar); color: var(--bone); }
+  .press__one{
     margin: 0;
+    max-width: 30ch;
+    font-family: var(--font-display);
+    font-size: clamp(28px, 2.8vw, 46px);
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+  .press__short{
+    margin: 0;
+    max-width: 62ch;
+    font-family: var(--font-display);
+    font-size: clamp(19px, 1.45vw, 24px);
+    line-height: 1.45;
+    color: color-mix(in srgb, var(--text) 88%, transparent);
+  }
+
+  /* Photographs */
+  .press__photos{ display: grid; gap: clamp(28px, 4vw, 56px); }
+  .press__photo{
+    margin: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 8fr) minmax(0, 4fr);
+    gap: clamp(20px, 3vw, 48px);
+    align-items: end;
+  }
+  .press__photoImg{ aspect-ratio: 3 / 2; overflow: hidden; background: var(--bone-2, #E6DCC6); }
+  .press__photoImg :global(img){ width: 100%; height: 100%; object-fit: cover; display: block; }
+  .press__photo figcaption{ display: grid; gap: 10px; justify-items: start; }
+  .press__photoCap{
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: clamp(19px, 1.5vw, 24px);
+    line-height: 1.3;
+  }
+  .press__photoMeta{
     font-family: var(--font-sans);
     font-size: 11px;
-    letter-spacing: .22em;
+    letter-spacing: .18em;
     text-transform: uppercase;
     color: var(--text-3);
   }
-  .press__bioText{
-    margin: 0;
-    font-family: var(--font-display);
-    font-size: clamp(20px, 2vw, 26px);
-    line-height: 1.4;
-    color: var(--text);
-    max-width: 70ch;
-  }
 
-  .press__recList{
-    list-style: none;
-    margin: 0; padding: 0;
-    display: grid; gap: 0;
+  /* Recognitions + mentions */
+  .press__two{
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: clamp(32px, 6vw, 112px);
   }
+  .press__recList, .press__mentions{ list-style: none; margin: 0; padding: 0; }
   .press__rec{
     display: grid;
-    grid-template-columns: 80px 1fr;
-    gap: 24px;
-    padding: 22px 0;
+    grid-template-columns: 4.2em 1fr;
+    gap: 16px;
+    padding: 16px 0;
     border-top: 1px solid var(--line);
-    align-items: baseline;
   }
   .press__recYear{
-    font-family: var(--font-mono);
-    font-size: 13px;
-    color: var(--text-3);
-    letter-spacing: .04em;
+    font-family: var(--font-display);
+    font-size: clamp(26px, 2.2vw, 36px);
+    line-height: 1;
+    letter-spacing: -0.02em;
   }
   .press__recLabel{
     margin: 0;
     font-family: var(--font-display);
-    font-size: clamp(20px, 2.2vw, 26px);
-    letter-spacing: -0.01em;
-    color: var(--text);
+    font-size: clamp(18px, 1.4vw, 23px);
+    line-height: 1.2;
   }
-  .press__recLabel a{ border-bottom: 1px solid var(--line-2); }
-  .press__recLabel a:hover{ border-bottom-color: var(--bone); }
+  .press__recLabel a{ color: inherit; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .18em; text-decoration-color: var(--line-2); }
   .press__recOrg{
     margin: 6px 0 0;
     font-family: var(--font-sans);
-    font-size: 13px;
-    color: var(--text-2);
-    letter-spacing: .04em;
+    font-size: 11px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--text-3);
   }
-
-  .press__photos{
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 14px;
-  }
-  @media (min-width: 720px){ .press__photos{ grid-template-columns: 1fr 1fr; } }
-  @media (min-width: 1080px){ .press__photos{ grid-template-columns: repeat(3, 1fr); } }
-  .press__photo{
-    margin: 0;
-    border-radius: var(--r-2);
-    overflow: hidden;
-    background: rgba(244,239,230,.04);
-    border: 1px solid var(--line);
-  }
-  .press__photo img{ width: 100%; aspect-ratio: 4/5; object-fit: cover; display: block; }
-  .press__photo figcaption{
-    display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center;
-    padding: 10px 14px 12px;
-    font-family: var(--font-sans);
-    font-size: 12px;
-    color: var(--text-2);
-  }
-  .press__credit{ color: var(--text-3); }
-  .press__download{
-    margin-left: auto;
-    color: var(--text-2);
-    border-bottom: 1px solid var(--line-2);
-    padding-bottom: 1px;
-  }
-  .press__download:hover{ color: var(--text); border-bottom-color: var(--bone); }
-
-  .press__mentions{
-    list-style: none; margin: 0; padding: 0;
-    display: grid; gap: 0;
-  }
-  .press__mention{
-    border-top: 1px solid var(--line);
-  }
+  .press__mention{ border-top: 1px solid var(--line); }
   .press__mention a{
     display: grid;
-    grid-template-columns: 1fr;
+    gap: 6px;
     padding: 18px 0;
-    transition: background .25s;
+    color: var(--text);
+    text-decoration: none;
+    transition: padding-left 600ms var(--ease-fluid);
   }
-  @media (min-width: 720px){
-    .press__mention a{ grid-template-columns: 200px 1fr auto; gap: 20px; align-items: baseline; }
-  }
-  .press__mention a:hover{ background: color-mix(in srgb, var(--text) 3%, transparent); }
+  .press__mention a:hover{ padding-left: 8px; }
   .press__outlet{
     font-family: var(--font-sans);
     font-size: 11px;
     letter-spacing: .22em;
     text-transform: uppercase;
-    color: var(--text);
-    font-weight: 600;
+    color: var(--text-3);
   }
   .press__mentionTitle{
     font-family: var(--font-display);
-    font-size: clamp(16px, 1.6vw, 20px);
-    color: var(--text);
-    line-height: 1.4;
+    font-size: clamp(20px, 1.6vw, 27px);
+    line-height: 1.15;
+    letter-spacing: -0.01em;
   }
   .press__mentionMeta{
     font-family: var(--font-sans);
@@ -414,15 +452,47 @@ const lede = locale === "es"
     letter-spacing: .14em;
     text-transform: uppercase;
     color: var(--text-3);
-    white-space: nowrap;
   }
 
-  .press__contact{
-    margin-top: clamp(64px, 9vw, 120px);
-    padding: clamp(36px, 5vw, 64px);
-    border: 1px solid var(--line);
-    border-radius: var(--r-3);
-    background: color-mix(in srgb, var(--text) 3%, transparent);
+  /* Contact */
+  .press__contactLine{
+    margin: 0;
+    max-width: 18ch;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: clamp(36px, 4.6vw, 80px);
+    line-height: 1;
+    letter-spacing: -0.03em;
   }
-  .press__contactRow{ display: flex; flex-wrap: wrap; gap: 14px; margin-top: 18px; }
+  .press__contactRow{ margin-top: clamp(28px, 4vh, 44px); display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+  .press__adminHint{ font-style: italic; color: var(--text-3); font-size: 14px; }
+
+  @media (max-width: 880px){
+    .press__bioRow, .press__photo, .press__two{ grid-template-columns: 1fr; }
+    .press__bioMeta{ grid-auto-flow: column; justify-content: space-between; align-items: center; width: 100%; }
+  }
 </style>
+
+<script>
+  // One-click copy for the bio lengths.
+  function bindCopy() {
+    document.querySelectorAll<HTMLButtonElement>("[data-copy]").forEach((btn) => {
+      const b = btn as HTMLButtonElement & { __copy?: boolean };
+      if (b.__copy) return;
+      b.__copy = true;
+      const label = b.textContent ?? "";
+      b.addEventListener("click", async () => {
+        const target = document.querySelector<HTMLElement>(b.dataset.copy ?? "");
+        if (!target) return;
+        try {
+          await navigator.clipboard.writeText(target.innerText.trim());
+          b.dataset.copied = "1";
+          b.textContent = document.documentElement.lang === "en" ? "Copied ✓" : "Copiado ✓";
+          setTimeout(() => { delete b.dataset.copied; b.textContent = label; }, 1800);
+        } catch {}
+      });
+    });
+  }
+  bindCopy();
+  document.addEventListener("astro:page-load", bindCopy);
+</script>

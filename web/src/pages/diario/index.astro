@@ -1,8 +1,11 @@
 ---
 export const prerender = false;
 
+import EmptyState from "../../components/content/EmptyState.astro";
 import BaseLayout from "../../components/layout/BaseLayout.astro";
 import TopDock from "../../components/layout/TopDock.astro";
+import SmartImage from "../../components/content/SmartImage.astro";
+import NextChapter from "../../components/content/NextChapter.astro";
 import { getSupabase, getSupabaseServer } from "../../lib/supabase";
 import { dateFormat, href, ui } from "../../lib/i18n";
 import type { Locale } from "../../lib/types";
@@ -66,79 +69,142 @@ const localizedExcerpt = (a: Article) =>
 
     {articles.length ? (
       <section class="section">
-        <div class="articleList reveal-stagger">
-          {articles.map((a) => (
-            <a class="articleRow" href={href(`/diario/${a.slug}`, locale)}>
-              <div class="articleRow__cover" data-edit-image-field={`article.${a.slug}.cover_url`}>
-                {a.cover_url ? (
-                  <img src={a.cover_url} alt={a.title} loading="lazy" />
-                ) : (
-                  <div class="articleRow__noimg" aria-hidden="true"></div>
-                )}
-                {isAdmin && !a.published ? (
-                  <span class="articleRow__draftPill" aria-label="Borrador">Borrador</span>
+        <ol class="toc reveal-stagger">
+          {articles.map((a, i) => (
+            <li class="toc__item">
+              <a class="toc__row" href={href(`/diario/${a.slug}`, locale)}>
+                <span class="toc__num" aria-hidden="true">{String(i + 1).padStart(2, "0")}</span>
+                <span class="toc__main">
+                  <span class="toc__date">
+                    {dateFormat(a.date, locale)}
+                    {isAdmin && !a.published ? <span class="toc__draft">Borrador</span> : null}
+                  </span>
+                  <span class="toc__title" data-edit-field={`article.${a.slug}.title`}>{a.title}</span>
+                  <span class="toc__excerpt" data-edit-field={`article.${a.slug}.excerpt_${locale}`}>{localizedExcerpt(a) ?? ""}</span>
+                </span>
+                {a.cover_url || isAdmin ? (
+                  <span
+                    class:list={["toc__cover", { "toc__cover--empty": !a.cover_url }]}
+                    data-edit-image-field={`article.${a.slug}.cover_url`}
+                  >
+                    {a.cover_url ? (
+                      <SmartImage src={a.cover_url} alt="" widths={[480, 800]} sizes="(min-width: 880px) 240px, 40vw" />
+                    ) : null}
+                  </span>
                 ) : null}
-              </div>
-              <div class="articleRow__body">
-                <p class="articleRow__date">{dateFormat(a.date, locale)}</p>
-                <h3 class="articleRow__title" data-edit-field={`article.${a.slug}.title`}>{a.title}</h3>
-                {localizedExcerpt(a) ? (
-                  <p class="articleRow__excerpt" data-edit-field={`article.${a.slug}.excerpt_${locale}`}>{localizedExcerpt(a)}</p>
-                ) : (
-                  <p class="articleRow__excerpt" data-edit-field={`article.${a.slug}.excerpt_${locale}`}></p>
-                )}
-              </div>
-            </a>
+                <span class="toc__go" aria-hidden="true">→</span>
+              </a>
+            </li>
           ))}
-        </div>
+        </ol>
       </section>
     ) : (
-      <section class="section reveal">
-        <p class="sub">{ui("noEntries", locale)}</p>
-      </section>
+      <EmptyState
+        line={locale === "es" ? "El cuaderno está abierto. Pronto, la primera página." : "The notebook is open. The first page, soon."}
+        adminHint="Activa Editar y pulsa “+ Nueva entrada”."
+      />
     )}
+
+    <NextChapter current="diario" locale={locale} />
   </div>
 </BaseLayout>
 
 <style>
-  .articleList{ display: grid; gap: 14px; }
-  .articleRow{
+  /* The journal as a table of contents — numbered rows on hairlines,
+     the titles carry the page. Covers only when there is one. */
+  .toc{
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--line);
+  }
+  .toc__item{ border-bottom: 1px solid var(--line); }
+  .toc__row{
     display: grid;
-    grid-template-columns: 96px 1fr;
-    gap: 14px;
-    padding: 12px;
-    border-radius: var(--r-2);
-    border: 1px solid var(--line);
-    background: color-mix(in srgb, var(--text) 2%, transparent);
-    transition: border-color 600ms var(--ease-fluid), background 600ms var(--ease-fluid), transform 600ms var(--ease-fluid);
+    grid-template-columns: clamp(40px, 6vw, 96px) minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: clamp(16px, 3vw, 48px);
+    padding: clamp(26px, 4vh, 44px) 0;
+    color: var(--text);
+    text-decoration: none;
   }
-  .articleRow:hover{
-    border-color: var(--line-2);
-    background: color-mix(in srgb, var(--text) 5%, transparent);
-    transform: translateY(-1px);
-  }
-  .articleRow__cover{ width: 96px; height: 96px; position: relative; }
-  .articleRow__draftPill{
-    position: absolute;
-    top: 6px; left: 6px;
-    background: rgba(217, 66, 28, .9);
-    color: #F4EFE6;
+  .toc__num{
+    align-self: start;
+    padding-top: .5em;
     font-family: var(--font-sans);
-    font-size: 9px;
-    letter-spacing: .14em;
-    text-transform: uppercase;
-    padding: 3px 7px;
-    border-radius: 999px;
-    pointer-events: none;
+    font-size: 11px;
+    letter-spacing: .2em;
+    font-feature-settings: "tnum";
+    color: var(--text-3);
   }
-  .articleRow img{ width: 96px; height: 96px; object-fit: cover; border-radius: 12px; display: block; }
-  .articleRow__noimg{ width: 96px; height: 96px; border-radius: 12px; background: rgba(244,239,230,.04); }
-  .articleRow__body{ min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-  .articleRow__date{ margin: 0; font-size: 11px; color: var(--text-3); letter-spacing: .12em; text-transform: uppercase; }
-  .articleRow__title{ margin: 2px 0 0; font-size: 17px; letter-spacing: -0.01em; font-family: var(--font-display); }
-  .articleRow__excerpt{ margin: 4px 0 0; font-size: 13px; color: var(--text-2); line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  @media (min-width: 880px){
-    .articleRow{ grid-template-columns: 140px 1fr; padding: 14px; }
-    .articleRow__cover, .articleRow img, .articleRow__noimg{ width: 140px; height: 140px; }
+  .toc__main{ display: grid; gap: 10px; min-width: 0; }
+  .toc__date{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  .toc__draft{
+    font-size: 9px;
+    letter-spacing: .16em;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--ember) 85%, transparent);
+    color: var(--bone);
+  }
+  .toc__title{
+    font-family: var(--font-display);
+    font-size: clamp(32px, 4.4vw, 72px);
+    line-height: .98;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+    transition: transform 700ms var(--ease-fluid);
+  }
+  .toc__excerpt{
+    max-width: 52ch;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: clamp(17px, 1.3vw, 21px);
+    line-height: 1.4;
+    color: var(--text-2);
+  }
+  .toc__excerpt:empty{ display: none; }
+  .toc__cover{
+    display: block;
+    width: clamp(120px, 16vw, 240px);
+    aspect-ratio: 4 / 5;
+    overflow: hidden;
+    position: relative;
+  }
+  .toc__cover :global(img){
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 1200ms var(--ease-fluid);
+  }
+  /* Empty slot exists only so Daniel can drop a cover in edit mode. */
+  .toc__cover--empty{ display: none; }
+  :global(html[data-edit-mode="1"]) .toc__cover--empty{
+    display: block;
+    border: 1px dashed var(--line-2);
+  }
+  .toc__go{
+    font-size: 20px;
+    color: var(--text-3);
+    transition: transform 700ms var(--ease-fluid), color 700ms var(--ease-fluid);
+  }
+  .toc__row:hover .toc__title{ transform: translateX(clamp(6px, 1vw, 14px)); }
+  .toc__row:hover .toc__go{ transform: translateX(6px); color: var(--text); }
+  .toc__row:hover .toc__cover :global(img){ transform: scale(1.05); }
+
+  @media (max-width: 720px){
+    .toc__row{ grid-template-columns: minmax(0, 1fr) auto; }
+    .toc__num, .toc__go{ display: none; }
+    .toc__cover{ width: 92px; }
   }
 </style>

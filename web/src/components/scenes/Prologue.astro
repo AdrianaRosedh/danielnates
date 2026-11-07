@@ -1,0 +1,227 @@
+---
+/**
+ * Prologue — the film's first words, set as three intertitles.
+ *
+ * A pinned stage holds for ~2½ screens of scroll while three beats
+ * take the viewport one at a time, each filling it at display scale:
+ *
+ *   I   the thesis    — left, words light up as you read along
+ *   II  the confession — right, huge italic, rising letter by letter
+ *   III the promise   — offset, then a hairline hands off to the
+ *                        notebook below
+ *
+ * The Service scene later pays the first line off — "El cuchillo y
+ * el lápiz hacen lo mismo: marcar."
+ *
+ * Motion lives in AnimationDirector (setupPrologue). Words/letters are
+ * split here on the server so textContent stays the original sentence
+ * — inline editing (data-edit-field) keeps working unchanged. In edit
+ * mode, reduced motion, or without JS the three lines simply stack.
+ *
+ * Every line is admin-editable via landing_copy (prologue.*).
+ */
+import type { Locale } from "../../lib/types";
+
+interface Props {
+  locale?: Locale;
+  /** Landing-copy lookup — prologue.l1/l2/l3 per locale. */
+  copy?: Record<string, string>;
+}
+const { locale: propLocale, copy = {} } = Astro.props as Props;
+const locale: Locale = propLocale ?? Astro.locals.locale ?? "es";
+const c = (key: string, fallback: string): string => copy[key] ?? fallback;
+
+const kicker = locale === "es" ? "Prólogo" : "Prologue";
+const l1 = c(`prologue.l1_${locale}`, locale === "es"
+  ? "Hay dos maneras de marcar el mundo: con un cuchillo o con un lápiz."
+  : "There are two ways to mark the world: with a knife or with a pencil.");
+const l2 = c(`prologue.l2_${locale}`, locale === "es"
+  ? "Yo no supe elegir."
+  : "I never learned to choose.");
+const l3 = c(`prologue.l3_${locale}`, locale === "es"
+  ? "Esta página es el cuaderno donde las dos manos escriben."
+  : "This page is the notebook where both hands write.");
+
+const words = (s: string) => s.trim().split(/\s+/);
+---
+
+<section class="prologue scene--ink" data-scene="ink" data-prologue>
+  <div class="prologue__stage">
+    <header class="prologue__chrome" aria-hidden="true">
+      <span class="prologue__kicker">{kicker}</span>
+      <span class="prologue__rule"></span>
+      <span class="prologue__count"><span data-prologue-count>I</span>&thinsp;/&thinsp;III</span>
+    </header>
+
+    <p
+      class="prologue__beat prologue__beat--thesis"
+      data-prologue-beat="1"
+      data-edit-field={`copy.prologue.l1_${locale}`}
+    >{words(l1).map((w, i) => <>{i ? " " : ""}<span class="pw">{w}</span></>)}</p>
+
+    <p
+      class="prologue__beat prologue__beat--confession"
+      data-prologue-beat="2"
+      data-edit-field={`copy.prologue.l2_${locale}`}
+      aria-label={l2}
+    >{words(l2).map((w, i) => (
+      <>{i ? " " : ""}<span class="pword">{Array.from(w).map((ch) => <span class="pl">{ch}</span>)}</span></>
+    ))}</p>
+
+    <p
+      class="prologue__beat prologue__beat--promise"
+      data-prologue-beat="3"
+      data-edit-field={`copy.prologue.l3_${locale}`}
+    >{words(l3).map((w, i) => <>{i ? " " : ""}<span class="pw">{w}</span></>)}</p>
+
+    <span class="prologue__mark" aria-hidden="true" data-prologue-mark></span>
+  </div>
+</section>
+
+<style>
+  /* ── Resting layout: three lines stacked. Used without JS, with
+     reduced motion, and while Daniel is editing. ─────────────────── */
+  .prologue{
+    --pg: 0;   /* 0..1 — scrubbed by AnimationDirector, drifts the glow */
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    position: relative;
+    color: var(--bone);
+    background:
+      radial-gradient(55% 45% at calc(28% + var(--pg) * 44%) 46%,
+        color-mix(in srgb, var(--moss) 16%, var(--ink)),
+        var(--ink) 72%);
+  }
+  .prologue__stage{
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(48px, 9vh, 120px);
+    padding: clamp(120px, 16vh, 200px) var(--pro-gutter) clamp(96px, 14vh, 180px);
+    --pro-gutter: clamp(24px, 6vw, 112px);
+  }
+  .prologue__chrome{
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .3em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--bone) 55%, transparent);
+  }
+  .prologue__rule{
+    flex: 0 0 clamp(28px, 4vw, 56px);
+    height: 1px;
+    background: color-mix(in srgb, var(--olivar) 60%, transparent);
+  }
+  .prologue__count{
+    margin-left: auto;
+    font-feature-settings: "tnum";
+    letter-spacing: .2em;
+    color: color-mix(in srgb, var(--bone) 40%, transparent);
+  }
+
+  .prologue__beat{
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 400;
+    text-wrap: balance;
+  }
+  .prologue__beat--thesis{
+    max-width: 15ch;
+    font-size: clamp(40px, 6.2vw, 112px);
+    line-height: 1.02;
+    letter-spacing: -0.028em;
+  }
+  .prologue__beat--confession{
+    align-self: flex-end;
+    max-width: 9ch;
+    text-align: right;
+    font-style: italic;
+    font-size: clamp(64px, 12.5vw, 232px);
+    line-height: .9;
+    letter-spacing: -0.04em;
+    color: color-mix(in srgb, var(--olivar) 38%, var(--bone));
+  }
+  .prologue__beat--promise{
+    max-width: 16ch;
+    margin-left: clamp(0px, 22vw, 400px);
+    font-size: clamp(36px, 5vw, 92px);
+    line-height: 1.04;
+    letter-spacing: -0.025em;
+  }
+  .pw, .pword, .pl{ display: inline-block; }
+  .pword{ white-space: nowrap; }
+
+  .prologue__mark{
+    display: block;
+    align-self: center;
+    width: 1px;
+    height: clamp(48px, 9vh, 96px);
+    background: linear-gradient(to bottom,
+      color-mix(in srgb, var(--olivar) 70%, transparent),
+      transparent);
+    transform-origin: 50% 0;
+  }
+
+  /* ── The intertitle stage: pinned, one beat at a time. ─────────── */
+  @media (prefers-reduced-motion: no-preference){
+    :global(html.js:not([data-edit-mode="1"])) .prologue{
+      height: 330svh;
+    }
+    :global(html.js:not([data-edit-mode="1"])) .prologue__stage{
+      position: sticky;
+      top: 0;
+      height: 100svh;
+      overflow: clip;
+      display: grid;
+      grid-template: 1fr / 1fr;
+      align-items: center;
+      gap: 0;
+      padding-block: clamp(96px, 13vh, 150px);
+    }
+    /* All three beats share one grid cell — they take turns. */
+    :global(html.js:not([data-edit-mode="1"])) .prologue__beat{
+      grid-area: 1 / 1;
+      align-self: center;   /* resting layout's flex-end would sink beat II */
+      will-change: opacity, transform, filter;
+    }
+    :global(html.js:not([data-edit-mode="1"])) .prologue__beat--thesis{ justify-self: start; }
+    :global(html.js:not([data-edit-mode="1"])) .prologue__beat--confession{ justify-self: end; }
+    :global(html.js:not([data-edit-mode="1"])) .prologue__beat--promise{ justify-self: start; }
+    /* Beats II and III wait offstage until the director hands them in
+       (no overlap flash before it boots). */
+    :global(html.js:not([data-edit-mode="1"])) .prologue__beat--confession,
+    :global(html.js:not([data-edit-mode="1"])) .prologue__beat--promise{
+      opacity: 0;
+    }
+    :global(html.js:not([data-edit-mode="1"])) .prologue__chrome{
+      position: absolute;
+      top: clamp(84px, 11vh, 120px);
+      left: var(--pro-gutter);
+      right: var(--pro-gutter);
+    }
+    :global(html.js:not([data-edit-mode="1"])) .prologue__mark{
+      position: absolute;
+      left: 50%;
+      bottom: 0;
+      transform: scaleY(0);
+    }
+  }
+
+  /* While editing, GSAP's inline styles must not hide any line. */
+  :global(html[data-edit-mode="1"]) .prologue__beat,
+  :global(html[data-edit-mode="1"]) .prologue__beat *{
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: none !important;
+    filter: none !important;
+  }
+
+  @media (max-width: 720px){
+    .prologue__beat--promise{ margin-left: 0; }
+    .prologue__beat--confession{ max-width: 7ch; }
+  }
+</style>

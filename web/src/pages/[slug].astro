@@ -7,44 +7,37 @@ import HeroFilm from "../components/sections/HeroFilm.astro";
 import PortableText from "../components/content/PortableText.astro";
 import BlockRenderer from "../components/blocks/BlockRenderer.astro";
 
-import { getProject } from "../lib/queries";
-import { href, t2, tb2, ui } from "../lib/i18n";
+import NextChapter from "../components/content/NextChapter.astro";
+import { chapterMedia } from "../lib/chapter-media";
+import { resolveProjectPage } from "../lib/page-resolvers";
+import { t2, tb2, ui } from "../lib/i18n";
 import type { Locale } from "../lib/types";
 
 interface PageProps { lang?: Locale }
 const { lang } = Astro.props as PageProps;
 const locale: Locale = lang ?? Astro.locals.locale ?? "es";
 
-const { slug } = Astro.params as { slug: string };
-
-const RESERVED = new Set(["en", "diario", "arte", "contacto", "contact", "api", "404", "admin", "sobre", "prensa", "press", "dia", "day", "og.png", "proyectos", "projects"]);
-if (RESERVED.has(slug)) return Astro.redirect(href("/404", locale));
-
-const project = await getProject(slug);
-if (!project) return Astro.redirect(href("/404", locale));
+const page = await resolveProjectPage(Astro, locale);
+if ("notFound" in page) return page.notFound;
+const { project } = page;
+const slug = project.slug;
 
 const title = project.title;
 const summary = t2(project.summary_es, project.summary_en, locale);
 const brand = slug;
 
-const heroVideo = project.hero_video_url;
+// Fallback footage when Supabase has none (see lib/chapter-media).
+const fallbackMedia = chapterMedia(slug);
+const hasOwnMedia = !!(project.hero_video_url || project.hero_image_url);
+const heroVideo = hasOwnMedia ? project.hero_video_url : null;
+const heroVideoSources = hasOwnMedia ? null : (fallbackMedia?.sources ?? null);
+const heroPoster = hasOwnMedia ? project.hero_image_url : (fallbackMedia?.poster ?? null);
 const hasBlocks = (project.blocks?.length ?? 0) > 0;
 const legacy = tb2(project.body_es, project.body_en, locale);
 
-/* Plain-text serialization of the legacy body for the popover modal's
- * initial textarea value. On save the endpoint converts back to blocks
- * via textToBlocks() before writing. */
+/* The legacy body is PortableText, edited in place with the rich
+ * toolbar — formatting and links survive the round-trip. */
 const legacyBodyField = `project.${slug}.body_${locale}`;
-const legacyBodyText = legacy.length
-  ? legacy
-      .map((b) => {
-        const block = b as { _type?: string; children?: { text?: string }[] };
-        if (block?._type !== "block" || !Array.isArray(block.children)) return "";
-        return block.children.map((c) => c?.text ?? "").join("");
-      })
-      .filter(Boolean)
-      .join("\n\n")
-  : "";
 const hasLegacyBody = legacy.length > 0;
 
 type ProjectFramingView = { kicker: string; intro: string; meta?: string };
@@ -80,7 +73,7 @@ if (!framing) framing = fallbackFramings[brand]?.[locale] ?? null;
 ---
 
 <BaseLayout
-  title={title}
+  title={`${title} — Daniel Nates`}
   description={summary}
   locale={locale}
   editContext={{
@@ -101,60 +94,133 @@ if (!framing) framing = fallbackFramings[brand]?.[locale] ?? null;
     <TopDock locale={locale} />
 
     {!hasBlocks ? (
-      <div class="reveal">
-        <HeroFilm
-          title={title}
-          sub={summary}
-          videoUrl={heroVideo}
-          posterUrl={project.hero_image_url}
-          transitionKey={brand}
-          titleField={`project.${brand}.title`}
-          subField={`project.${brand}.${locale === "es" ? "summary_es" : "summary_en"}`}
-          imageField={`project.${brand}.hero_image_url`}
-        />
-      </div>
-    ) : null}
-
-    {framing ? (
-      <section class="section reveal">
-        <p class="kicker" data-edit-field={`project.${brand}.${locale === "es" ? "kicker_es" : "kicker_en"}`}>{framing.kicker}</p>
-        <p class="lede" style="margin-top: 14px; max-width: 56ch;" data-edit-field={`project.${brand}.${locale === "es" ? "intro_es" : "intro_en"}`}>{framing.intro}</p>
-        {framing.meta ? (
-          <p
-            data-edit-field={`project.${brand}.${locale === "es" ? "meta_es" : "meta_en"}`}
-            style="margin-top: 14px; font-family: var(--font-sans); font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: var(--text-3);"
-          >
-            {framing.meta}
-          </p>
-        ) : null}
-      </section>
+      <HeroFilm
+        title={title}
+        sub={summary}
+        kicker={framing?.kicker ?? null}
+        meta={framing?.meta ?? null}
+        videoUrl={heroVideo}
+        videoSources={heroVideoSources}
+        posterUrl={heroPoster}
+        portraitX={hasOwnMedia ? null : (fallbackMedia?.portraitX ?? null)}
+        transitionKey={brand}
+        locale={locale}
+        titleField={`project.${brand}.title`}
+        subField={`project.${brand}.${locale === "es" ? "summary_es" : "summary_en"}`}
+        kickerField={`project.${brand}.${locale === "es" ? "kicker_es" : "kicker_en"}`}
+        metaField={`project.${brand}.${locale === "es" ? "meta_es" : "meta_en"}`}
+        imageField={`project.${brand}.hero_image_url`}
+      />
     ) : null}
 
     {hasBlocks ? <BlockRenderer blocks={project.blocks!} locale={locale} /> : null}
 
-    {!hasBlocks && hasLegacyBody ? (
-      <section class="section reveal">
-        <p class="kicker">{ui("chapter", locale)}</p>
-        <div
-          class="projectCard"
-          style="flex-direction:column;gap:12px;"
-          data-edit-field={legacyBodyField}
-          data-edit-multi="1"
-          data-edit-source={legacyBodyText}
-        >
-          <PortableText value={legacy} />
+    {/* The chapter, read on paper — the hero is film, this is the page. */}
+    {!hasBlocks && (framing?.intro || hasLegacyBody || project.links?.length) ? (
+      <section class="chBody ui-bleed scene--bone" data-scene="bone">
+        <div class="chBody__grid">
+          <aside class="chBody__side">
+            <div class="chBody__sticky">
+              <p class="chBody__label ui-label">{ui("chapter", locale)}</p>
+              <p class="chBody__name">{title}</p>
+              {project.links?.length ? (
+                <ul class="chBody__links reveal-stagger">
+                  {project.links.map((l) => (
+                    <li><a href={l.href} target="_blank" rel="noreferrer">{l.label} <span aria-hidden="true">↗</span></a></li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          </aside>
+
+          <div class="chBody__main">
+            {framing?.intro ? (
+              <p
+                class="chBody__lede reveal"
+                data-edit-field={`project.${brand}.${locale === "es" ? "intro_es" : "intro_en"}`}
+              >{framing.intro}</p>
+            ) : null}
+
+            {hasLegacyBody ? (
+              <div
+                class="chBody__prose"
+                data-edit-field={legacyBodyField}
+                data-edit-portable="1"
+                data-reveal-body
+              >
+                <PortableText value={legacy} lead />
+              </div>
+            ) : null}
+          </div>
         </div>
       </section>
     ) : null}
 
-    {project.links?.length ? (
-      <section class="section reveal">
-        <div class="badges reveal-stagger">
-          {project.links.map((l) => (
-            <a class="cta" href={l.href} target="_blank" rel="noreferrer">{l.label}</a>
-          ))}
-        </div>
-      </section>
-    ) : null}
+    <NextChapter current="proyectos" locale={locale} />
   </div>
 </BaseLayout>
+
+<style>
+  .chBody{
+    background: var(--bg);
+    color: var(--text);
+    padding: clamp(96px, 14vh, 180px) var(--page-gutter) clamp(112px, 16vh, 200px);
+  }
+  .chBody__grid{
+    max-width: 1320px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 9fr);
+    gap: clamp(32px, 5vw, 96px);
+  }
+  .chBody__sticky{
+    position: sticky;
+    top: clamp(96px, 14vh, 140px);
+  }
+  .chBody__label{ margin-bottom: 14px; }
+  .chBody__name{
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(28px, 2.4vw, 40px);
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  .chBody__links{
+    list-style: none;
+    margin: clamp(24px, 4vh, 40px) 0 0;
+    padding: 0;
+    display: grid;
+    gap: 10px;
+    font-family: var(--font-sans);
+    font-size: 12px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+  }
+  .chBody__links a{
+    color: var(--text-2);
+    text-decoration: none;
+    border-bottom: 1px solid var(--line-2);
+    padding-bottom: 4px;
+    transition: color 400ms var(--ease-fluid), border-color 400ms var(--ease-fluid);
+  }
+  .chBody__links a:hover{ color: var(--text); border-color: var(--brand-primary, var(--olivar)); }
+
+  .chBody__lede{
+    margin: 0 0 clamp(48px, 8vh, 96px);
+    max-width: 20ch;
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(36px, 4.6vw, 80px);
+    line-height: 1.04;
+    letter-spacing: -0.03em;
+    color: var(--text);
+    text-wrap: balance;
+  }
+  .chBody__prose{ max-width: 64ch; }
+
+  @media (max-width: 880px){
+    .chBody__grid{ grid-template-columns: 1fr; }
+    .chBody__sticky{ position: static; }
+    .chBody__side{ order: 2; }
+  }
+</style>

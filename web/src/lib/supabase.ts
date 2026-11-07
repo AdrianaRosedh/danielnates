@@ -19,26 +19,57 @@ const projectRef = (() => {
 
 export const isSupabaseConfigured = () => !!url && !!anon;
 
+/** Every Supabase HTTP call gets a hard deadline — a stalled request
+ *  must fail fast instead of hanging the SSR render until the platform
+ *  kills the function. */
+const REQUEST_TIMEOUT_MS = 8_000;
+const fetchWithTimeout: typeof fetch = (input, init) =>
+  fetch(input, {
+    ...init,
+    signal: init?.signal
+      ? AbortSignal.any([init.signal, AbortSignal.timeout(REQUEST_TIMEOUT_MS)])
+      : AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+
+const STATELESS = {
+  auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  global: { fetch: fetchWithTimeout },
+} as const;
+
+/* Stateless clients carry no session, so one instance per server
+ * process is shared across requests (supabase-js is HTTP/fetch based —
+ * there is no socket pool to exhaust). */
+let anonClient: SupabaseClient | null = null;
+let adminClient: SupabaseClient | null = null;
+
 /**
  * Anonymous client (RLS-respecting). Use from public pages and
  * unauthenticated read paths.
  */
 export function getSupabase(): SupabaseClient | null {
   if (!url || !anon) return null;
-  return createClient(url, anon, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  return (anonClient ??= createClient(url, anon, STATELESS));
 }
 
 /**
- * Service-role client (BYPASSES RLS). Server-only.
- * Use only when you genuinely need to skip policies.
+ * Service-role client (BYPASSES RLS). Server-only — never import from
+ * client scripts. Use only when you genuinely need to skip policies.
  */
 export function getSupabaseAdmin(): SupabaseClient | null {
   if (!url || !serviceRole) return null;
-  return createClient(url, serviceRole, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  return (adminClient ??= createClient(url, serviceRole, STATELESS));
+}
+
+/** Every cookie name the auth session can live under (current chunked
+ *  `sb-<ref>-auth-token[.n]` plus legacy names) — used to read the
+ *  session and to clear it completely on sign-out. */
+export function authCookieNames(): string[] {
+  const names = ["sb-access-token", "sb-refresh-token"];
+  if (projectRef) {
+    names.push(`sb-${projectRef}-auth-token`);
+    for (let i = 0; i < 6; i++) names.push(`sb-${projectRef}-auth-token.${i}`);
+  }
+  return names;
 }
 
 /**
@@ -58,13 +89,10 @@ export function getSupabaseServer(cookies: AstroCookies): SupabaseClient | null 
    *
    * Also keep the legacy `sb-access-token` / `sb-refresh-token` names
    * for any older sessions still in browsers. */
-  const candidates: string[] = ["sb-access-token", "sb-refresh-token"];
-  if (projectRef) {
-    candidates.push(`sb-${projectRef}-auth-token`);
-    for (let i = 0; i < 6; i++) candidates.push(`sb-${projectRef}-auth-token.${i}`);
-  }
+  const candidates = authCookieNames();
 
   return createServerClient(url, anon, {
+    global: { fetch: fetchWithTimeout },
     cookies: {
       getAll() {
         const out: { name: string; value: string }[] = [];
@@ -112,11 +140,15 @@ export async function getAdminScopeFor(email: string | null | undefined): Promis
   if (!email) return null;
   const admin = getSupabaseAdmin();
   if (!admin) return null;
-  const { data } = await admin
+  const { data, error } = await admin
     .from("admin_emails")
     .select("scope")
     .eq("email", email.toLowerCase())
     .maybeSingle();
+  if (error) {
+    console.error("[auth] admin scope lookup failed:", error.message);
+    return null;
+  }
   return (data?.scope as string | undefined) ?? null;
 }
 

@@ -1,0 +1,11 @@
+# danielnates.com — robots
+# Public crawl welcome. Admin surface is auth-gated server-side
+# but excluded here defensively.
+
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin/
+Disallow: /api/
+
+Sitemap: https://danielnates.com/sitemap-index.xml

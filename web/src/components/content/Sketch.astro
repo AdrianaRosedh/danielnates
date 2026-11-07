@@ -1,0 +1,53 @@
+---
+/**
+ * Sketch — one of Daniel's notebook studies, anywhere on the site.
+ *
+ *   <Sketch kind="mano" tone="ink" />
+ *
+ * Carries its own filter defs (namespaced `sk-…` so it can sit on a
+ * page with the landing notebook). AnimationDirector draws it stroke
+ * by stroke as it scrolls through the viewport ([data-sketch-draw]);
+ * with reduced motion it simply rests fully drawn.
+ */
+import { sketchDefs, sketchSvg, type SketchKind } from "../../lib/sketches";
+
+interface Props {
+  kind: SketchKind;
+  /** Scene it sits on — sets ink colour and how the wash blends. */
+  tone?: "bone" | "ink";
+  class?: string;
+  label?: string | null;
+}
+const { kind, tone = "bone", class: cls, label = null } = Astro.props as Props;
+---
+
+<figure class:list={["sketch", `sketch--${tone}`, cls]} data-sketch-draw>
+  <svg class="sketch__defs" width="0" height="0" aria-hidden="true" focusable="false">
+    <defs set:html={sketchDefs([kind], "sk")} />
+  </svg>
+  <div class="sketch__art" aria-hidden="true" set:html={sketchSvg(kind, "sk")} />
+  {label ? <figcaption class="sketch__label">{label}</figcaption> : null}
+</figure>
+
+<style>
+  .sketch{ margin: 0; display: grid; justify-items: center; gap: 14px; }
+  .sketch--bone{ color: var(--moss); }
+  .sketch--ink{ color: color-mix(in srgb, var(--bone) 88%, transparent); }
+  .sketch__defs{ position: absolute; width: 0; height: 0; overflow: hidden; }
+  .sketch__art{ width: 100%; }
+  .sketch__art :global(svg){ display: block; width: 100%; height: auto; overflow: visible; }
+  .sketch__art :global(svg path:not([data-wash])),
+  .sketch__art :global(svg ellipse:not([data-wash])){
+    fill: none;
+    stroke: currentColor;
+  }
+  /* Pigment under graphite on paper; a glow of colour on the dark. */
+  .sketch--bone .sketch__art :global([data-wash]){ mix-blend-mode: multiply; }
+  .sketch--ink .sketch__art :global([data-wash]){ mix-blend-mode: screen; }
+  .sketch__label{
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 15px;
+    color: color-mix(in srgb, currentColor 70%, transparent);
+  }
+</style>

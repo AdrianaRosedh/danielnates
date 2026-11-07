@@ -1,17 +1,25 @@
 import type { AstroCookies } from "astro";
-import { getSupabaseServer, getUserFromRequest } from "./supabase";
+import { getAdminScopeFor, getSupabaseServer } from "./supabase";
 
 /**
- * Standard guard for admin API routes. Returns either:
- *   { ok: true, supabase } — auth ok, ready to query
- *   { ok: false, response } — Response to return immediately
+ * Standard guard for admin API routes. A verified session is not
+ * enough — the email must be on the admin allowlist (admin_emails).
+ * RLS enforces the same rule in the database; checking here too means
+ * a signed-in non-admin gets an honest 403 instead of a silent no-op.
+ *
+ * Returns either:
+ *   { ok: true, supabase, user, scope } — ready to query as the user
+ *   { ok: false, response }             — return it immediately
  */
 export async function requireAdmin(cookies: AstroCookies) {
-  const user = await getUserFromRequest(cookies);
-  if (!user) return { ok: false as const, response: new Response("Unauthorized", { status: 401 }) };
   const supabase = getSupabaseServer(cookies);
   if (!supabase) return { ok: false as const, response: new Response("Supabase not configured", { status: 500 }) };
-  return { ok: true as const, supabase, user };
+  const { data } = await supabase.auth.getUser();
+  const user = data.user;
+  if (!user) return { ok: false as const, response: new Response("Unauthorized", { status: 401 }) };
+  const scope = await getAdminScopeFor(user.email);
+  if (!scope) return { ok: false as const, response: new Response("Forbidden", { status: 403 }) };
+  return { ok: true as const, supabase, user, scope };
 }
 
 /** Convert plain text (with blank-line paragraphs) into Portable Text-ish blocks. */

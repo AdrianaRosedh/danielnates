@@ -1,8 +1,12 @@
 ---
 export const prerender = false;
 
+import EmptyState from "../../components/content/EmptyState.astro";
 import BaseLayout from "../../components/layout/BaseLayout.astro";
 import TopDock from "../../components/layout/TopDock.astro";
+import NextChapter from "../../components/content/NextChapter.astro";
+import { chapterMedia } from "../../lib/chapter-media";
+import SmartImage from "../../components/content/SmartImage.astro";
 import { getProjects } from "../../lib/queries";
 import { getSupabaseServer } from "../../lib/supabase";
 import { href, t2, ui } from "../../lib/i18n";
@@ -63,91 +67,134 @@ function summaryFor(p: Project): string {
 
     {projects.length ? (
       <section class="section">
-        <div class="projectsList reveal-stagger">
-          {projects.map((p) => (
-            <a class="projectsRow" href={href(`/${p.slug}`, locale)} data-status={p.status ?? "secondary"}>
-              <div class="projectsRow__cover" data-edit-image-field={`project.${p.slug}.hero_image_url`}>
-                {p.hero_image_url ? (
-                  <img src={p.hero_image_url} alt={p.title} loading="lazy" />
-                ) : (
-                  <div class="projectsRow__noimg" aria-hidden="true"></div>
-                )}
-                {isAdmin && !p.published ? (
-                  <span class="projectsRow__draftPill">Borrador</span>
-                ) : null}
-              </div>
-              <div class="projectsRow__body">
-                <p class="projectsRow__status">{statusLabel(p.status)}</p>
-                <h3 class="projectsRow__title" data-edit-field={`project.${p.slug}.title`}>{p.title}</h3>
-                {summaryFor(p) ? (
-                  <p class="projectsRow__summary" data-edit-field={`project.${p.slug}.summary_${locale}`}>{summaryFor(p)}</p>
-                ) : (
-                  <p class="projectsRow__summary" data-edit-field={`project.${p.slug}.summary_${locale}`}></p>
-                )}
-              </div>
-              <span class="projectsRow__chev" aria-hidden="true">→</span>
-            </a>
-          ))}
-        </div>
+        <ol class="chapters">
+          {projects.map((p, i) => {
+            const poster = p.hero_image_url ?? chapterMedia(p.slug)?.poster ?? null;
+            return (
+              <li class="chapters__item reveal" data-side={i % 2 ? "right" : "left"}>
+                <a class="chapters__row" href={href(`/${p.slug}`, locale)} data-status={p.status ?? "secondary"}>
+                  <span
+                    class="chapters__cover"
+                    data-edit-image-field={`project.${p.slug}.hero_image_url`}
+                    transition:name={`proj-${p.slug}`}
+                  >
+                    {poster ? (
+                      <SmartImage src={poster} alt={p.title} widths={[800, 1200]} sizes="(min-width: 880px) 48vw, 100vw" />
+                    ) : null}
+                    {isAdmin && !p.published ? <span class="chapters__draft">Borrador</span> : null}
+                  </span>
+                  <span class="chapters__text">
+                    <span class="chapters__num">{String(i + 1).padStart(2, "0")} · {statusLabel(p.status)}</span>
+                    <span class="chapters__title" data-edit-field={`project.${p.slug}.title`} transition:name={`proj-title-${p.slug}`}>{p.title}</span>
+                    <span class="chapters__summary" data-edit-field={`project.${p.slug}.summary_${locale}`}>{summaryFor(p) ?? ""}</span>
+                    <span class="chapters__go">{locale === "es" ? "Abrir capítulo" : "Open chapter"} <span aria-hidden="true">→</span></span>
+                  </span>
+                </a>
+              </li>
+            );
+          })}
+        </ol>
       </section>
     ) : (
-      <section class="section reveal">
-        <p class="sub">{ui("noProjects", locale)}</p>
-      </section>
+      <EmptyState
+        line={locale === "es" ? "Los capítulos se están escribiendo." : "The chapters are being written."}
+        adminHint="Activa Editar y pulsa “+ Nuevo proyecto”."
+      />
     )}
+
+    <NextChapter current="proyectos" locale={locale} />
   </div>
 </BaseLayout>
 
 <style>
-  .projectsList{ display: grid; gap: 16px; }
-  .projectsRow{
+  /* Chapters as spreads — a still and a monument title, alternating
+     sides down the page. The still shares a view-transition name with
+     the chapter hero, so it grows into the hero on click. */
+  .chapters{
+    list-style: none;
+    margin: 0;
+    padding: 0;
     display: grid;
-    grid-template-columns: 120px 1fr 32px;
-    gap: 18px;
-    align-items: center;
-    padding: 14px;
-    border-radius: var(--r-2);
-    border: 1px solid var(--line);
-    background: color-mix(in srgb, var(--text) 2%, transparent);
-    transition: border-color 600ms var(--ease-fluid), background 600ms var(--ease-fluid), transform 600ms var(--ease-fluid);
+    gap: clamp(72px, 12vh, 160px);
   }
-  .projectsRow:hover{
-    border-color: var(--line-2);
-    background: color-mix(in srgb, var(--text) 5%, transparent);
-    transform: translateY(-1px);
+  .chapters__row{
+    display: grid;
+    grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+    align-items: end;
+    gap: clamp(24px, 4vw, 72px);
+    color: var(--text);
+    text-decoration: none;
   }
-  .projectsRow:hover .projectsRow__chev{ transform: translateX(4px); color: var(--text); }
-  .projectsRow__cover{ width: 120px; height: 140px; position: relative; }
-  .projectsRow__draftPill{
+  .chapters__item[data-side="right"] .chapters__row{ grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); }
+  .chapters__item[data-side="right"] .chapters__cover{ order: 2; }
+
+  .chapters__cover{
+    position: relative;
+    display: block;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    background: var(--ink-2);
+  }
+  .chapters__cover :global(img){
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    filter: contrast(1.05) brightness(.9);
+    transition: transform 1400ms var(--ease-fluid), filter 1400ms var(--ease-fluid);
+  }
+  .chapters__row:hover .chapters__cover :global(img){ transform: scale(1.04); filter: contrast(1.08) brightness(1); }
+  .chapters__draft{
     position: absolute;
-    top: 6px; left: 6px;
-    background: rgba(217, 66, 28, .9);
-    color: #F4EFE6;
+    top: 12px; left: 12px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--ember) 88%, transparent);
+    color: var(--bone);
     font-family: var(--font-sans);
     font-size: 9px;
-    letter-spacing: .14em;
+    letter-spacing: .16em;
     text-transform: uppercase;
-    padding: 3px 7px;
-    border-radius: 999px;
-    pointer-events: none;
   }
-  .projectsRow img{ width: 120px; height: 140px; object-fit: cover; border-radius: 12px; display: block; }
-  .projectsRow__noimg{ width: 120px; height: 140px; border-radius: 12px; background: rgba(244,239,230,.04); }
-  .projectsRow__body{ min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-  .projectsRow__status{
-    margin: 0;
+
+  .chapters__text{ display: grid; gap: clamp(12px, 2vh, 20px); padding-bottom: 6px; }
+  .chapters__num{
+    font-family: var(--font-sans);
     font-size: 11px;
-    color: var(--text-3);
-    letter-spacing: .18em;
+    letter-spacing: .26em;
     text-transform: uppercase;
+    font-feature-settings: "tnum";
+    color: var(--text-3);
   }
-  .projectsRow__title{ margin: 0; font-size: 22px; letter-spacing: -0.01em; font-family: var(--font-display); }
-  .projectsRow__summary{ margin: 4px 0 0; font-size: 14px; color: var(--text-2); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-  .projectsRow__chev{ color: var(--text-3); font-size: 18px; transition: transform 600ms var(--ease-fluid), color 600ms var(--ease-fluid); }
-  .projectsRow[data-status="past"]{ opacity: .72; }
-  @media (min-width: 880px){
-    .projectsRow{ grid-template-columns: 200px 1fr 40px; padding: 18px; gap: 24px; }
-    .projectsRow__cover, .projectsRow img, .projectsRow__noimg{ width: 200px; height: 220px; }
-    .projectsRow__title{ font-size: 28px; }
+  .chapters__title{
+    font-family: var(--font-display);
+    font-size: clamp(56px, 8vw, 144px);
+    line-height: .88;
+    letter-spacing: -0.045em;
+  }
+  .chapters__summary{
+    max-width: 38ch;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: clamp(18px, 1.4vw, 23px);
+    line-height: 1.38;
+    color: var(--text-2);
+  }
+  .chapters__summary:empty{ display: none; }
+  .chapters__go{
+    margin-top: 6px;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .24em;
+    text-transform: uppercase;
+    color: var(--text-2);
+  }
+  .chapters__go span{ display: inline-block; transition: transform 700ms var(--ease-fluid); }
+  .chapters__row:hover .chapters__go span{ transform: translateX(6px); }
+
+  @media (max-width: 880px){
+    .chapters__row,
+    .chapters__item[data-side="right"] .chapters__row{ grid-template-columns: 1fr; }
+    .chapters__item[data-side="right"] .chapters__cover{ order: 0; }
   }
 </style>

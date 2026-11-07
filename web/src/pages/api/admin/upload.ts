@@ -1,41 +1,58 @@
 import type { APIRoute } from "astro";
-import { getSupabaseFromRequest, getUserFromRequest } from "../../../lib/supabase";
+import { jsonOk, requireAdmin } from "../../../lib/admin-helpers";
 
 export const prerender = false;
 
-const MAX_BYTES = 12 * 1024 * 1024; // 12MB
+/* Vercel caps a function request body at 4.5 MB — stay under it. The
+ * storage bucket enforces its own size + MIME allowlist as well. */
+const MAX_BYTES = 4 * 1024 * 1024;
+
+/* Content type → stored extension. The client's file name and MIME are
+ * never trusted for the stored object: no SVG/HTML (stored XSS on the
+ * public bucket), extension derived from the allowlisted type. */
+const ALLOWED: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/avif": "avif",
+  "image/gif": "gif",
+  "video/mp4": "mp4",
+  "video/webm": "webm",
+  "application/pdf": "pdf",
+};
 
 export const POST: APIRoute = async ({ request, cookies }) => {
-  const user = await getUserFromRequest(cookies);
-  if (!user) return new Response("Unauthorized", { status: 401 });
+  const auth = await requireAdmin(cookies);
+  if (!auth.ok) return auth.response;
 
-  const supabase = getSupabaseFromRequest(cookies);
-  if (!supabase) return new Response("Supabase not configured", { status: 500 });
-
-  const form = await request.formData();
-  const file = form.get("file");
-  const folder = String(form.get("folder") ?? "misc").replace(/[^a-z0-9_-]/gi, "");
-
-  if (!(file instanceof File)) return new Response("No file", { status: 400 });
-  if (file.size > MAX_BYTES) return new Response("Too large (max 12MB)", { status: 413 });
-
-  const ext = (file.name.split(".").pop() ?? "bin").toLowerCase().replace(/[^a-z0-9]/g, "");
-  const safeExt = ext || "bin";
-  const key = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${safeExt}`;
-
-  const { error } = await supabase.storage.from("media").upload(key, file, {
-    cacheControl: "31536000",
-    upsert: false,
-    contentType: file.type || undefined,
-  });
-  if (error) {
-    console.error("[upload] storage error:", error);
-    return new Response(error.message, { status: 500 });
+  let form: FormData;
+  try {
+    form = await request.formData();
+  } catch {
+    return new Response("Invalid upload body", { status: 400 });
   }
 
-  const { data } = supabase.storage.from("media").getPublicUrl(key);
-  return new Response(JSON.stringify({ url: data.publicUrl, key }), {
-    status: 200,
-    headers: { "content-type": "application/json" },
+  const file = form.get("file");
+  const folder = String(form.get("folder") ?? "misc").replace(/[^a-z0-9_-]/gi, "").slice(0, 40) || "misc";
+
+  if (!(file instanceof File)) return new Response("No file", { status: 400 });
+  if (file.size === 0) return new Response("Empty file", { status: 400 });
+  if (file.size > MAX_BYTES) return new Response("Too large (max 4 MB)", { status: 413 });
+
+  const ext = ALLOWED[file.type];
+  if (!ext) return new Response("Unsupported file type", { status: 415 });
+
+  const key = `${folder}/${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
+  const { error } = await auth.supabase.storage.from("media").upload(key, file, {
+    cacheControl: "31536000",
+    upsert: false,
+    contentType: file.type,
   });
+  if (error) {
+    console.error("[upload] storage error:", error.message);
+    return new Response("Upload failed", { status: 500 });
+  }
+
+  const { data } = auth.supabase.storage.from("media").getPublicUrl(key);
+  return jsonOk({ url: data.publicUrl, key });
 };

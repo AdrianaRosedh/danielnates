@@ -36,6 +36,13 @@
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   /* ── Lenis + GSAP ticker sync ─────────────────────────────────── */
+  /* The ticker callback must be tracked and removed on teardown.
+   * Leaving it registered after a ClientRouter swap means a destroyed
+   * Lenis keeps getting raf()'d every frame — which breaks every
+   * scrubbed ScrollTrigger (notebook page-turn, hero parallax) on the
+   * next page until a hard refresh. */
+  let lenisTickerCb: ((time: number) => void) | null = null;
+
   function bootLenis() {
     if (window.__lenis) return window.__lenis;
     if (window.innerWidth < 720) return null; // touch: native scroll
@@ -50,15 +57,52 @@
 
     lenis.on("scroll", ScrollTrigger.update);
 
-    gsap.ticker.add((time: number) => {
+    lenisTickerCb = (time: number) => {
       lenis.raf(time * 1000);
-    });
+    };
+    gsap.ticker.add(lenisTickerCb);
     gsap.ticker.lagSmoothing(0);
 
     return lenis;
   }
 
+  /* Scroll lock for the intro curtain. Only <html> is locked — putting
+   * overflow:hidden on <body> too turns body into a clipping box one
+   * viewport tall, and anything measuring the page in that window
+   * (Lenis, ScrollTrigger) records "nothing to scroll". Lenis gets its
+   * own stop/start so wheel input isn't queued up behind the curtain. */
+  function lockScroll() {
+    document.documentElement.style.overflow = "hidden";
+    try { window.__lenis?.stop(); } catch {}
+  }
+  function unlockScroll() {
+    const html = document.documentElement;
+    html.style.overflow = "";
+    document.body.style.overflow = "";
+    try {
+      window.__lenis?.start();
+      window.__lenis?.resize(); // re-measure: the page may have grown under the curtain
+    } catch {}
+    ScrollTrigger.refresh();
+  }
+  // The pre-paint script in CinematicEntrance releases the curtain on
+  // the first wheel/touch/key — it dispatches this so we re-measure.
+  document.addEventListener("dn:entrance-released", unlockScroll);
+
+  // Edit mode reflows pinned scenes into plain stacks (and back), so
+  // every trigger position and Lenis' page height must be re-measured.
+  new MutationObserver(() => {
+    requestAnimationFrame(() => {
+      try { window.__lenis?.resize(); } catch {}
+      ScrollTrigger.refresh();
+    });
+  }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-edit-mode"] });
+
   function killLenis() {
+    if (lenisTickerCb) {
+      gsap.ticker.remove(lenisTickerCb);
+      lenisTickerCb = null;
+    }
     try { window.__lenis?.destroy(); } catch {}
     window.__lenis = null;
   }
@@ -72,12 +116,17 @@
 
     let html = "";
     if (mode === "letter") {
-      const chars = Array.from(text);
-      html = chars
-        .map((c) =>
-          c === " "
-            ? " "
-            : `<span class="tr__piece"><span class="tr__inner">${escape(c)}</span></span>`,
+      // Letters are grouped per word in a nowrap span — adjacent
+      // inline-blocks are break opportunities, so ungrouped letters
+      // let a name wrap mid-word ("Daniel N / ates").
+      html = text
+        .split(/(\s+)/)
+        .map((chunk) =>
+          /^\s+$/.test(chunk) || !chunk
+            ? chunk ? " " : ""
+            : `<span class="tr__word">${Array.from(chunk)
+                .map((c) => `<span class="tr__piece"><span class="tr__inner">${escape(c)}</span></span>`)
+                .join("")}</span>`,
         )
         .join("");
     } else {
@@ -108,9 +157,7 @@
 
       // Lock scroll while curtain plays
       const html = document.documentElement;
-      const body = document.body;
-      html.style.overflow = "hidden";
-      body.style.overflow = "hidden";
+      lockScroll();
 
       const dot = el.querySelector<HTMLElement>(".entrance__dot");
       const name = el.querySelector<HTMLElement>(".entrance__name");
@@ -125,8 +172,7 @@
       const tl = gsap.timeline({
         defaults: { ease: FLUID },
         onComplete: () => {
-          html.style.overflow = "";
-          body.style.overflow = "";
+          unlockScroll();
           delete html.dataset.entranceActive;
           document.dispatchEvent(new CustomEvent("dn:entrance-dismissed"));
           try { localStorage.setItem("dn_entered_v1", "1"); } catch {}
@@ -195,18 +241,113 @@
 
     // Generic block reveal (fade + lift + blur out) — not scoped to text
     const blocks = document.querySelectorAll<HTMLElement>(
-      ".reveal:not([data-reveal-text]), .reveal-stagger:not([data-reveal-text])",
+      ".reveal:not([data-reveal-text])",
     );
+    // fromTo, not from: motion.css pre-hides these under html.js, and
+    // from() would tween toward that hidden computed state (0 → 0).
     blocks.forEach((el) => {
-      gsap.from(el, {
+      gsap.fromTo(el,
+        { opacity: 0, y: 28, filter: "blur(10px)" },
+        {
+          opacity: 1,
+          y: 0,
+          filter: "blur(0px)",
+          duration: 1.3,
+          ease: FLUID,
+          clearProps: "filter",
+          scrollTrigger: { trigger: el, start: "top 88%", once: true },
+        },
+      );
+    });
+
+    // Cascade reveal — direct children of a .reveal-stagger container
+    // (cards in a grid, rows in a list, badges) lift in one after
+    // another instead of as a single block.
+    const staggers = document.querySelectorAll<HTMLElement>(
+      ".reveal-stagger:not([data-reveal-text])",
+    );
+    staggers.forEach((el) => {
+      const kids = Array.from(el.children) as HTMLElement[];
+      if (!kids.length) return;
+      gsap.fromTo(kids,
+        { opacity: 0, y: 26, filter: "blur(8px)" },
+        {
+          opacity: 1,
+          y: 0,
+          filter: "blur(0px)",
+          duration: 1.15,
+          ease: FLUID,
+          stagger: 0.09,
+          clearProps: "filter",
+          scrollTrigger: { trigger: el, start: "top 88%", once: true },
+        },
+      );
+    });
+
+    // Editorial body cascade — rendered Portable Text paragraphs on
+    // detail pages lift in sequence, like a page settling onto a desk.
+    document.querySelectorAll<HTMLElement>("[data-reveal-body]").forEach((host) => {
+      const body = host.querySelector<HTMLElement>(".pt") ?? host;
+      const kids = Array.from(body.children) as HTMLElement[];
+      if (!kids.length) return;
+      gsap.from(kids, {
         opacity: 0,
-        y: 28,
-        filter: "blur(10px)",
-        duration: 1.3,
+        y: 18,
+        duration: 1.0,
         ease: FLUID,
-        scrollTrigger: { trigger: el, start: "top 88%", once: true },
+        stagger: 0.06,
+        scrollTrigger: { trigger: host, start: "top 85%", once: true },
       });
     });
+  }
+
+  /* ── Hero intro — the focusing shot ───────────────────────────── */
+  /* The ColdOpen opens like a lens pulling focus: the photograph
+   * arrives soft and oversized, settles sharp; the monument name
+   * rises through line masks with a faint skew that irons out; the
+   * chrome (eyebrow, signature, corners, hairlines) breathes in last.
+   * Initial values mirror the CSS pre-state in ColdOpen.astro so
+   * there is no flash before the first frame. */
+  function setupHeroIntro(): (() => void) | null {
+    const hero = document.querySelector<HTMLElement>("[data-hero-intro]");
+    if (!hero || reduce) return null;
+
+    const media = hero.querySelector<HTMLElement>("[data-hero-media]");
+    const lines = hero.querySelectorAll<HTMLElement>(".cold__lineInner");
+    const eyebrow = hero.querySelector<HTMLElement>(".cold__eyebrow");
+    const sig = hero.querySelector<HTMLElement>(".cold__sig");
+    const chrome = hero.querySelectorAll<HTMLElement>(".cold__corners, .cold__frame");
+
+    const tl = gsap.timeline({ paused: true, defaults: { ease: FLUID } });
+
+    if (media) {
+      tl.fromTo(media,
+        { autoAlpha: 0.55, scale: 1.1, filter: "blur(16px)" },
+        { autoAlpha: 1, scale: 1, filter: "blur(0px)", duration: 2.1 },
+        0,
+      );
+    }
+    if (lines.length) {
+      // y: 0 on both ends — GSAP reads the CSS pre-state
+      // translateY(112%) as a px `y`, which yPercent alone never undoes.
+      tl.fromTo(lines,
+        { y: 0, yPercent: 112, skewY: 2.4 },
+        { y: 0, yPercent: 0, skewY: 0, duration: 1.5, stagger: 0.14 },
+        0.4,
+      );
+    }
+    if (eyebrow) tl.fromTo(eyebrow, { autoAlpha: 0, y: 12 }, { autoAlpha: 1, y: 0, duration: 0.9 }, 0.95);
+    if (sig) tl.fromTo(sig, { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0, duration: 0.9 }, 1.15);
+    if (chrome.length) tl.fromTo(chrome, { autoAlpha: 0 }, { autoAlpha: 1, duration: 1.1 }, 1.3);
+
+    return () => {
+      tl.play();
+      // Failsafe: if the ticker stalls (hidden tab, throttled rAF),
+      // never leave the hero hidden — jump to the resting state.
+      setTimeout(() => {
+        if (tl.progress() < 0.05) tl.progress(1);
+      }, 4000);
+    };
   }
 
   /* ── Hero scroll choreography ─────────────────────────────────── */
@@ -230,17 +371,85 @@
     });
   }
 
+  /* ── Prologue — three intertitles on a pinned stage ───────────── */
+  /* The stage is CSS-sticky (see Prologue.astro); this scrubs the
+   * beats across the section's runway. Thesis words light up as you
+   * read, the confession rises letter by letter, the promise lights
+   * up and a hairline drops toward the notebook. Scrubbed both ways,
+   * so scrolling back un-reads the page. */
+  function setupPrologue() {
+    if (reduce) return;
+    document.querySelectorAll<HTMLElement>("[data-prologue]").forEach((section) => {
+      const beat = (n: number) =>
+        section.querySelector<HTMLElement>(`[data-prologue-beat="${n}"]`);
+      const b1 = beat(1), b2 = beat(2), b3 = beat(3);
+      if (!b1 || !b2 || !b3) return;
+      const w1 = b1.querySelectorAll<HTMLElement>(".pw");
+      const l2 = b2.querySelectorAll<HTMLElement>(".pl");
+      const w3 = b3.querySelectorAll<HTMLElement>(".pw");
+      const mark = section.querySelector<HTMLElement>("[data-prologue-mark]");
+      const count = section.querySelector<HTMLElement>("[data-prologue-count]");
+
+      const DIM = 0.13;
+      gsap.set([w1, w3], { opacity: DIM });
+      gsap.set(l2, { opacity: 0, yPercent: 46, filter: "blur(10px)" });
+
+      const tl = gsap.timeline({
+        defaults: { ease: "none" },
+        scrollTrigger: {
+          trigger: section,
+          start: "top top",
+          end: "bottom bottom",
+          scrub: 0.9,
+          invalidateOnRefresh: true,
+          onUpdate: (st) => {
+            if (!count) return;
+            const t = st.progress * tl.duration();
+            count.textContent = t < 3.9 ? "I" : t < 7.3 ? "II" : "III";
+          },
+        },
+      });
+
+      // The room's glow drifts left → right across the three beats.
+      tl.fromTo(section, { "--pg": 0 }, { "--pg": 1, duration: 11 } as gsap.TweenVars, 0);
+
+      // I — the thesis, read along.
+      tl.to(w1, { opacity: 1, duration: 0.5, stagger: { amount: 2.2 } }, 0.1);
+      tl.to(b1, { autoAlpha: 0, yPercent: -14, filter: "blur(8px)", duration: 0.9, ease: "power1.in" }, 3.3);
+
+      // II — the confession rises, holds, leaves.
+      tl.set(b2, { opacity: 1 }, 3.9);
+      tl.to(l2, { opacity: 1, yPercent: 0, filter: "blur(0px)", duration: 0.8, ease: "power2.out", stagger: { amount: 1.2 } }, 3.9);
+      tl.to(b2, { autoAlpha: 0, yPercent: -10, filter: "blur(8px)", duration: 0.9, ease: "power1.in" }, 6.7);
+
+      // III — the promise, then the hand-off hairline.
+      tl.set(b3, { opacity: 1 }, 7.3);
+      tl.fromTo(b3, { yPercent: 8 }, { yPercent: 0, duration: 1.2, ease: "power2.out" }, 7.3);
+      tl.to(w3, { opacity: 1, duration: 0.5, stagger: { amount: 1.8 } }, 7.4);
+      if (mark) tl.fromTo(mark, { scaleY: 0 }, { scaleY: 1, duration: 1.0, ease: "power2.out" }, 9.4);
+      tl.to({}, { duration: 0.6 }, 10.4); // hold the last frame
+    });
+  }
+
   /* ── Notebook signature — pin + horizontal scroll + SVG self-draw  */
   /* The defining motion of the landing. A [data-notebook] section
    * pins for ~N viewports of vertical scroll while its inner
    * [data-notebook-track] translates horizontally through N spreads.
    * Each spread's SVG drawing self-draws (stroke-dashoffset → 0)
-   * as it enters frame, and the recto counter updates on enter. */
+   * as it enters frame, and the recto counter updates on enter.
+   *
+   * Setup is RETRYABLE: the width check can read a transient value
+   * right after a ClientRouter swap, which used to silently skip the
+   * pin until a hard refresh. notebookLive tracks whether the scene
+   * actually mounted so the settle pass / resize can try again. */
+  let notebookLive = false;
   function setupNotebook() {
+    if (notebookLive) return;
     const sections = document.querySelectorAll<HTMLElement>("[data-notebook]");
     if (!sections.length) return;
-    if (matchMedia("(max-width: 880px)").matches) return; // mobile uses native vertical stack
+    if (window.innerWidth <= 880) return; // mobile uses native vertical stack
     if (reduce) return;
+    notebookLive = true;
 
     sections.forEach((section) => {
       const track = section.querySelector<HTMLElement>("[data-notebook-track]");
@@ -260,8 +469,9 @@
           pin: true,
           scrub: 1.2,
           start: "top top",
-          // Distance to scroll = (N-1) viewport widths.
-          end: () => `+=${window.innerWidth * (N - 1)}`,
+          // ~3/4 of a viewport width of scroll per page turn — enough
+          // for the draw + read, without the pin overstaying.
+          end: () => `+=${Math.round(window.innerWidth * 0.75 * (N - 1))}`,
           invalidateOnRefresh: true,
           anticipatePin: 1,
         },
@@ -282,35 +492,169 @@
           });
         }
 
-        // SVG self-draw on the left page (drawing).
+        // Sketch self-draw — scrubbed to the page turn, so the hand
+        // draws exactly as fast as you turn the page (and un-draws if
+        // you turn back). The stroke pacing inside the timeline keeps
+        // it reading as a hand: long contours take longer, ticks are
+        // quick. Spread 0 is already on stage when the pin starts, so
+        // its draw maps to the approach + the first stretch of pin.
         const svgs = spread.querySelectorAll<SVGSVGElement>("[data-sketch] svg");
         svgs.forEach((svg) => {
-          const lines = svg.querySelectorAll<SVGPathElement | SVGEllipseElement>(
-            "path, ellipse",
-          );
-          // Set initial dasharray/offset so they're invisible.
-          lines.forEach((line) => {
-            const len = (line as SVGGeometryElement).getTotalLength?.() ?? 0;
-            if (!len) return;
-            line.style.strokeDasharray = String(len);
-            line.style.strokeDashoffset = String(len);
-          });
-          // Tween to drawn as the spread enters the centre.
-          gsap.to(lines, {
-            strokeDashoffset: 0,
-            ease: "none",
-            stagger: 0.08,
-            scrollTrigger: {
+          const tlDraw = buildSketchDraw(svg);
+          if (!tlDraw) return;
+          if (i === 0) {
+            ScrollTrigger.create({
+              trigger: section,
+              start: "top 75%",
+              end: () => `+=${Math.round(window.innerHeight * 0.75 + window.innerWidth * 0.5)}`,
+              scrub: true,
+              animation: tlDraw,
+              invalidateOnRefresh: true,
+            });
+          } else {
+            ScrollTrigger.create({
               trigger: spread,
               containerAnimation: pageTl,
-              start: "left right",
-              end: "center center",
+              start: "left 82%",
+              end: "left 22%",
               scrub: true,
-            },
-          });
+              animation: tlDraw,
+            });
+          }
         });
       });
     });
+  }
+
+  /* ── Sketch self-draw — the hand at work ──────────────────────── */
+  /* Builds a paused timeline that lays the strokes down sequentially
+   * in composition order (contours → secondary forms → details),
+   * each at constant pen speed — long contours take their time,
+   * little ticks are quick — while a small ink dot rides the tip of
+   * the active stroke. The timeline itself is driven by a scrubbed
+   * ScrollTrigger (wired in setupNotebook for the pinned desktop
+   * page-turn, in setupSketchDraws for the stacked mobile flow), so
+   * the drawing progresses exactly with the visitor's scroll. */
+  function buildSketchDraw(svg: SVGSVGElement): gsap.core.Timeline | null {
+    const s = svg as SVGSVGElement & { __dnSketch?: boolean };
+    if (s.__dnSketch) return null;
+    s.__dnSketch = true;
+
+    // The watercolour wash is a fill, not a stroke — it's faded in
+    // after the line, never "drawn".
+    const els = Array.from(
+      svg.querySelectorAll<SVGGeometryElement>(
+        "path:not([data-wash]), ellipse:not([data-wash]), circle, line",
+      ),
+    );
+    const wash = svg.querySelector<SVGElement>("[data-wash]");
+    const washTarget = wash ? parseFloat(wash.getAttribute("opacity") ?? "0.25") || 0.25 : 0;
+    if (wash) wash.setAttribute("opacity", "0");
+    type Stroke = { el: SVGGeometryElement; len: number; alpha: number };
+    const strokes: Stroke[] = [];
+    let total = 0;
+    for (const el of els) {
+      const len = el.getTotalLength?.() ?? 0;
+      if (!len) continue;
+      const alpha = parseFloat(el.getAttribute("opacity") ?? "1") || 1;
+      el.style.strokeDasharray = String(len);
+      el.style.strokeDashoffset = String(len);
+      el.style.opacity = "0";
+      strokes.push({ el, len, alpha });
+      total += len;
+    }
+    if (!strokes.length) return null;
+
+    // The pen — a small ink dot that rides the active stroke tip.
+    const pen = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    pen.setAttribute("r", "2.2");
+    pen.setAttribute("fill", "currentColor");
+    pen.setAttribute("opacity", "0");
+    try {
+      const p0 = strokes[0].el.getPointAtLength(0);
+      pen.setAttribute("cx", String(p0.x));
+      pen.setAttribute("cy", String(p0.y));
+    } catch {}
+    svg.appendChild(pen);
+
+    // Constant pen speed; whole drawings land between ~2.6s and ~4.2s.
+    const dur = Math.min(4.2, Math.max(2.6, total / 1400));
+    const speed = total / dur;
+
+    const tl = gsap.timeline({ paused: true });
+    tl.fromTo(pen, { attr: { opacity: 0 } }, { attr: { opacity: 0.85 }, duration: 0.12 }, 0);
+    for (const stroke of strokes) {
+      const d = Math.max(0.016, stroke.len / speed);
+      const state = { p: 0 };
+      tl.to(state, {
+        p: 1,
+        duration: d,
+        ease: "none",
+        onStart: () => {
+          stroke.el.style.opacity = String(stroke.alpha); // ink arrives with the pen
+        },
+        onUpdate: () => {
+          const drawn = stroke.len * state.p;
+          stroke.el.style.strokeDashoffset = String(stroke.len - drawn);
+          try {
+            const pt = stroke.el.getPointAtLength(drawn);
+            pen.setAttribute("cx", String(pt.x));
+            pen.setAttribute("cy", String(pt.y));
+          } catch {}
+        },
+      }, ">");
+    }
+    tl.to(pen, { attr: { opacity: 0 }, duration: 0.35 }, ">"); // the pen lifts
+    // …and the wash goes down once most of the line is on the page.
+    if (wash) {
+      tl.fromTo(wash,
+        { attr: { opacity: 0 } },
+        { attr: { opacity: washTarget }, duration: dur * 0.4, ease: "power1.out" },
+        dur * 0.62,
+      );
+    }
+    return tl;
+  }
+
+  function setupSketchDraws() {
+    // Desktop sketches are wired inside setupNotebook, scrubbed via
+    // the pinned page-turn. This path covers the stacked mobile
+    // layout (≤880px, no pin): each sketch draws as it travels up
+    // the viewport — same scroll-driven feel, vertical axis.
+    if (reduce) return; // sketches render fully drawn
+    if (window.innerWidth > 880) return;
+    document
+      .querySelectorAll<SVGSVGElement>("[data-notebook] [data-sketch] svg")
+      .forEach((svg) => {
+        const tlDraw = buildSketchDraw(svg);
+        if (!tlDraw) return;
+        ScrollTrigger.create({
+          trigger: svg,
+          start: "top 88%",
+          end: "top 30%",
+          scrub: true,
+          animation: tlDraw,
+        });
+      });
+  }
+
+  /* Standalone studies (<Sketch>) — draw as they travel up the
+   * viewport, un-draw on the way back. */
+  function setupStandaloneSketches() {
+    if (reduce) return;
+    document
+      .querySelectorAll<SVGSVGElement>("[data-sketch-draw] .sketch__art svg")
+      .forEach((svg) => {
+        const tlDraw = buildSketchDraw(svg);
+        if (!tlDraw) return;
+        ScrollTrigger.create({
+          trigger: svg,
+          start: "top 85%",
+          end: "bottom 40%",
+          scrub: true,
+          animation: tlDraw,
+        });
+      });
   }
 
   function romanFor(n: number): string {
@@ -545,6 +889,8 @@
   }
 
   /* ── Boot ─────────────────────────────────────────────────────── */
+  let onResizeRetry: (() => void) | null = null;
+
   async function init() {
     if (reduce) {
       const el = document.querySelector("[data-entrance]");
@@ -559,9 +905,13 @@
     // The entrance covers the page during these calls, so the user
     // doesn't see them happening; by the time the curtain lifts, the
     // hero text is already revealed.
+    const playHeroIntro = setupHeroIntro();
     setupReveals();
     setupHeroes();
+    setupPrologue();
     setupNotebook();
+    setupSketchDraws();
+    setupStandaloneSketches();
     setupFrames();
     setupService();
     setupDockChrome();
@@ -578,6 +928,29 @@
       // was showing (font load, image decode, etc.).
       ScrollTrigger.refresh();
     }
+
+    // The opening shot plays once the entrance curtain is out of the
+    // way (or immediately on inner navigations).
+    playHeroIntro?.();
+
+    // Layout keeps settling shortly after a swap (fonts, lazy image
+    // decode, scroll restoration) — re-measure trigger positions once
+    // things are stable, and give scenes that skipped on a transient
+    // viewport reading a second chance to mount.
+    setTimeout(() => {
+      setupNotebook();
+      ScrollTrigger.refresh();
+    }, 450);
+
+    // If the viewport was narrow (or read wrong) at boot and grows
+    // past the breakpoint later, mount the notebook then.
+    onResizeRetry = () => {
+      if (!notebookLive && window.innerWidth > 880) {
+        setupNotebook();
+        ScrollTrigger.refresh();
+      }
+    };
+    window.addEventListener("resize", onResizeRetry);
   }
 
   /* ── Menu overlay (open / close) ──────────────────────────────── */
@@ -618,11 +991,21 @@
       a.addEventListener("click", () => setTimeout(close, 50));
     });
 
-    // Keyboard: M to open, ESC to close
+    // Keyboard: M (menu) or I (index — the brief's table of contents)
+    // toggles, ESC closes. Never while typing — inputs, selects, and
+    // contenteditable (inline editing: typing an "m" in a headline
+    // used to pop the menu open) — or with a modifier held.
     const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      const t = e.target as HTMLElement | null;
+      if (
+        t instanceof HTMLInputElement ||
+        t instanceof HTMLTextAreaElement ||
+        t instanceof HTMLSelectElement ||
+        t?.isContentEditable ||
+        e.metaKey || e.ctrlKey || e.altKey
+      ) return;
       if (e.key === "Escape") close();
-      else if (e.key === "m" || e.key === "M") {
+      else if (e.key === "m" || e.key === "M" || e.key === "i" || e.key === "I") {
         if (!overlay.classList.contains("is-open")) open();
         else close();
       }
@@ -643,6 +1026,11 @@
 
   function teardown() {
     try { ScrollTrigger.getAll().forEach((t) => t.kill()); } catch {}
+    if (onResizeRetry) {
+      window.removeEventListener("resize", onResizeRetry);
+      onResizeRetry = null;
+    }
+    notebookLive = false;
     killLenis();
   }
 
@@ -676,6 +1064,7 @@
     line-height: inherit;
     padding-bottom: 0.06em;   /* protect descenders from the clip */
   }
+  .tr__word{ display: inline-block; white-space: nowrap; }
   .tr__inner{
     display: inline-block;
     will-change: transform, opacity;

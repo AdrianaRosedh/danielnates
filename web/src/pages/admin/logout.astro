@@ -1,8 +1,22 @@
 ---
+/**
+ * Sign out — POST only (a cross-site <img src> could otherwise sign an
+ * editor out). Revokes the session server-side and clears every auth
+ * cookie name the session can live under.
+ */
+import { authCookieNames, getSupabaseServer } from "../../lib/supabase";
+
 export const prerender = false;
-const headers = new Headers({ Location: "/admin/login" });
-const expire = "Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0";
-headers.append("Set-Cookie", `sb-access-token=; ${expire}`);
-headers.append("Set-Cookie", `sb-refresh-token=; ${expire}`);
-return new Response(null, { status: 303, headers });
+
+if (Astro.request.method !== "POST") {
+  return new Response("Method Not Allowed", { status: 405, headers: { Allow: "POST" } });
+}
+
+try {
+  await getSupabaseServer(Astro.cookies)?.auth.signOut();
+} catch (err) {
+  console.error("[logout] signOut failed:", err instanceof Error ? err.message : err);
+}
+for (const name of authCookieNames()) Astro.cookies.delete(name, { path: "/" });
+return Astro.redirect("/admin/login", 303);
 ---

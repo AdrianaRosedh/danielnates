@@ -1,0 +1,79 @@
+/* ─────────────────────────────────────────────────────────────────────
+   Shared UI primitives.
+
+   Use these classes instead of re-declaring the same rules per page:
+     .ui-label        small uppercase eyebrow / section label
+     .ui-pill         rounded action (link or button)
+     .ui-pill--solid  filled variant (inverts with the scene)
+     .ui-pill--sm     compact variant (chips, copy buttons)
+     .ui-bleed        break out of .shell to the full viewport width
+     .ui-paper        full-bleed page body that starts under the dock
+
+   All colours come from scene tokens (--text, --bg, --line-2…), so every
+   primitive works on bone and ink scenes alike.
+   ───────────────────────────────────────────────────────────────────── */
+
+.ui-label{
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .3em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.ui-pill{
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 22px;
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--text);
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 400ms var(--ease-fluid),
+    color 400ms var(--ease-fluid),
+    border-color 400ms var(--ease-fluid);
+}
+.ui-pill:hover{ border-color: var(--text); }
+.ui-pill:disabled{ opacity: .6; cursor: progress; }
+.ui-pill--solid{
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--bg);
+}
+.ui-pill--solid:hover{
+  background: var(--moss);
+  border-color: var(--moss);
+  color: var(--bone);
+}
+.ui-pill--sm{
+  padding: 8px 15px;
+  font-size: 11px;
+  letter-spacing: .14em;
+}
+
+.ui-bleed{
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+}
+
+.ui-paper{
+  position: relative;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  margin-top: calc(-1 * var(--shell-offset));
+  background: var(--bg);
+  color: var(--text);
+  padding: clamp(150px, 22vh, 240px) var(--page-gutter) clamp(100px, 14vh, 180px);
+}

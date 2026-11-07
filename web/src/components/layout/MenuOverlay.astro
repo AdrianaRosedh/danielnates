@@ -2,6 +2,10 @@
 import { aboutHref, dayHref, href, pressHref, projectsHref, switchLocale, t2, ui } from "../../lib/i18n";
 import { getProjects } from "../../lib/queries";
 import type { Locale, Person } from "../../lib/types";
+import SmartImage from "../content/SmartImage.astro";
+import { chapterMedia } from "../../lib/chapter-media";
+import { MEDIA } from "../../lib/site";
+import { sketchDefs, sketchSvg, type SketchKind } from "../../lib/sketches";
 
 interface Props {
   locale?: Locale;
@@ -15,14 +19,14 @@ const otherLocale: Locale = locale === "es" ? "en" : "es";
 const otherPath = switchLocale(Astro.url.pathname, otherLocale);
 
 const primary = [
-  { label: ui("home", locale), href: href("/", locale) },
-  { label: locale === "es" ? "Sobre" : "About", href: aboutHref(locale) },
-  { label: locale === "es" ? "Día" : "Day", href: dayHref(locale) },
-  { label: locale === "es" ? "Diario" : "Journal", href: href("/diario", locale) },
-  { label: locale === "es" ? "Arte" : "Art", href: href("/arte", locale) },
-  { label: locale === "es" ? "Proyectos" : "Projects", href: projectsHref(locale) },
-  { label: locale === "es" ? "Prensa" : "Press", href: pressHref(locale) },
-  { label: locale === "es" ? "Contacto" : "Contact", href: href("/contacto", locale) },
+  { pv: "inicio", label: ui("home", locale), href: href("/", locale) },
+  { pv: "sobre", label: locale === "es" ? "Sobre" : "About", href: aboutHref(locale) },
+  { pv: "dia", label: locale === "es" ? "Día" : "Day", href: dayHref(locale) },
+  { pv: "diario", label: locale === "es" ? "Diario" : "Journal", href: href("/diario", locale) },
+  { pv: "arte", label: locale === "es" ? "Arte" : "Art", href: href("/arte", locale) },
+  { pv: "proyectos", label: locale === "es" ? "Proyectos" : "Projects", href: projectsHref(locale) },
+  { pv: "prensa", label: locale === "es" ? "Prensa" : "Press", href: pressHref(locale) },
+  { pv: "contacto", label: locale === "es" ? "Contacto" : "Contact", href: href("/contacto", locale) },
 ];
 
 /* Project shortcuts pull from the published projects in the DB so any
@@ -30,12 +34,16 @@ const primary = [
  * comes from each project's framing.meta_es/en (admin-editable). */
 const dbProjects = await getProjects();
 const projects = dbProjects.map((p) => ({
+  pv: `p-${p.slug}`,
+  slug: p.slug,
+  poster: p.hero_image_url ?? chapterMedia(p.slug)?.poster ?? null,
   label: p.title,
   meta: t2(p.framing?.meta_es, p.framing?.meta_en, locale),
   href: href(`/${p.slug}`, locale),
 }));
 
 const email = daniel?.social?.email ?? null;
+const igDaniel = daniel?.social?.instagram ?? null;
 const ig1 = daniel?.social?.olivea_instagram ?? null;
 const ig2 = daniel?.social?.fritanguita_instagram ?? null;
 
@@ -45,6 +53,31 @@ function isCurrent(path: string): boolean {
   if (path !== "/" && path !== "/en" && here.startsWith(path)) return true;
   return false;
 }
+
+/* Preview panel — what each destination looks like, shown beside the
+ * list on hover/focus (wide, hover-capable screens). Photographic
+ * rooms get a photograph; written rooms get one of the notebook
+ * figures. Defaults to the room you're in. */
+type Preview =
+  | { key: string; kind: "photo"; src: string; pos?: string; zoom?: number; cap: string }
+  | { key: string; kind: "sketch"; sketch: SketchKind; cap: string };
+const es = locale === "es";
+const previews: Preview[] = [
+  { key: "inicio", kind: "photo", src: MEDIA.portrait, pos: "60% 50%", cap: es ? "La película" : "The film" },
+  { key: "sobre", kind: "photo", src: MEDIA.portrait, pos: "70% 34%", zoom: 1.35, cap: "Daniel Nates" },
+  { key: "dia", kind: "sketch", sketch: "mesa", cap: es ? "Fig. — la mesa" : "Fig. — the table" },
+  { key: "diario", kind: "sketch", sketch: "cazo", cap: es ? "Fig. — el cazo" : "Fig. — the pot" },
+  { key: "arte", kind: "sketch", sketch: "leaf", cap: es ? "Fig. — olivo" : "Fig. — olive" },
+  { key: "proyectos", kind: "photo", src: "/media/stills/olivea-poster.jpg", pos: "45% 50%", cap: es ? "Tres cocinas" : "Three kitchens" },
+  { key: "prensa", kind: "sketch", sketch: "milpa", cap: es ? "Fig. — milpa" : "Fig. — milpa" },
+  { key: "contacto", kind: "sketch", sketch: "mano", cap: es ? "Fig. — la mano" : "Fig. — the hand" },
+  ...projects.filter((p) => p.poster).map((p) => ({ key: p.pv, kind: "photo" as const, src: p.poster!, pos: chapterMedia(p.slug)?.portraitX ? `${chapterMedia(p.slug)!.portraitX} 50%` : "50% 50%", cap: p.label })),
+];
+const previewSketches = [...new Set(previews.flatMap((p) => (p.kind === "sketch" ? [p.sketch] : [])))];
+const currentPv =
+  primary.find((i) => isCurrent(i.href) && i.pv !== "inicio")?.pv ??
+  projects.find((p) => isCurrent(p.href))?.pv ??
+  "inicio";
 ---
 
 <div class="overlay" data-menu-overlay aria-hidden="true">
@@ -68,7 +101,7 @@ function isCurrent(path: string): boolean {
       <ol>
         {primary.map((item, i) => (
           <li class={isCurrent(item.href) ? "is-current" : ""}>
-            <a href={item.href} data-menu-link>
+            <a href={item.href} data-menu-link data-pv={item.pv}>
               <span class="overlay__num">{String(i + 1).padStart(2, "0")}</span>
               <span class="overlay__label">{item.label}</span>
             </a>
@@ -77,13 +110,30 @@ function isCurrent(path: string): boolean {
       </ol>
     </nav>
 
+    {/* Preview — crossfades to whatever you're pointing at. */}
+    <aside class="overlay__preview" aria-hidden="true" data-menu-preview data-current={currentPv}>
+      <svg class="overlay__pvDefs" width="0" height="0" focusable="false"><defs set:html={sketchDefs(previewSketches, "mn")} /></svg>
+      {previews.map((p) => (
+        <figure class:list={["overlay__pv", `overlay__pv--${p.kind}`, { "is-active": p.key === currentPv }]} data-pv-layer={p.key}>
+          {p.kind === "photo" ? (
+            <div class="overlay__pvPhoto" style={`--pos: ${p.pos ?? "50% 50%"}; --zoom: ${p.zoom ?? 1};`}>
+              <SmartImage src={p.src} alt="" widths={[480, 800]} sizes="30vw" />
+            </div>
+          ) : (
+            <div class="overlay__pvSketch" set:html={sketchSvg(p.sketch, "mn")} />
+          )}
+          <figcaption class="overlay__pvCap">{p.cap}</figcaption>
+        </figure>
+      ))}
+    </aside>
+
     {/* Project shortcuts */}
     <div class="overlay__projects">
       <p class="overlay__group">{locale === "es" ? "Proyectos" : "Projects"}</p>
       <ul>
         {projects.map((p) => (
           <li class={isCurrent(p.href) ? "is-current" : ""}>
-            <a href={p.href} data-menu-link>
+            <a href={p.href} data-menu-link data-pv={p.pv}>
               <span class="overlay__projLabel">{p.label}</span>
               <span class="overlay__projMeta">{p.meta}</span>
             </a>
@@ -104,6 +154,11 @@ function isCurrent(path: string): boolean {
         <div class="overlay__foot-col">
           <p class="overlay__group">{locale === "es" ? "Escribe" : "Write"}</p>
           <a class="overlay__footLink" href={`mailto:${email}`}>{email}</a>
+        </div>
+      ) : igDaniel ? (
+        <div class="overlay__foot-col">
+          <p class="overlay__group">Daniel</p>
+          <a class="overlay__footLink" href={igDaniel} target="_blank" rel="noreferrer">Instagram ↗</a>
         </div>
       ) : null}
       <div class="overlay__foot-col">
@@ -374,10 +429,91 @@ function isCurrent(path: string): boolean {
   }
   .overlay__footLink:hover{ color: var(--ember, #D9421C); }
 
+  /* ── Preview panel (wide + hover-capable screens only) ── */
+  .overlay__preview{ display: none; }
+  .overlay__pvDefs{ position: absolute; width: 0; height: 0; }
+  @media (min-width: 1100px) and (hover: hover){
+    .overlay__preview{
+      display: block;
+      position: absolute;
+      right: clamp(20px, 5vw, 80px);
+      top: clamp(96px, 13svh, 140px);
+      height: min(46svh, 520px);
+      aspect-ratio: 4 / 5;
+      pointer-events: none;
+    }
+  }
+  .overlay__pv{
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    opacity: 0;
+    transform: scale(1.035);
+    transition: opacity 700ms var(--ease-fluid), transform 1400ms var(--ease-fluid);
+  }
+  .overlay__pv.is-active{ opacity: 1; transform: none; }
+  .overlay__pvPhoto{ position: absolute; inset: 0; overflow: hidden; }
+  .overlay__pvPhoto :global(img){
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: var(--pos, 50% 50%);
+    transform: scale(var(--zoom, 1));
+    transform-origin: var(--pos, 50% 50%);
+    filter: contrast(1.05) brightness(.88);
+  }
+  .overlay__pv--sketch{
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(244,239,230,.10);
+    background: radial-gradient(70% 60% at 50% 45%, rgba(244,239,230,.05), transparent 70%);
+  }
+  .overlay__pvSketch{ width: 76%; color: rgba(244,239,230,.86); }
+  .overlay__pvSketch :global(svg){ display: block; width: 100%; height: auto; overflow: visible; }
+  .overlay__pvSketch :global([data-wash]){ mix-blend-mode: screen; }
+  .overlay__pvCap{
+    position: absolute;
+    left: 0;
+    bottom: -30px;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 15px;
+    color: rgba(244,239,230,.6);
+  }
+
   @media (prefers-reduced-motion: reduce){
+    .overlay__pv{ transition: opacity .2s; transform: none; }
     .overlay__bg, .overlay__inner, .overlay__nav li{
       transition: opacity .2s !important;
       transform: none !important;
     }
   }
 </style>
+
+<script>
+  // Preview panel: follow the pointer/focus across menu links; fall
+  // back to the current room when the pointer leaves the list.
+  function bindPreview() {
+    const panel = document.querySelector<HTMLElement>("[data-menu-preview]");
+    if (!panel) return;
+    const p = panel as HTMLElement & { __bound?: boolean };
+    if (p.__bound) return;
+    p.__bound = true;
+    const layers = new Map<string, HTMLElement>();
+    panel.querySelectorAll<HTMLElement>("[data-pv-layer]").forEach((l) => layers.set(l.dataset.pvLayer!, l));
+    const show = (key?: string) => {
+      const k = key && layers.has(key) ? key : panel.dataset.current ?? "inicio";
+      layers.forEach((el, id) => el.classList.toggle("is-active", id === k));
+    };
+    document.querySelectorAll<HTMLAnchorElement>("[data-menu-overlay] a[data-pv]").forEach((a) => {
+      a.addEventListener("pointerenter", () => show(a.dataset.pv));
+      a.addEventListener("focus", () => show(a.dataset.pv));
+    });
+    // Revert only when leaving a whole list — per-link leave would
+    // flash back to the current room in the gaps between items.
+    document.querySelectorAll<HTMLElement>("[data-menu-overlay] .overlay__nav, [data-menu-overlay] .overlay__projects")
+      .forEach((list) => list.addEventListener("pointerleave", () => show()));
+  }
+  bindPreview();
+  document.addEventListener("astro:page-load", bindPreview);
+</script>

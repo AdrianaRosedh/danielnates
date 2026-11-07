@@ -22,7 +22,9 @@
  */
 
 import type { Locale } from "../../lib/types";
-import WebGLPlane from "../motion/WebGLPlane.astro";
+import SmartImage from "../content/SmartImage.astro";
+import { MEDIA } from "../../lib/site";
+import { ALL_SKETCHES, sketchDefs, sketchSvg, type SketchKind } from "../../lib/sketches";
 
 interface Spread {
   recto: string;                   // "I" .. "V"
@@ -53,21 +55,21 @@ const c = (key: string, fallback: string): string => copy[key] ?? fallback;
  * If the parent passes its own spreads array these are skipped. The
  * markWord is now sourced from landing_copy where possible so each
  * spread's hero word is editable inline. */
-/** Per-spread image lookup: empty string in landing_copy means "no
- *  photo, show the plate glyph" — admin can later swap it via the
- *  EditOverlay's "Cambiar foto" affordance. */
+/** Per-spread image lookup. A photo Daniel sets inline (EditOverlay
+ *  "Cambiar foto") always wins; an empty value — how the
+ *  20260507_notebook_images migration seeded II–V — falls back to the
+ *  spread's default still (frames pulled from the site's own b&w
+ *  garden footage). The numeral plate only shows with neither. */
 const img = (recto: string, fallback: string | null = null): string | null => {
-  const v = copy[`notebook.${recto}.image_url`];
-  if (v == null) return fallback;
-  const trimmed = v.trim();
-  return trimmed.length > 0 ? trimmed : null;
+  const v = copy[`notebook.${recto}.image_url`]?.trim();
+  return v ? v : fallback;
 };
 
 const defaultSpreads: Spread[] = [
   {
     recto: "I",
     sketch: "leaf",
-    imageUrl: img("I", "/media/hero/daniel-garden.jpg"),
+    imageUrl: img("I", MEDIA.portrait),
     caption: c(`notebook.I.caption_${locale}`, locale === "es" ? "El huerto manda. La carta cambia con la mañana." : "The garden leads. The menu changes with the morning."),
     place: c(`notebook.I.place_${locale}`, "Olivea · Valle de Guadalupe"),
     href: locale === "es" ? "/olivea" : "/en/olivea",
@@ -76,7 +78,7 @@ const defaultSpreads: Spread[] = [
   {
     recto: "II",
     sketch: "cazo",
-    imageUrl: img("II"),
+    imageUrl: img("II", "/media/stills/membrillos.jpg"),
     caption: c(`notebook.II.caption_${locale}`, locale === "es" ? "Fritanga poblana, en su forma más contemporánea." : "Poblano fritanga in its most contemporary form."),
     place: c(`notebook.II.place_${locale}`, "Fritanguita · Roma Norte · CDMX"),
     href: locale === "es" ? "/fritanguita" : "/en/fritanguita",
@@ -85,7 +87,7 @@ const defaultSpreads: Spread[] = [
   {
     recto: "III",
     sketch: "milpa",
-    imageUrl: img("III"),
+    imageUrl: img("III", "/media/stills/hojas.jpg"),
     caption: c(`notebook.III.caption_${locale}`, locale === "es" ? "El primer maestro. Lo que aprendí ahí, todavía cocina lo que hago." : "The first teacher. What I learned there still cooks what I do."),
     place: c(`notebook.III.place_${locale}`, "Maizal · Puebla · 2017–2024"),
     href: locale === "es" ? "/maizal" : "/en/maizal",
@@ -94,7 +96,7 @@ const defaultSpreads: Spread[] = [
   {
     recto: "IV",
     sketch: "mano",
-    imageUrl: img("IV"),
+    imageUrl: img("IV", "/media/stills/flores.jpg"),
     caption: c(`notebook.IV.caption_${locale}`, locale === "es" ? "La mano dibuja antes de cocinar. Composición, contraste, intención." : "The hand draws before it cooks. Composition, contrast, intent."),
     place: c(`notebook.IV.place_${locale}`, locale === "es" ? "Atelier · MMXXVI" : "Studio · MMXXVI"),
     href: locale === "es" ? "/arte" : "/en/arte",
@@ -103,7 +105,7 @@ const defaultSpreads: Spread[] = [
   {
     recto: "V",
     sketch: "mesa",
-    imageUrl: img("V"),
+    imageUrl: img("V", "/media/stills/hoja.jpg"),
     caption: c(`notebook.V.caption_${locale}`, locale === "es" ? "La mesa es el último cuadro." : "The table is the last painting."),
     place: c(`notebook.V.place_${locale}`, locale === "es" ? "Daniel Nates · MMXXVI" : "Daniel Nates · MMXXVI"),
   },
@@ -126,68 +128,17 @@ const orderIndex = (recto: string) => {
 const items: Spread[] = [...allSpreads].sort((a, b) => orderIndex(a.recto) - orderIndex(b.recto));
 const total = items.length;
 /* The notebook.<recto>.markWord copy keys are seeded for an upcoming
- * typography variant of the left page — currently the spreads render
- * SVG studies, so the markWord values are reserved but unused here. */
+ * typography variant of the left page; they now caption each study as
+ * its figure label (Fig. II — Cazo), editable inline. */
 
-/* ────────────────────────────────────────────────────────────────
-   SVG line drawings — proper notebook studies. Each subject was
-   composed as 50-75 individual <path> elements with varying stroke
-   widths (0.7-2.0px) for pen-pressure variance. The lines are passed
-   through a per-subject feTurbulence + feDisplacementMap filter so
-   they read as ink-on-paper, not as vector geometry.
 
-   Each sketch is observed, not iconic:
-     leaf  → an olive branch (Audubon-style botanical)
-     cazo  → cazo de cobre with wooden ladle, hammer marks, steam
-     milpa → maíz stalk with arching leaves, ear, tassel
-     mano  → hand holding a brush (Da Vinci anatomical study)
-     mesa  → still life: bowl, wooden spoon, herb sprig
+/* Figure labels — a naturalist's plate caption under each study. The
+   word is landing_copy notebook.<recto>.markWord (inline-editable);
+   botanical names only where the subject is a plant. */
+const MARK_DEFAULT: Record<string, string> = { I: "Huerto", II: "Cazo", III: "Maíz", IV: "Mano", V: "Mesa" };
+const markWord = (recto: string) => c(`notebook.${recto}.markWord`, MARK_DEFAULT[recto] ?? "");
+const LATIN: Partial<Record<SketchKind, string>> = { leaf: "Olea europaea", milpa: "Zea mays" };
 
-   To replace any of these with Daniel's own sketches in the future,
-   swap the body string for that kind. */
-
-type SketchKind = Spread["sketch"];
-
-const SKETCHES: Record<SketchKind, { viewBox: string; body: string }> = {
-  leaf: {
-    viewBox: "0 0 200 240",
-    body: `<path d="M 92 238 C 90 220, 95 200, 100 180 C 104 160, 108 140, 112 120 C 115 100, 118 80, 122 60 C 124 45, 127 30, 130 18" stroke-width="1.8"/><path d="M 93 235 C 91 218, 96 198, 101 178" stroke-width="1.0"/><path d="M 113 118 C 116 98, 119 78, 123 58" stroke-width="0.9"/><path d="M 102 175 C 103 172, 104 170, 105 168" stroke-width="1.2"/><path d="M 108 145 C 109 142, 110 140, 111 138" stroke-width="1.2"/><path d="M 116 105 C 117 102, 118 100, 119 97" stroke-width="1.2"/><path d="M 124 70 C 125 67, 126 65, 127 62" stroke-width="1.1"/><path d="M 99 182 C 80 175, 60 165, 42 148 C 35 142, 30 135, 28 128" stroke-width="1.6"/><path d="M 28 128 C 32 135, 38 142, 46 148 C 62 162, 80 172, 98 180" stroke-width="1.4"/><path d="M 48 142 C 52 138, 58 134, 65 132" stroke-width="0.8"/><path d="M 55 150 C 60 148, 66 146, 72 145" stroke-width="0.8"/><path d="M 70 162 C 74 160, 78 158, 82 157" stroke-width="0.8"/><path d="M 80 168 C 83 167, 86 166, 89 165" stroke-width="0.7"/><path d="M 102 178 C 122 172, 142 158, 156 138 C 162 130, 166 122, 168 115" stroke-width="1.6"/><path d="M 168 115 C 165 122, 160 132, 152 142 C 138 160, 120 172, 102 180" stroke-width="1.4"/><path d="M 152 132 C 148 128, 142 124, 135 122" stroke-width="0.8"/><path d="M 144 145 C 138 142, 132 140, 126 138" stroke-width="0.8"/><path d="M 130 158 C 124 156, 118 154, 113 153" stroke-width="0.8"/><path d="M 118 168 C 114 167, 110 166, 107 165" stroke-width="0.7"/><path d="M 109 138 C 92 130, 76 118, 64 100 C 58 92, 54 84, 52 76" stroke-width="1.6"/><path d="M 52 76 C 56 84, 62 94, 70 104 C 84 120, 98 130, 110 136" stroke-width="1.4"/><path d="M 70 92 C 74 88, 80 86, 86 85" stroke-width="0.8"/><path d="M 78 100 C 82 98, 88 97, 93 96" stroke-width="0.8"/><path d="M 90 115 C 94 114, 98 113, 102 112" stroke-width="0.7"/><path d="M 98 125 C 100 124, 103 123, 105 122" stroke-width="0.7"/><path d="M 113 122 C 130 115, 148 100, 160 82 C 166 74, 170 65, 172 58" stroke-width="1.6"/><path d="M 172 58 C 168 66, 162 76, 154 86 C 140 102, 124 114, 114 120" stroke-width="1.4"/><path d="M 152 78 C 148 74, 142 72, 135 71" stroke-width="0.8"/><path d="M 142 92 C 136 90, 130 88, 124 87" stroke-width="0.8"/><path d="M 128 105 C 122 104, 117 103, 112 102" stroke-width="0.7"/><path d="M 118 115 C 115 114, 112 113, 110 112" stroke-width="0.7"/><path d="M 120 95 C 110 80, 100 65, 95 50 C 92 42, 90 35, 90 28" stroke-width="1.5"/><path d="M 90 28 C 94 38, 100 50, 108 62 C 116 75, 122 88, 122 96" stroke-width="1.3"/><path d="M 100 50 C 104 47, 108 46, 112 46" stroke-width="0.7"/><path d="M 108 64 C 111 62, 114 61, 117 61" stroke-width="0.7"/><path d="M 124 76 C 130 74, 138 72, 146 72 C 154 73, 160 76, 162 82 C 161 76, 156 71, 148 68 C 140 66, 132 67, 126 70" stroke-width="1.4"/><path d="M 142 71 C 142 75" stroke-width="1.0"/><path d="M 105 152 C 102 150, 98 150, 94 152 C 90 156, 88 162, 90 168 C 92 174, 96 178, 102 178 C 108 176, 112 172, 112 166 C 110 158, 108 154, 105 152" stroke-width="1.5"/><path d="M 96 158 C 99 156, 102 156, 105 158" stroke-width="0.7"/><path d="M 108 168 C 110 165" stroke-width="0.7"/><path d="M 102 152 C 100 148, 99 145, 100 142" stroke-width="1.0"/><path d="M 118 100 C 115 98, 111 98, 108 101 C 105 105, 104 110, 106 115 C 109 120, 113 122, 118 121 C 122 119, 124 115, 124 110 C 122 104, 120 101, 118 100" stroke-width="1.5"/><path d="M 110 105 C 113 104, 116 104, 118 106" stroke-width="0.7"/><path d="M 121 113 C 122 110" stroke-width="0.7"/><path d="M 116 100 C 114 96, 113 93, 114 90" stroke-width="1.0"/><path d="M 65 122 C 62 120, 58 121, 56 124 C 54 128, 55 132, 58 134 C 62 136, 66 134, 67 130 C 67 126, 66 123, 65 122" stroke-width="1.4"/><path d="M 58 126 C 61 125, 64 126, 65 128" stroke-width="0.7"/><path d="M 63 122 C 62 119, 62 117, 64 116" stroke-width="0.9"/><path d="M 145 110 C 142 109, 138 110, 136 113 C 134 117, 135 121, 138 123 C 142 125, 146 123, 147 119 C 147 114, 146 111, 145 110" stroke-width="1.4"/><path d="M 138 115 C 141 114, 144 115, 145 117" stroke-width="0.7"/><path d="M 142 110 C 141 107, 142 105, 144 104" stroke-width="0.9"/><path d="M 88 192 C 89 195, 90 198" stroke-width="0.7"/><path d="M 95 195 C 96 198, 97 201" stroke-width="0.7"/><path d="M 102 198 C 103 201, 104 204" stroke-width="0.7"/><path d="M 108 188 C 109 191, 110 194" stroke-width="0.7"/><path d="M 115 168 C 116 171, 117 174" stroke-width="0.7"/><path d="M 120 142 C 121 145, 122 148" stroke-width="0.7"/><path d="M 124 100 C 125 103, 126 106" stroke-width="0.7"/>`,
-  },
-  cazo: {
-    viewBox: "0 0 240 240",
-    body: `<path d="M 120 105 L 120 200" stroke-width="0.5" opacity="0.3"/><path d="M 50 110 Q 120 100 190 110" stroke-width="0.6" opacity="0.4"/><path d="M 50 110 Q 120 132 190 110" stroke-width="0.6" opacity="0.4"/><path d="M 155 105 L 210 35" stroke-width="0.5" opacity="0.3"/><path d="M 42 160 Q 50 130 50 110" stroke-width="0.5" opacity="0.3"/><path d="M 198 160 Q 190 130 190 110" stroke-width="0.5" opacity="0.3"/><path d="M 50 110 Q 80 102 120 101 Q 160 102 190 110" stroke-width="1.8"/><path d="M 51 111 Q 85 105 122 104 Q 158 105 189 111" stroke-width="1.6"/><path d="M 50 110 Q 75 122 100 128 Q 120 131 140 130 Q 165 126 190 110" stroke-width="1.9"/><path d="M 52 111 Q 78 121 102 127 Q 121 130 139 129 Q 163 124 188 111" stroke-width="1.4"/><path d="M 50 110 Q 44 130 43 150 Q 42 165 45 180" stroke-width="1.9"/><path d="M 45 180 Q 50 192 60 198 Q 68 201 75 200" stroke-width="1.8"/><path d="M 190 110 Q 196 130 197 150 Q 198 165 195 180" stroke-width="1.9"/><path d="M 195 180 Q 190 192 180 198 Q 172 201 165 200" stroke-width="1.8"/><path d="M 75 200 L 165 200" stroke-width="1.8"/><path d="M 78 200 Q 80 205 85 206 L 155 206 Q 160 205 162 200" stroke-width="1.5"/><path d="M 85 206 L 155 206" stroke-width="1.7"/><path d="M 155 105 Q 180 70 210 35" stroke-width="2.0"/><path d="M 161 108 Q 185 73 213 38" stroke-width="1.9"/><path d="M 50 110 Q 42 112 36 116 Q 30 120 30 122" stroke-width="1.6"/><path d="M 30 122 Q 32 125 38 124 Q 44 122 50 117" stroke-width="1.6"/><path d="M 38 116 Q 40 114 44 113" stroke-width="1.2"/><path d="M 190 110 Q 198 112 204 116 Q 210 120 210 122" stroke-width="1.6"/><path d="M 210 122 Q 208 125 202 124 Q 196 122 190 117" stroke-width="1.6"/><path d="M 202 116 Q 200 114 196 113" stroke-width="1.2"/><path d="M 50 110 Q 56 116 60 117" stroke-width="1.0"/><path d="M 190 110 Q 184 116 180 117" stroke-width="1.0"/><path d="M 60 122 Q 90 134 120 137 Q 150 134 180 122" stroke-width="0.9" opacity="0.6"/><path d="M 110 128 Q 115 124 122 124 Q 130 124 138 128" stroke-width="1.1"/><path d="M 110 128 Q 112 132 116 134" stroke-width="1.0"/><path d="M 138 128 Q 136 132 132 134" stroke-width="1.0"/><path d="M 116 134 Q 122 137 132 134" stroke-width="0.9"/><path d="M 138 128 Q 145 122 152 112" stroke-width="1.2"/><path d="M 142 124 Q 148 120 154 113" stroke-width="0.9"/><path d="M 158 110 Q 162 108 165 107" stroke-width="0.8"/><path d="M 156 109 L 162 105" stroke-width="0.9"/><path d="M 156 110 Q 178 75 207 38" stroke-width="0.7" opacity="0.5"/><path d="M 158 113 Q 180 78 209 41" stroke-width="0.7" opacity="0.5"/><path d="M 161 108 Q 183 73 211 37" stroke-width="0.6" opacity="0.4"/><path d="M 159 111 Q 181 76 210 39" stroke-width="0.6" opacity="0.4"/><path d="M 160 109 Q 182 75 210 38" stroke-width="0.7" opacity="0.5"/><path d="M 168 92 Q 170 91 173 91" stroke-width="0.7"/><path d="M 188 62 Q 190 61 193 61" stroke-width="0.7"/><path d="M 35 121 Q 38 119 42 119" stroke-width="0.6"/><path d="M 205 121 Q 202 119 198 119" stroke-width="0.6"/><path d="M 60 140 c 1 -1 3 -1 4 0" stroke-width="0.7"/><path d="M 70 138 c 1 0 2 1 3 0" stroke-width="0.7"/><path d="M 82 142 c 0 -1 2 -1 3 0" stroke-width="0.6"/><path d="M 95 140 c 1 -1 3 0 4 1" stroke-width="0.7"/><path d="M 108 144 c 1 -1 2 -1 3 0" stroke-width="0.6"/><path d="M 122 142 c 0 -1 2 -1 3 0" stroke-width="0.7"/><path d="M 136 144 c 1 0 2 0 3 -1" stroke-width="0.7"/><path d="M 150 142 c 1 -1 3 -1 4 0" stroke-width="0.6"/><path d="M 165 140 c 0 -1 2 -1 3 0" stroke-width="0.7"/><path d="M 178 138 c 1 -1 2 0 3 0" stroke-width="0.7"/><path d="M 55 152 c 1 -1 3 -1 4 0 c -1 1 -3 1 -4 0" stroke-width="0.7"/><path d="M 67 154 c 0 -1 2 -1 3 0" stroke-width="0.6"/><path d="M 78 156 c 1 -1 3 0 3 1" stroke-width="0.7"/><path d="M 91 154 c 1 -1 2 0 3 0" stroke-width="0.7"/><path d="M 103 158 c 0 -1 2 -1 3 0 c -1 1 -2 1 -3 0" stroke-width="0.6"/><path d="M 117 156 c 1 -1 3 -1 4 0" stroke-width="0.7"/><path d="M 131 158 c 0 -1 2 0 3 0" stroke-width="0.7"/><path d="M 145 156 c 1 -1 2 -1 3 0" stroke-width="0.6"/><path d="M 158 158 c 1 0 2 1 3 0" stroke-width="0.7"/><path d="M 172 154 c 0 -1 2 -1 3 0" stroke-width="0.7"/><path d="M 184 152 c 1 -1 2 0 3 0" stroke-width="0.6"/><path d="M 50 166 c 1 -1 3 0 4 1" stroke-width="0.8"/><path d="M 62 168 c 0 -1 2 -1 3 0 c -1 1 -2 1 -3 0" stroke-width="0.7"/><path d="M 75 170 c 1 -1 3 -1 4 0" stroke-width="0.7"/><path d="M 88 168 c 1 0 2 1 3 0" stroke-width="0.7"/><path d="M 102 172 c 0 -1 2 -1 3 0" stroke-width="0.6"/><path d="M 115 170 c 1 -1 3 0 3 1" stroke-width="0.7"/><path d="M 129 172 c 1 -1 2 -1 3 0" stroke-width="0.7"/><path d="M 142 170 c 0 -1 2 0 3 0" stroke-width="0.6"/><path d="M 156 172 c 1 -1 3 -1 4 0" stroke-width="0.7"/><path d="M 170 168 c 0 -1 2 -1 3 0 c -1 1 -2 1 -3 0" stroke-width="0.7"/><path d="M 184 166 c 1 -1 2 0 2 1" stroke-width="0.7"/><path d="M 55 180 c 1 -1 3 -1 4 0" stroke-width="0.7"/><path d="M 68 182 c 0 -1 2 -1 3 0" stroke-width="0.6"/><path d="M 82 184 c 1 -1 3 0 3 1" stroke-width="0.7"/><path d="M 96 182 c 1 -1 2 0 3 0" stroke-width="0.7"/><path d="M 110 184 c 0 -1 2 -1 3 0" stroke-width="0.6"/><path d="M 125 182 c 1 -1 3 -1 4 0" stroke-width="0.7"/><path d="M 139 184 c 0 -1 2 0 3 0" stroke-width="0.7"/><path d="M 153 182 c 1 -1 2 0 3 0" stroke-width="0.6"/><path d="M 168 184 c 1 -1 2 -1 3 0" stroke-width="0.7"/><path d="M 180 180 c 0 -1 2 0 3 0" stroke-width="0.7"/><path d="M 65 192 c 1 -1 3 -1 4 0" stroke-width="0.6"/><path d="M 80 194 c 0 -1 2 0 3 0" stroke-width="0.7"/><path d="M 95 192 c 1 -1 2 0 3 0" stroke-width="0.6"/><path d="M 110 194 c 1 0 2 1 3 0" stroke-width="0.7"/><path d="M 128 192 c 0 -1 2 -1 3 0" stroke-width="0.6"/><path d="M 145 194 c 1 -1 3 -1 4 0" stroke-width="0.7"/><path d="M 160 192 c 0 -1 2 0 3 0" stroke-width="0.6"/><path d="M 175 194 c 1 -1 2 0 2 1" stroke-width="0.7"/><path d="M 48 145 c 1 -1 3 -1 4 0" stroke-width="0.7"/><path d="M 46 158 c 1 -1 3 0 3 1" stroke-width="0.7"/><path d="M 45 172 c 0 -1 2 -1 3 0" stroke-width="0.6"/><path d="M 188 145 c 1 -1 3 -1 4 0" stroke-width="0.7"/><path d="M 190 158 c 0 -1 2 0 3 0" stroke-width="0.7"/><path d="M 192 172 c 1 -1 2 0 2 1" stroke-width="0.6"/><path d="M 100 152 c 0 -1 2 0 3 0" stroke-width="0.6"/><path d="M 140 152 c 1 -1 2 0 2 1" stroke-width="0.7"/><path d="M 70 175 c 1 -1 2 0 3 0" stroke-width="0.6"/><path d="M 165 175 c 0 -1 2 -1 3 0" stroke-width="0.6"/><path d="M 50 130 Q 54 145 55 160" stroke-width="0.6" opacity="0.5"/><path d="M 47 135 Q 50 150 50 165" stroke-width="0.5" opacity="0.5"/><path d="M 53 138 Q 56 152 57 168" stroke-width="0.6" opacity="0.4"/><path d="M 56 145 Q 58 160 59 175" stroke-width="0.5" opacity="0.4"/><path d="M 49 155 Q 52 170 54 185" stroke-width="0.6" opacity="0.5"/><path d="M 52 165 Q 55 180 57 192" stroke-width="0.5" opacity="0.4"/><path d="M 60 175 Q 62 188 64 195" stroke-width="0.5" opacity="0.4"/><path d="M 55 175 Q 57 188 59 197" stroke-width="0.6" opacity="0.5"/><path d="M 60 116 Q 80 122 105 124" stroke-width="0.6" opacity="0.5"/><path d="M 65 117 Q 85 122 108 123" stroke-width="0.5" opacity="0.4"/><path d="M 70 118 Q 88 121 110 122" stroke-width="0.6" opacity="0.5"/><path d="M 75 119 Q 92 121 113 122" stroke-width="0.5" opacity="0.4"/><path d="M 130 124 Q 150 124 170 119" stroke-width="0.6" opacity="0.5"/><path d="M 135 123 Q 152 122 168 118" stroke-width="0.5" opacity="0.4"/><path d="M 140 122 Q 155 121 165 117" stroke-width="0.5" opacity="0.4"/><path d="M 78 207 Q 85 211 95 212" stroke-width="0.6" opacity="0.4"/><path d="M 100 212 L 145 212" stroke-width="0.5" opacity="0.4"/><path d="M 88 210 L 138 210" stroke-width="0.6" opacity="0.5"/><path d="M 110 213 L 155 213" stroke-width="0.5" opacity="0.4"/><path d="M 145 212 Q 155 211 162 207" stroke-width="0.6" opacity="0.4"/><path d="M 35 124 Q 38 128 41 130" stroke-width="0.5" opacity="0.4"/><path d="M 199 124 Q 202 128 205 130" stroke-width="0.5" opacity="0.4"/><path d="M 90 105 Q 86 95 88 85 Q 92 75 88 65" stroke-width="0.7"/><path d="M 89 80 Q 87 75 89 70" stroke-width="0.5" opacity="0.6"/><path d="M 115 105 Q 115 92 117 80 Q 115 70 116 60" stroke-width="0.7"/><path d="M 116 75 Q 117 68 116 62" stroke-width="0.5" opacity="0.6"/><path d="M 140 100 Q 144 90 142 80 Q 146 70 144 60" stroke-width="0.7"/><path d="M 143 75 Q 145 68 143 62" stroke-width="0.5" opacity="0.6"/><path d="M 100 95 Q 98 88 100 82" stroke-width="0.5" opacity="0.5"/><path d="M 128 92 Q 130 85 128 78" stroke-width="0.5" opacity="0.5"/><path d="M 105 102 Q 104 96 106 92" stroke-width="0.5" opacity="0.4"/><path d="M 132 100 Q 133 94 131 90" stroke-width="0.5" opacity="0.4"/><path d="M 75 132 c 1 -1 3 -1 4 0" stroke-width="0.7"/><path d="M 88 130 c 0 -1 2 0 3 0" stroke-width="0.6"/><path d="M 165 132 c 1 -1 2 0 3 0" stroke-width="0.7"/><path d="M 178 130 c 0 -1 2 -1 3 0" stroke-width="0.6"/>`,
-  },
-  milpa: {
-    viewBox: "0 0 200 240",
-    body: `<path d="M 100 240 Q 99 180 100 120 Q 101 70 100 30" stroke-width="0.5"/><path d="M 175 215 Q 140 205 100 200" stroke-width="0.5"/><path d="M 25 145 Q 60 152 100 160" stroke-width="0.6"/><path d="M 180 80 Q 140 100 100 120" stroke-width="0.5"/><path d="M 35 35 Q 65 58 100 80" stroke-width="0.5"/><path d="M 135 20 Q 118 32 100 45" stroke-width="0.5"/><path d="M 97 240 Q 96 200 97 160 Q 98 110 97 50 Q 97 38 98 30" stroke-width="1.8"/><path d="M 103 240 Q 104 200 103 160 Q 102 110 103 50 Q 103 38 102 30" stroke-width="1.8"/><path d="M 100 235 Q 99 195 100 155 Q 101 105 100 45" stroke-width="1.0"/><path d="M 102 220 Q 103 215 102 210" stroke-width="0.8"/><path d="M 96 200 L 104 200" stroke-width="1.2"/><path d="M 95 199 L 105 199" stroke-width="0.7"/><path d="M 96 160 L 104 160" stroke-width="1.2"/><path d="M 95 161 L 105 161" stroke-width="0.7"/><path d="M 96 120 L 104 120" stroke-width="1.2"/><path d="M 95 121 L 105 121" stroke-width="0.7"/><path d="M 96 80 L 104 80" stroke-width="1.2"/><path d="M 95 81 L 105 81" stroke-width="0.7"/><path d="M 97 45 L 103 45" stroke-width="1.0"/><path d="M 103 198 Q 106 196 109 195" stroke-width="1.0"/><path d="M 103 204 Q 106 206 109 208" stroke-width="1.0"/><path d="M 109 195 Q 130 198 150 205 Q 165 210 175 215" stroke-width="1.6"/><path d="M 109 208 Q 130 210 150 213 Q 165 215 175 217" stroke-width="1.5"/><path d="M 175 215 Q 177 216 175 217" stroke-width="1.0"/><path d="M 110 201 Q 132 204 152 209 Q 167 212 174 216" stroke-width="0.8"/><path d="M 112 197 Q 132 200 150 206" stroke-width="0.5"/><path d="M 114 199 Q 134 202 152 207" stroke-width="0.5"/><path d="M 116 202 Q 136 205 154 210" stroke-width="0.6"/><path d="M 114 205 Q 134 208 152 212" stroke-width="0.5"/><path d="M 112 207 Q 132 210 150 213" stroke-width="0.5"/><path d="M 118 200 Q 140 204 158 209" stroke-width="0.5"/><path d="M 120 204 Q 142 208 160 212" stroke-width="0.5"/><path d="M 145 207 Q 155 210 168 214" stroke-width="0.5"/><path d="M 97 158 Q 94 156 91 155" stroke-width="1.0"/><path d="M 97 164 Q 94 166 91 168" stroke-width="1.0"/><path d="M 91 155 Q 70 152 50 150 Q 35 148 25 145" stroke-width="1.6"/><path d="M 91 168 Q 70 167 50 160 Q 35 154 25 148" stroke-width="1.5"/><path d="M 25 145 Q 22 146 25 148" stroke-width="1.0"/><path d="M 90 161 Q 68 159 48 154 Q 33 150 26 146" stroke-width="0.8"/><path d="M 88 157 Q 68 154 48 150" stroke-width="0.5"/><path d="M 86 159 Q 66 156 46 152" stroke-width="0.5"/><path d="M 88 163 Q 66 161 46 156" stroke-width="0.6"/><path d="M 86 165 Q 64 163 44 158" stroke-width="0.5"/><path d="M 84 167 Q 62 165 42 160" stroke-width="0.5"/><path d="M 82 158 Q 60 155 40 151" stroke-width="0.5"/><path d="M 80 162 Q 58 159 38 154" stroke-width="0.5"/><path d="M 55 153 Q 45 152 35 149" stroke-width="0.5"/><path d="M 65 165 Q 50 163 35 159" stroke-width="0.5"/><path d="M 60 156 Q 48 154 32 150" stroke-width="0.5"/><path d="M 103 118 Q 106 115 108 112" stroke-width="1.0"/><path d="M 103 124 Q 106 124 108 125" stroke-width="1.0"/><path d="M 108 112 Q 130 102 150 92 Q 170 84 180 80" stroke-width="1.6"/><path d="M 108 125 Q 130 116 150 102 Q 170 90 180 82" stroke-width="1.5"/><path d="M 180 80 Q 182 80 180 82" stroke-width="1.0"/><path d="M 109 119 Q 130 109 150 97 Q 168 87 178 81" stroke-width="0.8"/><path d="M 111 115 Q 131 105 150 95" stroke-width="0.5"/><path d="M 113 117 Q 133 107 152 97" stroke-width="0.5"/><path d="M 115 121 Q 135 111 154 101" stroke-width="0.6"/><path d="M 113 122 Q 133 113 152 103" stroke-width="0.5"/><path d="M 111 123 Q 131 114 150 105" stroke-width="0.5"/><path d="M 117 117 Q 138 107 158 97" stroke-width="0.5"/><path d="M 119 121 Q 140 111 160 101" stroke-width="0.5"/><path d="M 145 95 Q 158 89 172 84" stroke-width="0.5"/><path d="M 155 92 Q 165 88 175 84" stroke-width="0.5"/><path d="M 97 78 Q 94 75 92 73" stroke-width="1.0"/><path d="M 97 84 Q 94 86 92 87" stroke-width="1.0"/><path d="M 92 73 Q 75 65 60 55 Q 45 45 35 35" stroke-width="1.6"/><path d="M 92 87 Q 75 78 60 65 Q 47 53 38 40" stroke-width="1.5"/><path d="M 35 35 Q 33 35 38 40" stroke-width="1.0"/><path d="M 91 80 Q 74 71 58 60 Q 45 49 36 38" stroke-width="0.8"/><path d="M 89 76 Q 73 67 58 56" stroke-width="0.5"/><path d="M 87 78 Q 71 69 56 58" stroke-width="0.5"/><path d="M 89 82 Q 73 73 58 62" stroke-width="0.6"/><path d="M 87 84 Q 71 75 56 64" stroke-width="0.5"/><path d="M 85 86 Q 69 77 54 66" stroke-width="0.5"/><path d="M 83 76 Q 67 67 52 56" stroke-width="0.5"/><path d="M 81 80 Q 65 71 50 60" stroke-width="0.5"/><path d="M 55 56 Q 48 50 40 42" stroke-width="0.5"/><path d="M 65 66 Q 55 58 45 48" stroke-width="0.5"/><path d="M 103 43 Q 106 40 108 37" stroke-width="1.0"/><path d="M 103 48 Q 106 49 108 50" stroke-width="1.0"/><path d="M 108 37 Q 118 30 128 24 Q 132 21 135 20" stroke-width="1.4"/><path d="M 108 50 Q 118 42 128 32 Q 132 25 135 22" stroke-width="1.3"/><path d="M 135 20 Q 137 20 135 22" stroke-width="0.9"/><path d="M 109 44 Q 119 36 128 29 Q 132 24 134 21" stroke-width="0.7"/><path d="M 111 41 Q 121 33 130 26" stroke-width="0.5"/><path d="M 113 43 Q 122 36 131 28" stroke-width="0.5"/><path d="M 113 46 Q 122 39 131 31" stroke-width="0.5"/><path d="M 111 48 Q 120 41 129 33" stroke-width="0.5"/><path d="M 115 42 Q 124 35 132 28" stroke-width="0.5"/><path d="M 115 47 Q 124 40 132 33" stroke-width="0.5"/><path d="M 100 30 L 100 8" stroke-width="1.0"/><path d="M 100 30 Q 99 18 98 8" stroke-width="0.8"/><path d="M 100 28 Q 92 20 85 12" stroke-width="0.7"/><path d="M 100 28 Q 95 18 90 8" stroke-width="0.7"/><path d="M 100 29 Q 94 22 88 14" stroke-width="0.6"/><path d="M 100 27 Q 90 22 82 16" stroke-width="0.7"/><path d="M 100 30 Q 88 24 78 18" stroke-width="0.6"/><path d="M 100 28 Q 105 18 110 8" stroke-width="0.8"/><path d="M 100 28 Q 108 20 115 12" stroke-width="0.7"/><path d="M 100 29 Q 106 22 112 14" stroke-width="0.6"/><path d="M 100 27 Q 110 22 118 16" stroke-width="0.7"/><path d="M 100 30 Q 112 24 122 18" stroke-width="0.6"/><path d="M 100 28 Q 102 16 103 6" stroke-width="0.7"/><path d="M 100 28 Q 97 16 96 6" stroke-width="0.7"/><path d="M 100 29 Q 100 18 100 8" stroke-width="0.6"/><path d="M 100 27 Q 113 22 120 14" stroke-width="0.6"/><path d="M 100 27 Q 87 22 80 14" stroke-width="0.6"/><path d="M 99 25 L 99 23" stroke-width="0.6"/><path d="M 101 22 L 101 20" stroke-width="0.6"/><path d="M 99 19 L 99 17" stroke-width="0.6"/><path d="M 101 16 L 101 14" stroke-width="0.6"/><path d="M 99 13 L 99 11" stroke-width="0.6"/><path d="M 101 10 L 101 9" stroke-width="0.6"/><path d="M 104 205 Q 106 208 105 211" stroke-width="0.5"/><path d="M 105 207 Q 107 210 106 213" stroke-width="0.5"/><path d="M 96 156 Q 94 159 95 162" stroke-width="0.5"/><path d="M 95 158 Q 93 161 94 164" stroke-width="0.5"/><path d="M 104 116 Q 106 118 105 121" stroke-width="0.5"/><path d="M 105 117 Q 107 119 106 122" stroke-width="0.5"/><path d="M 96 76 Q 94 78 95 81" stroke-width="0.5"/><path d="M 95 77 Q 93 79 94 82" stroke-width="0.5"/><path d="M 104 220 Q 105 224 104 228" stroke-width="0.6"/><path d="M 105 222 Q 106 226 105 230" stroke-width="0.6"/><path d="M 104 180 Q 105 184 104 188" stroke-width="0.6"/><path d="M 105 182 Q 106 186 105 190" stroke-width="0.6"/><path d="M 104 140 Q 105 144 104 148" stroke-width="0.6"/><path d="M 105 142 Q 106 146 105 150" stroke-width="0.6"/><path d="M 104 100 Q 105 104 104 108" stroke-width="0.6"/><path d="M 105 102 Q 106 106 105 110" stroke-width="0.6"/><path d="M 104 60 Q 105 64 104 68" stroke-width="0.6"/><path d="M 130 205 Q 135 207 138 210" stroke-width="0.5"/><path d="M 60 156 Q 55 158 52 161" stroke-width="0.5"/><path d="M 70 78 Q 65 76 62 73" stroke-width="0.5"/><path d="M 130 100 Q 135 96 138 93" stroke-width="0.5"/><path d="M 65 240 Q 80 239 95 240" stroke-width="0.9"/><path d="M 105 240 Q 120 239 135 240" stroke-width="0.9"/><path d="M 40 240 Q 50 239 58 240" stroke-width="0.7"/><path d="M 145 240 Q 155 239 165 240" stroke-width="0.7"/><path d="M 88 238 Q 90 237 92 238" stroke-width="0.5"/><path d="M 110 238 Q 113 237 115 238" stroke-width="0.5"/><path d="M 75 236 Q 77 235 79 236" stroke-width="0.5"/>`,
-  },
-  mano: {
-    viewBox: "0 0 200 240",
-    body: `<path d="M 40 235 Q 60 215 80 195 Q 110 175 145 165" stroke-width="0.6" opacity="0.4"/><path d="M 75 200 Q 105 165 160 145" stroke-width="0.5" opacity="0.4"/><path d="M 155 130 Q 130 150 100 165 Q 60 175 18 165" stroke-width="0.6" opacity="0.4"/><path d="M 75 175 Q 85 185 95 195" stroke-width="0.5" opacity="0.4"/><path d="M 50 220 Q 65 200 80 185" stroke-width="0.6" opacity="0.4"/><path d="M 35 235 Q 42 220 50 205 Q 58 195 72 195" stroke-width="1.8"/><path d="M 55 235 Q 60 220 67 208 Q 75 200 85 198" stroke-width="1.7"/><path d="M 72 195 Q 90 185 110 178 Q 135 172 152 168" stroke-width="1.9"/><path d="M 85 198 Q 105 200 125 200 Q 145 198 160 192" stroke-width="1.8"/><path d="M 152 168 Q 158 145 155 130" stroke-width="1.8"/><path d="M 155 130 Q 159 125 162 130 Q 166 135 165 142" stroke-width="1.7"/><path d="M 165 142 Q 170 145 168 152" stroke-width="1.7"/><path d="M 168 152 Q 173 152 173 158 Q 174 168 172 175" stroke-width="1.7"/><path d="M 172 175 Q 173 182 170 188 Q 165 193 160 192" stroke-width="1.7"/><path d="M 165 142 Q 156 152 148 158" stroke-width="1.6"/><path d="M 168 152 Q 158 162 150 168" stroke-width="1.6"/><path d="M 172 170 Q 162 178 152 182" stroke-width="1.6"/><path d="M 152 168 Q 148 158 145 148 Q 143 138 152 132" stroke-width="1.7"/><path d="M 148 158 Q 142 165 138 172 Q 132 178 130 170" stroke-width="1.8"/><path d="M 152 132 Q 156 145 152 158" stroke-width="1.5"/><path d="M 130 170 Q 128 168 128 165" stroke-width="1.6"/><path d="M 130 170 Q 133 173 137 172" stroke-width="1.6"/><path d="M 150 168 Q 148 175 145 180 Q 138 184 135 175" stroke-width="1.7"/><path d="M 135 175 Q 132 173 132 170" stroke-width="1.5"/><path d="M 135 175 Q 138 178 142 177" stroke-width="1.5"/><path d="M 152 178 Q 148 185 142 188 Q 138 188 140 182" stroke-width="1.7"/><path d="M 140 185 Q 142 188 145 187" stroke-width="1.5"/><path d="M 158 188 Q 152 195 146 195 Q 143 192 145 188" stroke-width="1.7"/><path d="M 145 195 Q 148 197 151 195" stroke-width="1.5"/><path d="M 75 175 Q 70 180 72 188 Q 78 195 88 198" stroke-width="1.7"/><path d="M 78 178 Q 80 185 85 192 Q 92 198 96 195" stroke-width="1.7"/><path d="M 95 195 Q 92 198 88 198" stroke-width="1.5"/><path d="M 135 172 Q 105 168 75 165 Q 50 162 40 160" stroke-width="1.8"/><path d="M 135 178 Q 105 175 75 172 Q 50 170 40 168" stroke-width="1.8"/><path d="M 40 158 L 40 170" stroke-width="1.4"/><path d="M 35 158 L 35 170" stroke-width="1.4"/><path d="M 40 158 L 35 158" stroke-width="1.2"/><path d="M 40 170 L 35 170" stroke-width="1.2"/><path d="M 35 158 Q 25 155 18 152" stroke-width="1.4"/><path d="M 35 170 Q 25 173 18 175" stroke-width="1.4"/><path d="M 110 138 Q 113 132 117 130" stroke-width="1.0"/><path d="M 113 132 Q 117 134 120 132" stroke-width="0.9"/><path d="M 120 145 Q 122 140 125 138" stroke-width="1.0"/><path d="M 122 140 Q 125 142 128 140" stroke-width="0.9"/><path d="M 130 152 Q 132 148 135 146" stroke-width="1.0"/><path d="M 132 148 Q 135 150 138 148" stroke-width="0.9"/><path d="M 140 158 Q 143 154 146 152" stroke-width="1.0"/><path d="M 143 154 Q 146 156 149 154" stroke-width="0.9"/><path d="M 145 142 Q 148 138 152 137" stroke-width="0.9"/><path d="M 155 148 Q 158 144 162 143" stroke-width="0.9"/><path d="M 160 158 Q 163 154 168 153" stroke-width="0.9"/><path d="M 162 168 Q 165 165 170 164" stroke-width="0.9"/><path d="M 132 165 Q 130 167 132 168" stroke-width="0.8"/><path d="M 137 170 Q 135 172 137 173" stroke-width="0.8"/><path d="M 142 178 Q 140 180 142 181" stroke-width="0.8"/><path d="M 147 188 Q 145 190 147 191" stroke-width="0.8"/><path d="M 158 132 Q 161 130 162 134" stroke-width="0.8"/><path d="M 167 145 Q 169 144 169 147" stroke-width="0.8"/><path d="M 170 156 Q 172 155 172 158" stroke-width="0.8"/><path d="M 170 172 Q 172 171 172 174" stroke-width="0.8"/><path d="M 90 196 Q 92 199 95 199" stroke-width="0.8"/><path d="M 153 130 Q 153 175 152 178" stroke-width="0.7"/><path d="M 145 165 Q 145 178 144 182" stroke-width="0.7"/><path d="M 138 172 Q 138 182 138 188" stroke-width="0.7"/><path d="M 142 145 Q 122 150 100 155" stroke-width="0.7"/><path d="M 138 152 Q 115 158 92 162" stroke-width="0.7"/><path d="M 145 148 Q 130 155 115 160" stroke-width="0.7"/><path d="M 100 160 Q 90 178 80 195" stroke-width="0.7"/><path d="M 110 158 Q 100 178 92 195" stroke-width="0.7"/><path d="M 80 195 Q 78 200 76 205" stroke-width="0.6"/><path d="M 70 205 Q 72 215 75 225" stroke-width="0.7" opacity="0.6"/><path d="M 78 210 Q 80 220 82 228" stroke-width="0.7" opacity="0.6"/><path d="M 73 200 Q 75 212 77 222" stroke-width="0.6" opacity="0.6"/><path d="M 67 200 Q 69 210 71 220" stroke-width="0.6" opacity="0.6"/><path d="M 81 198 Q 83 208 85 218" stroke-width="0.6" opacity="0.6"/><path d="M 88 195 Q 90 200 91 205" stroke-width="0.6" opacity="0.5"/><path d="M 78 188 Q 75 192 73 198" stroke-width="0.6" opacity="0.6"/><path d="M 82 188 Q 79 192 76 198" stroke-width="0.6" opacity="0.6"/><path d="M 95 185 Q 92 190 89 195" stroke-width="0.6" opacity="0.6"/><path d="M 105 182 Q 102 187 99 192" stroke-width="0.6" opacity="0.6"/><path d="M 115 180 Q 112 184 109 189" stroke-width="0.6" opacity="0.6"/><path d="M 88 192 Q 85 195 82 198" stroke-width="0.5" opacity="0.6"/><path d="M 100 192 Q 97 195 94 198" stroke-width="0.5" opacity="0.6"/><path d="M 112 192 Q 109 195 106 198" stroke-width="0.5" opacity="0.6"/><path d="M 124 190 Q 121 193 118 196" stroke-width="0.5" opacity="0.6"/><path d="M 136 188 Q 133 191 130 194" stroke-width="0.5" opacity="0.6"/><path d="M 92 200 Q 89 203 86 206" stroke-width="0.5" opacity="0.5"/><path d="M 105 200 Q 102 203 99 206" stroke-width="0.5" opacity="0.5"/><path d="M 132 168 Q 130 171 130 173" stroke-width="0.6" opacity="0.7"/><path d="M 134 168 Q 132 171 132 174" stroke-width="0.6" opacity="0.7"/><path d="M 137 173 Q 135 176 134 178" stroke-width="0.6" opacity="0.7"/><path d="M 139 173 Q 137 176 136 179" stroke-width="0.6" opacity="0.7"/><path d="M 142 180 Q 140 183 139 185" stroke-width="0.6" opacity="0.7"/><path d="M 144 180 Q 142 183 141 186" stroke-width="0.6" opacity="0.7"/><path d="M 146 188 Q 144 191 143 193" stroke-width="0.6" opacity="0.7"/><path d="M 148 188 Q 146 191 145 194" stroke-width="0.6" opacity="0.7"/><path d="M 113 138 Q 110 142 108 145" stroke-width="0.5" opacity="0.6"/><path d="M 116 140 Q 113 144 111 147" stroke-width="0.5" opacity="0.6"/><path d="M 122 148 Q 119 152 117 155" stroke-width="0.5" opacity="0.6"/><path d="M 125 150 Q 122 154 120 157" stroke-width="0.5" opacity="0.6"/><path d="M 132 156 Q 129 160 127 163" stroke-width="0.5" opacity="0.6"/><path d="M 142 162 Q 139 166 137 168" stroke-width="0.5" opacity="0.6"/><path d="M 70 195 Q 68 200 66 205" stroke-width="0.6" opacity="0.6"/><path d="M 65 198 Q 63 203 61 208" stroke-width="0.6" opacity="0.6"/><path d="M 60 205 Q 58 210 56 215" stroke-width="0.6" opacity="0.6"/><path d="M 55 212 Q 53 217 51 222" stroke-width="0.5" opacity="0.6"/><path d="M 50 220 Q 48 225 46 230" stroke-width="0.5" opacity="0.6"/><path d="M 35 162 Q 33 162 33 164" stroke-width="0.7"/><path d="M 35 165 Q 33 165 33 167" stroke-width="0.7"/><path d="M 38 162 Q 36 162 36 164" stroke-width="0.7"/><path d="M 38 165 Q 36 165 36 167" stroke-width="0.7"/><path d="M 30 158 Q 22 156 15 154" stroke-width="0.7"/><path d="M 28 160 Q 20 159 13 158" stroke-width="0.6"/><path d="M 30 162 Q 22 162 14 162" stroke-width="0.7"/><path d="M 32 164 Q 24 165 16 167" stroke-width="0.6"/><path d="M 30 166 Q 22 168 14 170" stroke-width="0.7"/><path d="M 28 168 Q 20 170 12 173" stroke-width="0.6"/><path d="M 30 170 Q 22 172 14 175" stroke-width="0.7"/><path d="M 32 172 Q 24 175 17 178" stroke-width="0.6"/><path d="M 28 156 Q 20 153 12 150" stroke-width="0.6"/><path d="M 30 174 Q 22 178 15 182" stroke-width="0.6"/><path d="M 26 165 Q 18 165 10 165" stroke-width="0.5" opacity="0.7"/><path d="M 25 168 Q 17 169 9 171" stroke-width="0.5" opacity="0.7"/><path d="M 25 161 Q 17 160 10 159" stroke-width="0.5" opacity="0.7"/><path d="M 95 168 Q 100 165 105 162" stroke-width="0.5" opacity="0.4"/><path d="M 60 162 Q 65 160 70 158" stroke-width="0.5" opacity="0.4"/><path d="M 30 232 Q 50 235 70 235 Q 95 234 120 232" stroke-width="0.5" opacity="0.3"/><path d="M 130 230 Q 150 232 170 232" stroke-width="0.5" opacity="0.3"/><path d="M 12 148 Q 10 146 8 144" stroke-width="0.5" opacity="0.4"/><path d="M 18 184 Q 16 186 14 188" stroke-width="0.5" opacity="0.4"/>`,
-  },
-  mesa: {
-    viewBox: "0 0 240 200",
-    body: `<path d="M14 142 C 70 140, 160 141, 228 143" stroke-width="1.6"/><path d="M16 144 C 80 142, 170 143, 226 145" stroke-width="0.9"/><path d="M88 116 C 92 110, 110 106, 132 105 C 158 104, 178 108, 184 115 C 186 117, 184 119, 180 120 C 168 124, 148 126, 132 126 C 116 126, 100 124, 92 121 C 88 119, 86 117, 88 116 Z" stroke-width="1.7"/><path d="M90 117 C 96 112, 114 108, 134 107 C 156 106, 174 110, 181 116" stroke-width="0.8"/><path d="M89 117 C 96 124, 110 134, 124 140 C 138 144, 152 144, 164 141 C 174 138, 182 130, 184 121" stroke-width="1.8"/><path d="M92 119 C 98 128, 110 136, 122 140" stroke-width="0.9"/><path d="M168 138 C 175 134, 181 128, 183 122" stroke-width="0.8"/><path d="M118 144 C 124 146, 142 147, 156 144" stroke-width="1.4"/><path d="M122 145 L 120 150" stroke-width="1.3"/><path d="M152 145 L 154 150" stroke-width="1.3"/><path d="M120 150 C 128 152, 144 152, 154 150" stroke-width="1.5"/><path d="M124 151 C 134 152, 144 152, 152 151" stroke-width="0.8"/><path d="M100 116 C 108 119, 130 121, 152 120 C 168 119, 178 117, 182 115" stroke-width="0.7"/><path d="M148 117 C 152 113, 160 110, 168 110" stroke-width="0.8"/><path d="M150 116 L 188 92" stroke-width="1.7"/><path d="M152 118 L 190 94" stroke-width="1.6"/><path d="M188 92 C 191 90, 194 90, 196 92 C 198 94, 197 96, 194 97 L 191 95 Z" stroke-width="1.5"/><path d="M165 107 C 168 105, 170 104, 173 104" stroke-width="0.9"/><path d="M170 104 C 173 102, 175 102, 177 103" stroke-width="0.9"/><path d="M163 109 L 168 106" stroke-width="0.7"/><path d="M174 100 L 178 98" stroke-width="0.7"/><path d="M155 124 C 152 122, 152 119, 154 117" stroke-width="0.8"/><path d="M158 126 C 156 124, 155 121, 157 119" stroke-width="0.7"/><path d="M148 132 C 152 130, 156 128, 158 125" stroke-width="0.8"/><path d="M140 137 C 145 135, 149 133, 151 130" stroke-width="0.7"/><path d="M132 139 C 137 138, 142 136, 144 134" stroke-width="0.7"/><path d="M124 138 C 128 138, 132 137, 134 136" stroke-width="0.7"/><path d="M168 134 C 172 132, 176 129, 178 125" stroke-width="0.7"/><path d="M40 134 C 50 130, 62 124, 72 119 C 76 117, 78 116, 80 117" stroke-width="1.5"/><path d="M40 134 L 41 137" stroke-width="1.2"/><path d="M44 132 L 45 130" stroke-width="0.9"/><path d="M50 128 L 49 125" stroke-width="0.9"/><path d="M55 125 L 57 122" stroke-width="0.9"/><path d="M60 122 L 59 119" stroke-width="0.9"/><path d="M64 120 L 66 117" stroke-width="0.9"/><path d="M68 117 L 67 114" stroke-width="0.9"/><path d="M72 115 L 74 112" stroke-width="0.9"/><path d="M76 113 L 75 110" stroke-width="0.9"/><path d="M48 130 C 47 127, 47 125, 49 124" stroke-width="0.7"/><path d="M52 127 C 54 124, 56 123, 58 124" stroke-width="0.7"/><path d="M56 124 C 55 121, 55 119, 57 118" stroke-width="0.7"/><path d="M62 121 C 64 119, 66 118, 68 119" stroke-width="0.7"/><path d="M66 118 C 65 116, 66 113, 67 112" stroke-width="0.7"/><path d="M70 116 C 72 114, 74 112, 76 113" stroke-width="0.7"/><path d="M74 113 C 73 110, 74 108, 75 107" stroke-width="0.7"/><path d="M88 152 C 100 156, 130 158, 156 156 C 170 155, 180 153, 184 152" stroke-width="0.7"/><path d="M92 154 C 102 156, 124 158, 144 157" stroke-width="0.7"/><path d="M100 156 C 110 157, 126 158, 138 158" stroke-width="0.7"/><path d="M114 158 L 130 159" stroke-width="0.7"/><path d="M152 154 L 162 153" stroke-width="0.7"/><path d="M160 152 L 172 151" stroke-width="0.7"/><path d="M40 142 C 48 144, 60 145, 70 144" stroke-width="0.7"/><path d="M44 145 L 56 146" stroke-width="0.7"/><path d="M50 147 L 62 147" stroke-width="0.7"/>`,
-  },
-};
-
-function sketchSvg(kind: SketchKind): string {
-  const { viewBox, body } = SKETCHES[kind];
-  const filterId = `nb-pen-${kind}`;
-  return `<svg viewBox="${viewBox}" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" filter="url(#${filterId})">${body}</svg>`;
-}
-
-/* Pen-wobble defs — one filter per sketch kind, each with its own
-   seed so the hand reads slightly different on every spread. The
-   displacement is small (1.5–2.5px) — a confident hand, not a shaky
-   one. Larger margins on the filter region prevent edge clipping. */
-const PEN_FILTERS: { id: string; freq: number; seed: number; scale: number }[] = [
-  { id: "nb-pen-leaf",  freq: 0.018, seed: 5,  scale: 2.0 },
-  { id: "nb-pen-cazo",  freq: 0.014, seed: 11, scale: 2.4 },
-  { id: "nb-pen-milpa", freq: 0.020, seed: 17, scale: 1.8 },
-  { id: "nb-pen-mano",  freq: 0.016, seed: 23, scale: 2.2 },
-  { id: "nb-pen-mesa",  freq: 0.012, seed: 29, scale: 2.6 },
-];
 ---
 
 <section class="notebook scene--bone" data-scene="bone" data-notebook>
@@ -196,14 +147,7 @@ const PEN_FILTERS: { id: string; freq: number; seed: number; scale: number }[] =
       sketch references its own filter id for a distinct hand. The
       <svg> is zero-sized and aria-hidden — pure defs container. */}
   <svg class="notebook__defs" aria-hidden="true" focusable="false" width="0" height="0">
-    <defs>
-      {PEN_FILTERS.map((f) => (
-        <filter id={f.id} x="-10%" y="-10%" width="120%" height="120%">
-          <feTurbulence type="fractalNoise" baseFrequency={f.freq} numOctaves="2" seed={f.seed} result="n" />
-          <feDisplacementMap in="SourceGraphic" in2="n" scale={f.scale} />
-        </filter>
-      ))}
-    </defs>
+    <defs set:html={sketchDefs(ALL_SKETCHES, "nb")} />
   </svg>
 
   {/* Pin chrome — title + counter sit at the top of the viewport
@@ -235,6 +179,11 @@ const PEN_FILTERS: { id: string; freq: number; seed: number; scale: number }[] =
           {/* Left page — drawing */}
           <div class="spread__page spread__page--left">
             <div class="spread__sketchwrap" data-sketch set:html={sketchSvg(sp.sketch)} />
+            <p class="spread__fig">
+              <span class="spread__figNum">Fig. {sp.recto}</span>
+              <span class="spread__figWord" data-edit-field={`copy.notebook.${sp.recto}.markWord`}>{markWord(sp.recto)}</span>
+              {LATIN[sp.sketch] ? <span class="spread__figLatin">{LATIN[sp.sketch]}</span> : null}
+            </p>
           </div>
 
           {/* Center binding shadow */}
@@ -246,11 +195,12 @@ const PEN_FILTERS: { id: string; freq: number; seed: number; scale: number }[] =
           <div class="spread__page spread__page--right">
             <div class="spread__media" data-edit-image-field={`copy.notebook.${sp.recto}.image_url`}>
               {sp.imageUrl ? (
-                <WebGLPlane
+                <SmartImage
                   src={sp.imageUrl}
                   alt={sp.caption}
-                  className="spread__plane"
-                  intensity={0.055}
+                  class="spread__img"
+                  widths={[480, 800]}
+                  sizes="(min-width: 880px) 38vw, 90vw"
                 />
               ) : (
                 <div class="spread__plate" aria-hidden="true">
@@ -385,12 +335,45 @@ const PEN_FILTERS: { id: string; freq: number; seed: number; scale: number }[] =
     width: 100%;
     height: 100%;
     color: var(--moss);
+    overflow: visible;
+  }
+  /* The wash sits under the line like pigment under graphite. */
+  .spread__sketchwrap :global([data-wash]){ mix-blend-mode: multiply; }
+
+  /* Naturalist plate caption under each study. */
+  .spread__fig{
+    margin: clamp(14px, 2.4vh, 26px) 0 0;
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px 12px;
+    color: color-mix(in srgb, var(--moss) 82%, transparent);
+  }
+  .spread__figNum{
+    font-family: var(--font-sans);
+    font-size: 10px;
+    letter-spacing: .28em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--moss) 60%, transparent);
+  }
+  .spread__figWord{
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: clamp(18px, 1.5vw, 24px);
+    line-height: 1;
+  }
+  .spread__figLatin{
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 13px;
+    color: color-mix(in srgb, var(--moss) 55%, transparent);
   }
   /* The Director will set stroke-dasharray/offset to enable the
      self-draw. Per-path stroke-width is set inline in the SVG so
      individual lines carry pressure variance. */
-  .spread__sketchwrap :global(svg path),
-  .spread__sketchwrap :global(svg ellipse){
+  .spread__sketchwrap :global(svg path:not([data-wash])),
+  .spread__sketchwrap :global(svg ellipse:not([data-wash])){
     fill: none;
     stroke: currentColor;
     stroke-linecap: round;
@@ -422,12 +405,16 @@ const PEN_FILTERS: { id: string; freq: number; seed: number; scale: number }[] =
 
   /* ── Right page — photograph + caption ────────────────────────── */
   .spread__page--right{
+    /* Plate width — capped by viewport HEIGHT too, so the 4:5 plate
+       plus its caption always fit inside the pinned stage (on ~900px
+       screens the caption used to sit under the progress ticks). */
+    --plate-w: min(clamp(280px, 38vw, 480px), max(240px, calc((100svh - 400px) * .8)));
     gap: clamp(18px, 3vw, 36px);
   }
   .spread__media{
     position: relative;
     width: 100%;
-    max-width: clamp(280px, 38vw, 480px);
+    max-width: var(--plate-w);
     aspect-ratio: 4 / 5;
     margin: 0 auto;
     overflow: hidden;
@@ -444,18 +431,14 @@ const PEN_FILTERS: { id: string; freq: number; seed: number; scale: number }[] =
     display: block;
     filter: saturate(1.04) contrast(1.05);
   }
-  /* WebGL surface inherits the printed-photo presence — the shader
-     handles the painterly grade; CSS sizes it within the mat. The
-     scene's scroll is pinned, so we suppress scroll-driven chroma
-     and let the mouse alone drive the interaction. */
-  .spread__media .spread__plane{
+  /* The photograph sits printed within the mat — no surface tricks. */
+  .spread__media :global(img.spread__img){
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
+    object-fit: cover;
     border-radius: inherit;
-  }
-  .spread__media .spread__plane .gl__img{
     filter: saturate(1.04) contrast(1.05);
   }
   .spread__inner-rule{
@@ -482,7 +465,7 @@ const PEN_FILTERS: { id: string; freq: number; seed: number; scale: number }[] =
 
   .spread__meta{
     width: 100%;
-    max-width: clamp(280px, 38vw, 480px);
+    max-width: var(--plate-w);
     margin: 0 auto;
     display: flex;
     flex-direction: column;

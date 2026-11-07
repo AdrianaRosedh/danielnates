@@ -42,7 +42,7 @@ const tiles: Tile[] = isFullAdmin
     <meta name="robots" content="noindex,nofollow" />
     <title>Admin · Daniel Nates</title>
     <link rel="icon" href="/favicon.ico" />
-    <style is:global>{`
+    <style is:global>
       :root{
         --ink: #0E0F0C;
         --bone: #F4EFE6;
@@ -67,7 +67,7 @@ const tiles: Tile[] = isFullAdmin
         min-height: 100svh;
       }
       a{ color: inherit; text-decoration: none; }
-    `}</style>
+    </style>
   </head>
   <body>
     <main class="adminLanding">
@@ -105,9 +105,9 @@ const tiles: Tile[] = isFullAdmin
           <a class="adminLanding__footLink" href="/" target="_blank" rel="noreferrer">
             {t("Ver el sitio", "View site")} ↗
           </a>
-          <a class="adminLanding__footLink" href="/admin/logout">
-            {t("Cerrar sesión", "Sign out")}
-          </a>
+          <form class="adminLanding__logout" method="post" action="/admin/logout">
+            <button class="adminLanding__footLink" type="submit">{t("Cerrar sesión", "Sign out")}</button>
+          </form>
         </div>
       </footer>
     </main>
@@ -217,6 +217,8 @@ const tiles: Tile[] = isFullAdmin
         color: var(--text-2);
       }
       .adminLanding__footLinks{ display: flex; gap: 16px; flex-wrap: wrap; }
+      .adminLanding__logout{ display: contents; }
+      button.adminLanding__footLink{ background: none; border: 0; padding: 0; font: inherit; cursor: pointer; }
       .adminLanding__footLink{
         font-size: 11px;
         letter-spacing: .14em;

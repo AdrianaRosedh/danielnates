@@ -80,8 +80,9 @@ const eyebrow = locale === "es" ? "El Servicio" : "Service";
     width: 100vw;
     margin-left: calc(50% - 50vw);
     margin-right: calc(50% - 50vw);
-    /* 200vh runway so the color drift takes time to read. */
-    min-height: 200vh;
+    /* Runway for the color drift — long enough to read, short enough
+       to never feel like dead scroll. */
+    min-height: 165vh;
     /* The drift is built from color-mix on a CSS var. AnimationDirector
        tweens --scene-p from 0 to 1 with scrub. Top stop = clay-tinted
        ink, bottom stop = ember-tinted ink. */
@@ -91,7 +92,9 @@ const eyebrow = locale === "es" ? "El Servicio" : "Service";
         color-mix(in srgb, var(--clay)  calc(var(--scene-p) * 26%), var(--ink-2)) 0%,
         color-mix(in srgb, var(--ember) calc(var(--scene-p) * 22%), var(--ink-2)) 100%);
     color: var(--bone);
-    overflow: hidden;
+    /* clip, not hidden — hidden creates a scroll container and kills
+       the sticky pin (the quote used to scroll away mid-drift). */
+    overflow: clip;
     position: relative;
   }
 
@@ -139,19 +142,24 @@ const eyebrow = locale === "es" ? "El Servicio" : "Service";
      ochre as --scene-p climbs. */
   .service__quote{
     margin: 0;
-    max-width: 22ch;
   }
-  .service__line{
+  /* :global — the element is rendered by <TextReveal>, outside this
+     component's style scope. */
+  :global(.service__line){
     font-family: var(--font-display);
     font-style: italic;
     font-weight: 400;
-    font-size: clamp(36px, 6vw, 84px);
-    line-height: 1.05;
-    letter-spacing: -0.02em;
+    font-size: clamp(44px, 7vw, 132px);
+    line-height: 1.0;
+    letter-spacing: -0.03em;
     color: color-mix(in srgb,
       var(--bone),
       var(--ochre) calc(var(--scene-p) * 18%));
     margin: 0;
+    /* Measure in the line's own ch — the old 22ch sat on the
+       blockquote (body size), which stacked one word per line. */
+    max-width: 15ch;
+    text-wrap: balance;
   }
   .service__attr{
     margin-top: clamp(28px, 4vh, 56px);

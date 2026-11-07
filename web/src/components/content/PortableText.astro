@@ -3,62 +3,118 @@
  * Renders a Portable Text–compatible block array (the format we store
  * in jsonb columns like article.body_es / project.body_es).
  * No Sanity dependency.
+ *
+ * Marks (strong, em, links) render through blocksToHtml — the same
+ * serializer the inline rich editor round-trips, so what Daniel sees
+ * while editing is exactly what visitors see.
+ *
+ * Typography is editorial by default (reading measure, real leading,
+ * pull-quote blockquotes). `lead` opens the text like a magazine
+ * feature: a display drop cap on the first paragraph.
  */
 import type { PortableTextBlock } from "@portabletext/types";
+import { blocksToHtml, type PtBlock } from "../../lib/portable";
 
-interface Props { value?: PortableTextBlock[] | null }
-const { value = [] } = Astro.props as Props;
-const blocks = Array.isArray(value) ? value : [];
-
-function textFromChildren(children: PortableTextBlock["children"] = []): string {
-  return children
-    .map((c) => (typeof (c as { text?: unknown }).text === "string" ? (c as { text: string }).text : ""))
-    .join("");
+interface Props {
+  value?: PortableTextBlock[] | null;
+  /** Drop cap + larger first paragraph — for article / chapter bodies. */
+  lead?: boolean;
 }
+const { value = [], lead = false } = Astro.props as Props;
+const blocks = Array.isArray(value) ? value : [];
+const html = blocksToHtml(blocks as unknown as PtBlock[]);
 ---
 
-<div class="pt">
-  {blocks.map((b) => {
-    if (b?._type !== "block") return null;
-    const style = b.style || "normal";
-    const txt = textFromChildren(b.children);
-    if (!txt?.trim()) return null;
-    if (style === "h2") return <h2>{txt}</h2>;
-    if (style === "h3") return <h3>{txt}</h3>;
-    if (style === "blockquote") return <blockquote>{txt}</blockquote>;
-    return <p>{txt}</p>;
-  })}
-</div>
+<div class:list={["pt", { "pt--lead": lead }]} set:html={html} />
 
 <style>
-  .pt{ max-width: 72ch; }
-  .pt p{
-    margin: 0 0 14px;
-    color: var(--text-2);
-    line-height: 1.7;
-    font-size: 15px;
+  .pt{
+    max-width: 64ch;
+    font-size: clamp(17px, 0.45vw + 13px, 20px);
   }
-  .pt h2{
-    margin: 22px 0 10px;
-    font-size: 22px;
-    letter-spacing: -0.02em;
+  .pt :global(p){
+    margin: 0 0 1.15em;
+    color: color-mix(in srgb, var(--text) 86%, transparent);
+    line-height: 1.72;
+    font-size: 1em;
+    text-wrap: pretty;
+    hanging-punctuation: first;
+  }
+  .pt :global(p:last-child){ margin-bottom: 0; }
+
+  .pt :global(h2){
+    margin: 2.2em 0 .55em;
     font-family: var(--font-display);
     font-weight: 400;
-  }
-  .pt h3{
-    margin: 18px 0 8px;
-    font-size: 18px;
-    letter-spacing: -0.01em;
-    font-family: var(--font-display);
-    font-weight: 400;
-  }
-  .pt blockquote{
-    margin: 18px 0;
-    padding: 12px 14px;
-    border-left: 2px solid var(--line-2);
-    background: color-mix(in srgb, var(--text) 3%, transparent);
-    border-radius: 14px;
+    font-size: clamp(30px, 2.6vw, 44px);
+    line-height: 1.04;
+    letter-spacing: -0.025em;
     color: var(--text);
-    line-height: 1.6;
+    text-wrap: balance;
+  }
+  .pt :global(h3){
+    margin: 1.9em 0 .5em;
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(23px, 1.8vw, 30px);
+    line-height: 1.1;
+    letter-spacing: -0.015em;
+    color: var(--text);
+  }
+  .pt :global(h2:first-child),
+  .pt :global(h3:first-child){ margin-top: 0; }
+
+  /* Blockquote = pull quote. Display italic, a sage hairline, no box. */
+  .pt :global(blockquote){
+    margin: 1.8em 0;
+    padding: .1em 0 .1em 1.1em;
+    border-left: 1px solid color-mix(in srgb, var(--brand, var(--olivar)) 70%, transparent);
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: clamp(26px, 2.2vw, 38px);
+    line-height: 1.16;
+    letter-spacing: -0.015em;
+    color: var(--text);
+    text-wrap: balance;
+  }
+  .pt :global(blockquote p){ margin: 0; color: inherit; line-height: inherit; }
+
+  .pt :global(ul),
+  .pt :global(ol){
+    margin: 0 0 1.15em;
+    padding-left: 1.2em;
+    color: color-mix(in srgb, var(--text) 86%, transparent);
+    line-height: 1.7;
+  }
+  .pt :global(li){ margin: .35em 0; padding-left: .2em; }
+  .pt :global(li::marker){ color: var(--text-3); }
+
+  .pt :global(strong){ font-weight: 600; color: var(--text); }
+  .pt :global(em){ font-style: italic; }
+  .pt :global(a){
+    color: var(--text);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-decoration-color: color-mix(in srgb, var(--brand, var(--olivar)) 65%, transparent);
+    text-underline-offset: .22em;
+    transition: text-decoration-color var(--dur-quick, 300ms) var(--ease-fluid);
+  }
+  .pt :global(a:hover){
+    text-decoration-color: var(--brand, var(--olivar));
+  }
+
+  /* ── Lead: the feature opening ─────────────────────────────────── */
+  .pt--lead > :global(p:first-child){
+    font-size: 1.12em;
+    line-height: 1.62;
+    color: var(--text);
+  }
+  .pt--lead > :global(p:first-child::first-letter){
+    float: left;
+    margin: .06em .1em 0 0;
+    font-family: var(--font-display);
+    font-size: 4.3em;
+    line-height: .78;
+    color: var(--text);
   }
 </style>

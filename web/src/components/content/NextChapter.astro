@@ -1,0 +1,88 @@
+---
+/**
+ * NextChapter — the door at the bottom of every room.
+ *
+ * Closes a page by pointing at the next chapter of the journey
+ * (lib/chapters.ts), so the story never dead-ends: a hairline, a
+ * quiet "Sigue", and one oversized serif door that steps open on
+ * hover — same language as the doors on /sobre.
+ */
+import { nextChapter } from "../../lib/chapters";
+import type { Locale } from "../../lib/types";
+
+interface Props {
+  /** Chapter key of the CURRENT page (e.g. "diario"). */
+  current: string;
+  locale?: Locale;
+}
+const { current, locale: propLocale } = Astro.props as Props;
+const locale: Locale = propLocale ?? Astro.locals.locale ?? "es";
+const next = nextChapter(current);
+---
+
+<section class="nextCh reveal" aria-label={locale === "es" ? "Siguiente capítulo" : "Next chapter"}>
+  <p class="nextCh__kicker">{locale === "es" ? "Sigue" : "Continue"}</p>
+  <a class="nextCh__door" href={next.href[locale]}>
+    <span class="nextCh__label">{next.title[locale]}</span>
+    <span class="nextCh__meta">
+      <span class="nextCh__line">{next.line[locale]}</span>
+      <span class="nextCh__arrow" aria-hidden="true">→</span>
+    </span>
+  </a>
+</section>
+
+<style>
+  .nextCh{
+    margin: clamp(64px, 9vw, 120px) 0 clamp(28px, 4vw, 48px);
+    padding-top: clamp(20px, 3vw, 32px);
+    border-top: 1px solid var(--line);
+  }
+  .nextCh__kicker{
+    margin: 0 0 clamp(14px, 2vw, 22px);
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  .nextCh__door{
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+    gap: 24px;
+    color: var(--text);
+    text-decoration: none;
+    padding: clamp(10px, 1.6vw, 18px) 0;
+    transition: padding-left 700ms var(--ease-fluid);
+  }
+  .nextCh__door:hover{ padding-left: clamp(8px, 1.5vw, 18px); }
+  .nextCh__label{
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(40px, 7vw, 96px);
+    line-height: 1;
+    letter-spacing: -0.025em;
+  }
+  .nextCh__meta{
+    display: inline-flex;
+    align-items: baseline;
+    gap: 14px;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    text-align: right;
+  }
+  .nextCh__arrow{
+    display: inline-block;
+    transition: transform 600ms var(--ease-fluid);
+  }
+  .nextCh__door:hover .nextCh__arrow{ transform: translateX(6px); }
+  .nextCh__door:hover .nextCh__meta{ color: var(--text-2); }
+
+  @media (max-width: 720px){
+    .nextCh__door{ grid-template-columns: 1fr; gap: 8px; }
+    .nextCh__meta{ text-align: left; }
+  }
+</style>

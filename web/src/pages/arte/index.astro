@@ -1,8 +1,11 @@
 ---
 export const prerender = false;
 
+import EmptyState from "../../components/content/EmptyState.astro";
 import BaseLayout from "../../components/layout/BaseLayout.astro";
 import TopDock from "../../components/layout/TopDock.astro";
+import SmartImage from "../../components/content/SmartImage.astro";
+import NextChapter from "../../components/content/NextChapter.astro";
 import { getArtPieces } from "../../lib/queries";
 import { getSupabaseServer } from "../../lib/supabase";
 import { href, ui } from "../../lib/i18n";
@@ -55,7 +58,14 @@ const lede = locale === "es"
           {pieces.map((p) => (
             <a class="artCard" href={href(`/arte/${p.slug}`, locale)}>
               <div class="artCard__cover" data-edit-image-field={`art.${p.slug}.cover_url`}>
-                {p.cover_url ? <img src={p.cover_url} alt={p.title} loading="lazy" /> : null}
+                {p.cover_url ? (
+                  <SmartImage
+                    src={p.cover_url}
+                    alt={p.title}
+                    widths={[480, 800]}
+                    sizes="(min-width: 880px) 33vw, 50vw"
+                  />
+                ) : null}
                 {isAdmin && !p.published ? (
                   <span class="artCard__draftPill">Borrador</span>
                 ) : null}
@@ -69,10 +79,15 @@ const lede = locale === "es"
         </div>
       </section>
     ) : (
-      <section class="section reveal">
-        <p class="sub">{ui("noArt", locale)}</p>
-      </section>
+      <EmptyState
+        sketch="leaf"
+        line={locale === "es" ? "El taller se está llenando." : "The studio is filling up."}
+        note={locale === "es" ? "Dibujos, pinturas y marcas en papel — pronto aquí. Mientras tanto, el cuaderno vive en la portada." : "Drawings, paintings, marks on paper — soon here. Meanwhile, the notebook lives on the front page."}
+        adminHint="Activa Editar y pulsa “+ Nueva pieza” para subir la primera."
+      />
     )}
+
+    <NextChapter current="arte" locale={locale} />
   </div>
 </BaseLayout>
 
@@ -87,8 +102,8 @@ const lede = locale === "es"
     border: 1px solid var(--line);
     transition: transform 600ms var(--ease-fluid), border-color 600ms var(--ease-fluid);
   }
-  .artCard:hover{ transform: translateY(-2px); border-color: var(--line-2); }
-  .artCard__cover{ display: block; width: 100%; aspect-ratio: 4/5; position: relative; }
+  .artCard:hover{ transform: translateY(-2px); border-color: var(--line-2); --img-scale: 1.045; }
+  .artCard__cover{ display: block; width: 100%; aspect-ratio: 4/5; position: relative; overflow: hidden; }
   .artCard__draftPill{
     position: absolute;
     top: 8px; left: 8px;
@@ -102,7 +117,7 @@ const lede = locale === "es"
     border-radius: 999px;
     pointer-events: none;
   }
-  .artCard img{ width: 100%; aspect-ratio: 4/5; object-fit: cover; display: block; }
+  .artCard :global(img){ width: 100%; aspect-ratio: 4/5; object-fit: cover; display: block; }
   .artCard__meta{ padding: 12px 12px 14px; }
   .artCard__title{ margin: 0; font-size: 14px; letter-spacing: -0.01em; font-family: var(--font-display); }
   .artCard__sub{ margin: 4px 0 0; font-size: 12px; color: var(--text-3); }

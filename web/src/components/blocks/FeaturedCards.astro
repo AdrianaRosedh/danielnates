@@ -1,5 +1,6 @@
 ---
 import type { FeaturedCardsBlock } from "../../lib/types";
+import SmartImage from "../content/SmartImage.astro";
 
 interface Props { block: FeaturedCardsBlock }
 const { block } = Astro.props as Props;
@@ -16,7 +17,9 @@ const cards = block.cards ?? [];
         const Tag = c.href ? "a" : "div";
         return (
           <Tag class="featured__card" href={c.href || undefined}>
-            {src ? <img src={src} alt={c.title} loading="lazy" /> : null}
+            {src ? (
+              <SmartImage src={src} alt={c.title} widths={[480, 800]} sizes="(min-width: 1000px) 33vw, (min-width: 720px) 50vw, 100vw" />
+            ) : null}
             <div class="featured__body">
               {c.tag ? <p class="featured__tag">{c.tag}</p> : null}
               <h3 class="featured__cardTitle">{c.title}</h3>
@@ -43,8 +46,8 @@ const cards = block.cards ?? [];
     border: 1px solid rgba(255,255,255,.10);
     transition: transform .25s, border-color .25s;
   }
-  .featured__card:hover{ transform: translateY(-2px); border-color: color-mix(in srgb, var(--brand-primary) 50%, rgba(255,255,255,.16)); }
-  .featured__card img{ width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block; }
+  .featured__card:hover{ transform: translateY(-2px); border-color: color-mix(in srgb, var(--brand-primary) 50%, rgba(255,255,255,.16)); --img-scale: 1.04; }
+  .featured__card :global(img){ width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block; }
   .featured__body{ padding: 14px 14px 16px; }
   .featured__tag{ margin: 0; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted2); }
   .featured__cardTitle{ margin: 6px 0 4px; font-size: 16px; letter-spacing: -.01em; }

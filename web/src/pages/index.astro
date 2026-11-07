@@ -4,6 +4,7 @@ export const prerender = false;
 import BaseLayout from "../components/layout/BaseLayout.astro";
 import TopDock from "../components/layout/TopDock.astro";
 import ColdOpen from "../components/scenes/ColdOpen.astro";
+import Prologue from "../components/scenes/Prologue.astro";
 import NotebookScene from "../components/scenes/NotebookScene.astro";
 import FrameScene from "../components/scenes/FrameScene.astro";
 import ServiceScene from "../components/scenes/ServiceScene.astro";
@@ -12,6 +13,7 @@ import Closing from "../components/scenes/Closing.astro";
 
 import { getDaniel, getLandingCopy } from "../lib/queries";
 import { t2 } from "../lib/i18n";
+import { MEDIA } from "../lib/site";
 import type { Locale } from "../lib/types";
 
 interface PageProps { lang?: Locale }
@@ -77,11 +79,16 @@ const heroMeta = locale === "es"
     signature={heroSig}
     signatureField={`daniel.${locale === "es" ? "subline_es" : "subline_en"}`}
     meta={heroMeta}
-    posterUrl={c("cold.poster.image_url", "/media/hero/daniel-garden.jpg")}
+    posterUrl={c("cold.poster.image_url", MEDIA.portrait)}
     posterField="copy.cold.poster.image_url"
     voice={daniel?.voice ?? null}
     locale={locale}
   />
+
+  {/* Prólogo — the film's first words. Three lines: a thesis (knife
+      and pencil), a confession, a promise. The Service scene pays the
+      first line off two chapters later. */}
+  <Prologue locale={locale} copy={copy} />
 
   {/* I · El Cuaderno — the signature. Five spreads turn horizontally
       as you scroll vertically. Each spread = a hand-drawn line on the
@@ -97,7 +104,7 @@ const heroMeta = locale === "es"
       garden image enters BIG (scale 1.18) and slowly settles back —
       inverse parallax. The world recedes. */}
   <FrameScene
-    src={c("frame.huerto.image_url", "/media/hero/daniel-garden.jpg")}
+    src={c("frame.huerto.image_url", MEDIA.portrait)}
     imageField="copy.frame.huerto.image_url"
     alt={heroName}
     tone="moss"

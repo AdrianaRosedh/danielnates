@@ -1,5 +1,5 @@
 ---
-import { href, pressHref, ui } from "../../lib/i18n";
+import { aboutHref, href, pressHref, ui } from "../../lib/i18n";
 import type { Locale, Person } from "../../lib/types";
 import TextReveal from "../motion/TextReveal.astro";
 
@@ -23,6 +23,7 @@ const place = locale === "es"
   ? "Valle de Guadalupe · CDMX · MMXXVI"
   : "Valle de Guadalupe · Mexico City · MMXXVI";
 const email = daniel?.social?.email ?? null;
+const igDaniel = daniel?.social?.instagram ?? null;
 const ig1 = daniel?.social?.olivea_instagram ?? null;
 const ig2 = daniel?.social?.fritanguita_instagram ?? null;
 ---
@@ -39,22 +40,38 @@ const ig2 = daniel?.social?.fritanguita_instagram ?? null;
       <span class="closing__name">{sigName}</span>
       <span class="closing__place">{place}</span>
     </div>
+
+    {/* The film ends; the house opens. First door of the journey. */}
+    <a class="closing__door" href={aboutHref(locale)}>
+      <span class="closing__doorKicker">{locale === "es" ? "Sigue" : "Continue"}</span>
+      <span class="closing__doorLabel">{locale === "es" ? "Sobre Daniel" : "About Daniel"}</span>
+      <span class="closing__doorMeta">
+        {locale === "es" ? "El cocinero detrás de la mesa" : "The cook behind the table"}
+        <span class="closing__doorArrow" aria-hidden="true">→</span>
+      </span>
+    </a>
   </div>
 
   <footer class="closing__foot">
     <div class="closing__col">
       <p class="closing__label">{ui("contact", locale)}</p>
       {email ? <a class="closing__link" href={`mailto:${email}`}>{email}</a> : null}
+      <a class="closing__link" href={href("/contacto", locale)}>{locale === "es" ? "Escribe" : "Write"} →</a>
+      {igDaniel ? <a class="closing__link" href={igDaniel} target="_blank" rel="noreferrer">Instagram ↗</a> : null}
     </div>
 
     <div class="closing__col">
       <p class="closing__label">Olivea</p>
+      <a class="closing__link" href={href("/olivea", locale)}>{locale === "es" ? "El capítulo" : "The chapter"} →</a>
       {ig1 ? <a class="closing__link" href={ig1} target="_blank" rel="noreferrer">Instagram ↗</a> : null}
+      <span class="closing__note">Valle de Guadalupe</span>
     </div>
 
     <div class="closing__col">
       <p class="closing__label">Fritanguita</p>
+      <a class="closing__link" href={href("/fritanguita", locale)}>{locale === "es" ? "El capítulo" : "The chapter"} →</a>
       {ig2 ? <a class="closing__link" href={ig2} target="_blank" rel="noreferrer">Instagram ↗</a> : null}
+      <span class="closing__note">Roma Norte · CDMX</span>
     </div>
 
     <div class="closing__col">
@@ -90,13 +107,17 @@ const ig2 = daniel?.social?.fritanguita_instagram ?? null;
     color: var(--bone);
     border-top: 1px solid color-mix(in srgb, var(--mist) 22%, rgba(244,239,230,.04));
     overflow: hidden;
+    /* Contain the .scene--ink::after vignette — unpositioned, it
+       escaped to the top of the page and darkened the hero. */
+    position: relative;
   }
+  .closing > *{ position: relative; z-index: 1; }
 
   /* Hero-like statement — the film's last line */
   .closing__inner{
     max-width: 1280px;
     margin: 0 auto;
-    padding: clamp(160px, 22vw, 320px) clamp(20px, 6vw, 120px) clamp(120px, 14vw, 200px);
+    padding: clamp(110px, 15vw, 210px) clamp(20px, 6vw, 120px) clamp(90px, 11vw, 150px);
     text-align: center;
   }
   .closing__rule{
@@ -111,7 +132,8 @@ const ig2 = daniel?.social?.fritanguita_instagram ?? null;
       transparent);
     margin: 0 auto clamp(40px, 5vw, 64px);
   }
-  .closing__line{
+  /* :global — rendered by <TextReveal>, outside this scope. */
+  :global(.closing__line){
     margin: 0;
     font-family: var(--font-display);
     font-style: italic;
@@ -137,6 +159,49 @@ const ig2 = daniel?.social?.fritanguita_instagram ?? null;
   .closing__name{ color: rgba(244,239,230,.9); }
   .closing__place{ color: rgba(244,239,230,.45); }
 
+  /* The onward door — the coda hands you to the next chapter */
+  .closing__door{
+    margin-top: clamp(56px, 8vw, 96px);
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    color: var(--bone);
+  }
+  .closing__doorKicker{
+    font-family: var(--font-sans);
+    font-size: 10.5px;
+    letter-spacing: .3em;
+    text-transform: uppercase;
+    color: rgba(244,239,230,.45);
+  }
+  .closing__doorLabel{
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(32px, 5vw, 64px);
+    line-height: 1;
+    letter-spacing: -0.02em;
+    transition: color 600ms var(--ease-fluid);
+  }
+  .closing__doorMeta{
+    display: inline-flex;
+    align-items: baseline;
+    gap: 10px;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: rgba(244,239,230,.55);
+    transition: color 600ms var(--ease-fluid);
+  }
+  .closing__doorArrow{
+    display: inline-block;
+    transition: transform 600ms var(--ease-fluid);
+  }
+  .closing__door:hover .closing__doorLabel{ color: color-mix(in srgb, var(--olivar) 45%, var(--bone)); }
+  .closing__door:hover .closing__doorMeta{ color: rgba(244,239,230,.8); }
+  .closing__door:hover .closing__doorArrow{ transform: translateX(6px); }
+
   /* Quiet, editorial footer */
   .closing__foot{
     max-width: 1280px;
@@ -158,6 +223,15 @@ const ig2 = daniel?.social?.fritanguita_instagram ?? null;
     letter-spacing: .24em;
     text-transform: uppercase;
     color: rgba(244,239,230,.45);
+  }
+  .closing__note{
+    display: block;
+    margin-top: 2px;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: rgba(244,239,230,.38);
   }
   .closing__link{
     font-family: var(--font-sans);

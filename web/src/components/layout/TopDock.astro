@@ -37,6 +37,28 @@ const homeHref = locale === "es" ? "/" : "/en";
     color: rgba(244,239,230,.92);
   }
 
+  /* A soft fade behind the chrome so copy scrolling underneath never
+     collides with it — ink fade on cinematic scenes, paper fade on
+     bone ones (body.dock-on-bone is flipped by AnimationDirector). */
+  .dock::before,
+  .dock::after{
+    content: "";
+    position: absolute;
+    inset: 0 0 -28px 0;
+    z-index: -1;
+    pointer-events: none;
+    transition: opacity 800ms var(--ease-fluid);
+  }
+  .dock::before{
+    background: linear-gradient(to bottom, color-mix(in srgb, var(--ink) 82%, transparent), transparent);
+  }
+  .dock::after{
+    background: linear-gradient(to bottom, color-mix(in srgb, var(--bone) 94%, transparent), transparent);
+    opacity: 0;
+  }
+  :global(body.dock-on-bone) .dock::before{ opacity: 0; }
+  :global(body.dock-on-bone) .dock::after{ opacity: 1; }
+
   .dock__brand,
   .dock__menu{ pointer-events: auto; }
 

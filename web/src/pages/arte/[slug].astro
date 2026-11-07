@@ -4,8 +4,11 @@ export const prerender = false;
 import BaseLayout from "../../components/layout/BaseLayout.astro";
 import TopDock from "../../components/layout/TopDock.astro";
 import BlockRenderer from "../../components/blocks/BlockRenderer.astro";
+import SmartImage from "../../components/content/SmartImage.astro";
+import NextChapter from "../../components/content/NextChapter.astro";
 
-import { getArtPiece } from "../../lib/queries";
+import { getArtPieces } from "../../lib/queries";
+import { resolveArtPiecePage } from "../../lib/page-resolvers";
 import { href, t2, ui } from "../../lib/i18n";
 import type { Locale } from "../../lib/types";
 
@@ -13,9 +16,15 @@ interface PageProps { lang?: Locale }
 const { lang } = Astro.props as PageProps;
 const locale: Locale = lang ?? Astro.locals.locale ?? "es";
 
-const { slug } = Astro.params as { slug: string };
-const piece = await getArtPiece(slug);
-if (!piece) return Astro.redirect(href("/404", locale));
+const page = await resolveArtPiecePage(Astro, locale);
+if ("notFound" in page) return page.notFound;
+const { piece } = page;
+const slug = piece.slug;
+
+/* The gallery walks on — the piece after this one in the collection. */
+const collection = await getArtPieces();
+const collectionIdx = collection.findIndex((p) => p.slug === slug);
+const nextPiece = collectionIdx >= 0 ? collection[collectionIdx + 1] ?? null : null;
 
 const title = piece.title;
 const statement = t2(piece.statement_es, piece.statement_en, locale);
@@ -30,11 +39,24 @@ const statementField = `art.${slug}.statement_${locale}`;
   title={`${title} — ${ui("art", locale)}`}
   description={statement}
   locale={locale}
+  ogType="article"
+  jsonLd={[{
+    "@context": "https://schema.org",
+    "@type": "VisualArtwork",
+    "name": title,
+    "description": statement,
+    "image": piece.cover_url ? [piece.cover_url] : undefined,
+    "dateCreated": piece.year ? String(piece.year) : undefined,
+    "artMedium": piece.medium ?? undefined,
+    "artworkSurface": piece.dimensions ?? undefined,
+    "creator": { "@type": "Person", "name": "Daniel Nates" },
+    "inLanguage": locale === "es" ? "es-MX" : "en-US",
+  }]}
   editContext={{
     entity: "art",
     id: slug,
     published: !!piece.published,
-    indexHref: "/admin/art",
+    indexHref: "/admin",
   }}
 >
   <div class="shell">
@@ -44,7 +66,15 @@ const statementField = `art.${slug}.statement_${locale}`;
       <p class="kicker">{ui("art", locale)}{meta ? ` · ${meta}` : ""}</p>
       <h1 class="h1" data-edit-field={titleField}>{title}</h1>
       <div class="artHeader__coverWrap" data-edit-image-field={`art.${slug}.cover_url`}>
-        {piece.cover_url ? <img class="artHeader__cover" src={piece.cover_url} alt={title} /> : null}
+        {piece.cover_url ? (
+          <SmartImage
+            class="artHeader__cover"
+            src={piece.cover_url}
+            alt={title}
+            eager
+            sizes="(min-width: 1240px) 1160px, 100vw"
+          />
+        ) : null}
       </div>
       {statement ? (
         <p
@@ -58,11 +88,72 @@ const statementField = `art.${slug}.statement_${locale}`;
     </article>
 
     {piece.blocks?.length ? <BlockRenderer blocks={piece.blocks} locale={locale} /> : null}
+
+    <div class="finis" aria-hidden="true">⁂</div>
+
+    {nextPiece ? (
+      <nav class="entryNext reveal" aria-label={locale === "es" ? "Siguiente pieza" : "Next piece"}>
+        <p class="entryNext__kicker">{locale === "es" ? "Siguiente pieza" : "Next piece"}</p>
+        <a class="entryNext__link" href={href(`/arte/${nextPiece.slug}`, locale)}>
+          <span class="entryNext__title">{nextPiece.title}</span>
+          <span class="entryNext__date">{[nextPiece.year, nextPiece.medium].filter(Boolean).join(" · ")}</span>
+        </a>
+      </nav>
+    ) : null}
+
+    <NextChapter current="arte" locale={locale} />
   </div>
 </BaseLayout>
 
 <style>
   .artHeader{ margin: 14px 0 18px; }
   .artHeader__coverWrap{ display: block; margin-top: 22px; }
-  .artHeader__cover{ width: 100%; height: auto; border-radius: var(--r-3); display: block; }
+  :global(img.artHeader__cover){ width: 100%; height: auto; border-radius: var(--r-3); display: block; }
+
+  /* The piece signs off — asterism, then the road onward. */
+  .finis{
+    margin: clamp(40px, 6vw, 72px) 0 0;
+    text-align: center;
+    font-size: 18px;
+    letter-spacing: .4em;
+    color: var(--text-3);
+  }
+  .entryNext{
+    margin-top: clamp(40px, 6vw, 72px);
+    padding-top: clamp(18px, 2.6vw, 28px);
+    border-top: 1px solid var(--line);
+  }
+  .entryNext__kicker{
+    margin: 0 0 12px;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  .entryNext__link{
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+    gap: 20px;
+    color: var(--text);
+    transition: padding-left 600ms var(--ease-fluid);
+  }
+  .entryNext__link:hover{ padding-left: clamp(6px, 1.2vw, 14px); }
+  .entryNext__title{
+    font-family: var(--font-display);
+    font-size: clamp(22px, 3vw, 34px);
+    letter-spacing: -0.015em;
+    line-height: 1.15;
+  }
+  .entryNext__date{
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  @media (max-width: 720px){
+    .entryNext__link{ grid-template-columns: 1fr; gap: 6px; }
+  }
 </style>

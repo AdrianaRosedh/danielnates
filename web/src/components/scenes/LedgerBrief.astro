@@ -90,9 +90,9 @@ const indexOf = (brand: string) => {
 const finalEntries: Entry[] = [...allEntries].sort((a, b) => indexOf(a.brand) - indexOf(b.brand));
 
 const eyebrow = locale === "es" ? "La Mesa" : "The Table";
-const lede = locale === "es"
-  ? "Lo que está pasando ahora — y dónde."
-  : "What's happening right now — and where.";
+const lede = c(`ledger.lede_${locale}`, locale === "es"
+  ? "Lo que está abierto hoy — y lo que sigue cocinando desde la memoria."
+  : "What's open today — and what keeps cooking from memory.");
 ---
 
 <section class="ledger scene--bone" data-scene="bone" data-ledger>
@@ -107,7 +107,7 @@ const lede = locale === "es"
         <span class="ledger__eyebrow">{eyebrow}</span>
       </div>
       <h2 class="ledger__title">{finalTitle}</h2>
-      <p class="ledger__lede">{lede}</p>
+      <p class="ledger__lede" data-edit-field={`copy.ledger.lede_${locale}`}>{lede}</p>
     </header>
 
     {/* The three rows — read as ledger entries, hover reveals

@@ -6,6 +6,10 @@
    Brand colors only as ACCENTS. Never as backgrounds.
    ───────────────────────────────────────────────────────────────────── */
 :root{
+  /* Layout metrics — shared by .shell, full-bleed heroes and paper pages. */
+  --shell-offset: clamp(80px, 9vw, 120px);   /* .shell top padding (clears the dock) */
+  --page-gutter:  clamp(20px, 4vw, 64px);    /* side padding of full-bleed sections */
+
   /* Core palette — keyed to the garden hero photo (Daniel kneeling
      in the kale at Olivea). Dominant naturals are sage greens, a
      misty mountain blue-gray, warm clay earth, and a soft cream sky.
@@ -135,7 +139,14 @@
 /* ─────────────────────────────────────────────────────────────── */
 
 *{ box-sizing: border-box; }
-html, body{ height: 100%; }
+/* Never pin html/body to height:100%. Lenis (smooth scroll) re-measures
+   the page only when <html>'s box resizes — a viewport-pinned box never
+   resizes, so whatever Lenis measured first stuck forever. On a first
+   visit that was the intro curtain's scroll lock (body overflow:hidden
+   collapses the page to one screen) → limit 0 → the page could not be
+   scrolled at all. min-height keeps short pages filling the screen. */
+html{ min-height: 100%; }
+body{ min-height: 100vh; min-height: 100dvh; }
 html, body{ overflow-x: clip; }   /* full-bleed sections must not trigger horizontal scrollbar */
 
 html{
@@ -216,6 +227,14 @@ h3, .h3{
 }
 
 ::selection{ background: var(--olivar); color: var(--bone); }
+
+/* ── Keyboard focus — visible, sage-ringed, never on mouse clicks ── */
+:focus-visible{
+  outline: 2px solid color-mix(in srgb, var(--olivar) 75%, var(--text));
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+:focus:not(:focus-visible){ outline: none; }
 
 /* ── Modern scrollbar — thin, sage-tinted, fades in on hover ──────── */
 /* Firefox */

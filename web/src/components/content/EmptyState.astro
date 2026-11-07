@@ -1,0 +1,90 @@
+---
+/**
+ * EmptyState — what a list page says before it has anything to list.
+ *
+ * Visitors get a quiet editorial moment (a hairline and one display
+ * line) instead of a bare "no items" string. Admins additionally see
+ * how to add the first item, which visitors must never see.
+ */
+import Sketch from "./Sketch.astro";
+import type { SketchKind } from "../../lib/sketches";
+
+interface Props {
+  /** A notebook study that draws itself beside the line. */
+  sketch?: SketchKind | null;
+  /** Scene the empty state sits on (sketch ink + wash blend). */
+  tone?: "bone" | "ink";
+  /** The display line visitors read. */
+  line: string;
+  /** Optional small note under the line (visitors). */
+  note?: string | null;
+  /** Instruction shown only to admins. */
+  adminHint?: string | null;
+}
+const { line, note = null, adminHint = null, sketch = null, tone = "ink" } = Astro.props as Props;
+const isAdmin = !!Astro.locals.isAdmin;
+---
+
+<section class:list={["empty", { "empty--sketch": !!sketch }]}>
+  <div class="empty__text reveal">
+    <span class="empty__rule" aria-hidden="true"></span>
+    <p class="empty__line">{line}</p>
+    {note ? <p class="empty__note">{note}</p> : null}
+    {isAdmin && adminHint ? <p class="empty__hint">{adminHint}</p> : null}
+  </div>
+  {sketch ? <Sketch kind={sketch} tone={tone} class="empty__sketch" /> : null}
+</section>
+
+<style>
+  .empty{
+    margin: clamp(64px, 12vh, 160px) 0 clamp(48px, 8vh, 120px);
+    display: grid;
+    gap: clamp(32px, 5vw, 96px);
+    align-items: center;
+  }
+  .empty--sketch{ grid-template-columns: minmax(0, 7fr) minmax(0, 4fr); }
+  .empty__text{
+    display: grid;
+    gap: clamp(18px, 3vh, 28px);
+    justify-items: start;
+  }
+  :global(.empty__sketch){ width: min(100%, 320px); justify-self: center; }
+  @media (max-width: 720px){
+    .empty--sketch{ grid-template-columns: 1fr; }
+    :global(.empty__sketch){ width: min(70%, 260px); }
+  }
+  .empty__rule{
+    width: clamp(40px, 6vw, 88px);
+    height: 1px;
+    background: color-mix(in srgb, var(--olivar) 70%, transparent);
+  }
+  .empty__line{
+    margin: 0;
+    max-width: 18ch;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 400;
+    font-size: clamp(36px, 5vw, 84px);
+    line-height: 1;
+    letter-spacing: -0.03em;
+    color: var(--text);
+    text-wrap: balance;
+  }
+  .empty__note{
+    margin: 0;
+    max-width: 46ch;
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--text-2);
+  }
+  .empty__hint{
+    margin: 8px 0 0;
+    padding: 10px 14px;
+    border: 1px dashed var(--line-2);
+    border-radius: 10px;
+    font-family: var(--font-sans);
+    font-size: 13px;
+    color: var(--text-2);
+  }
+</style>

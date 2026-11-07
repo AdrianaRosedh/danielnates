@@ -9,9 +9,20 @@ import MenuOverlay from "./MenuOverlay.astro";
 import ScrollProgress from "../motion/ScrollProgress.astro";
 import { getDaniel } from "../../lib/queries";
 import { switchLocale } from "../../lib/i18n";
+import { jsonForScript } from "../../lib/security";
+import { EXTERNAL, MEDIA, SITE_URL } from "../../lib/site";
+
+// Preload the two text faces (latin subsets) so headlines and body
+// copy paint without a flash on slow connections.
+import interWoff2 from "@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url";
+import serifWoff2 from "@fontsource/instrument-serif/files/instrument-serif-latin-400-normal.woff2?url";
+import serifItalicWoff2 from "@fontsource/instrument-serif/files/instrument-serif-latin-400-italic.woff2?url";
 
 const daniel = await getDaniel();
 
+// Lenis' own stylesheet: html/body height:auto while it runs, overflow
+// clip while stopped (menu, intro), nested-scroll containment.
+import "lenis/dist/lenis.css";
 import "../../styles/fonts.css";
 import "../../styles/tokens.css";
 import "../../styles/brands.css";
@@ -21,6 +32,7 @@ import "../../styles/hero.css";
 import "../../styles/cards.css";
 import "../../styles/motion.css";
 import "../../styles/transitions.css";
+import "../../styles/ui.css";
 
 interface OgParams {
   title?: string;
@@ -58,6 +70,21 @@ interface Props {
   entrance?: boolean;
   /** Override the auto-generated OG card. */
   og?: OgParams;
+  /** og:type — "website" (default) or "article" for diary/art entries. */
+  ogType?: "website" | "article" | "profile";
+  /** Article-specific OG metadata for diary/art detail pages. */
+  ogArticle?: {
+    publishedTime?: string | null;
+    modifiedTime?: string | null;
+    section?: string | null;
+    tags?: string[] | null;
+    author?: string | null;
+  };
+  /** Per-page JSON-LD blocks. Rendered as <script type="application/ld+json">
+   *  in <head>. The Person + WebSite schema for Daniel are emitted on every
+   *  page automatically; pass page-specific blocks (Article, CreativeWork,
+   *  Restaurant, etc.) here. */
+  jsonLd?: Record<string, unknown>[];
   /** Inline-edit context for slug- or id-keyed detail pages. When
    *  set, the EditOverlay shows Publish + Delete affordances. */
   editContext?: EditContext;
@@ -72,6 +99,9 @@ const {
   locale: propLocale,
   entrance: entranceProp,
   og,
+  ogType = "website",
+  ogArticle,
+  jsonLd = [],
   editContext,
   createContext,
 } = Astro.props as Props;
@@ -87,7 +117,7 @@ const isLanding =
   Astro.url.pathname === "/en/";
 const showEntrance = entranceProp ?? isLanding;
 
-const SITE = import.meta.env.PUBLIC_SITE_URL ?? "https://danielnates.com";
+const SITE = SITE_URL;
 const canonical = new URL(Astro.url.pathname, SITE).toString();
 
 // Build the dynamic OG image URL with sensible defaults.
@@ -105,50 +135,10 @@ const ogParams = new URLSearchParams({
 });
 if (ogSig) ogParams.set("sig", ogSig);
 const ogImage = `${SITE}/og.png?${ogParams.toString()}`;
----
 
-<html lang={locale}>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>{title}</title>
-    {description && <meta name="description" content={description} />}
-    <link rel="canonical" href={canonical} />
-
-    {/* Open Graph */}
-    <meta property="og:type" content="website" />
-    <meta property="og:title" content={title} />
-    {description && <meta property="og:description" content={description} />}
-    <meta property="og:image" content={ogImage} />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <meta property="og:url" content={canonical} />
-    <meta property="og:site_name" content="Daniel Nates" />
-    <meta property="og:locale" content={locale === "es" ? "es_MX" : "en_US"} />
-
-    {/* Twitter */}
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content={title} />
-    {description && <meta name="twitter:description" content={description} />}
-    <meta name="twitter:image" content={ogImage} />
-
-    {/* Alternate locale — translates asymmetric routes (sobre↔about, etc.) */}
-    <link rel="alternate" hreflang="es" href={new URL(switchLocale(Astro.url.pathname, "es"), SITE).toString()} />
-    <link rel="alternate" hreflang="en" href={new URL(switchLocale(Astro.url.pathname, "en"), SITE).toString()} />
-
-    <ClientRouter />
-
-    <!-- Animations opt-in only when JS is running -->
-    <script is:inline>{`document.documentElement.classList.add('js');`}</script>
-
-    {/* CRITICAL — must run before <body> content is parsed.
-       Pre-sets the entrance-active flag and hides body content so the
-       page never flashes into view before the cinematic entrance can
-       cover it. The same skip conditions as CinematicEntrance's body
-       script are checked here so the head and body agree. */}
-    {showEntrance && (
-      <>
-        <script is:inline data-astro-rerun>{`
+// Inline <head> code, emitted with set:html (see note in <head>).
+const JS_FLAG = "document.documentElement.classList.add('js');";
+const ENTRANCE_PREPAINT_JS = `
           (function(){
             try {
               var url = new URL(location.href);
@@ -160,12 +150,108 @@ const ogImage = `${SITE}/og.png?${ogParams.toString()}`;
               }
             } catch (_) {}
           })();
-        `}</script>
-        <style is:inline>{`
+        `;
+const ENTRANCE_PREPAINT_CSS = `
           html[data-entrance-active='1'] body > *:not([data-entrance]) {
             visibility: hidden !important;
           }
-        `}</style>
+        `;
+---
+
+<html lang={locale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preload" href={serifWoff2} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={serifItalicWoff2} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={interWoff2} as="font" type="font/woff2" crossorigin />
+    <title>{title}</title>
+    {description && <meta name="description" content={description} />}
+    <link rel="canonical" href={canonical} />
+
+    {/* Open Graph */}
+    <meta property="og:type" content={ogType} />
+    <meta property="og:title" content={title} />
+    {description && <meta property="og:description" content={description} />}
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:site_name" content="Daniel Nates" />
+    <meta property="og:locale" content={locale === "es" ? "es_MX" : "en_US"} />
+    {ogType === "article" && ogArticle?.publishedTime ? <meta property="article:published_time" content={ogArticle.publishedTime} /> : null}
+    {ogType === "article" && ogArticle?.modifiedTime ? <meta property="article:modified_time" content={ogArticle.modifiedTime} /> : null}
+    {ogType === "article" && ogArticle?.section ? <meta property="article:section" content={ogArticle.section} /> : null}
+    {ogType === "article" && ogArticle?.author ? <meta property="article:author" content={ogArticle.author} /> : null}
+    {ogType === "article" && ogArticle?.tags?.map((tag) => (
+      <meta property="article:tag" content={tag} />
+    ))}
+
+    {/* Twitter */}
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    {description && <meta name="twitter:description" content={description} />}
+    <meta name="twitter:image" content={ogImage} />
+
+    {/* Alternate locale — translates asymmetric routes (sobre↔about, etc.) */}
+    <link rel="alternate" hreflang="es" href={new URL(switchLocale(Astro.url.pathname, "es"), SITE).toString()} />
+    <link rel="alternate" hreflang="en" href={new URL(switchLocale(Astro.url.pathname, "en"), SITE).toString()} />
+
+    {/* JSON-LD — Person (Daniel) + WebSite are emitted on every page;
+        page-specific blocks (Article, VisualArtwork, Restaurant, etc.)
+        come in via the jsonLd prop. */}
+    <script is:inline type="application/ld+json" set:html={jsonForScript({
+      "@context": "https://schema.org",
+      "@type": "Person",
+      "name": daniel?.name ?? "Daniel Nates",
+      "url": SITE,
+      "image": daniel?.portrait_url ?? new URL(MEDIA.portrait, SITE).toString(),
+      "jobTitle": locale === "es" ? "Cocinero · Dibujante" : "Chef · Draughtsman",
+      "description": daniel?.tagline_es && daniel?.tagline_en
+        ? (locale === "es" ? daniel.tagline_es : daniel.tagline_en)
+        : (locale === "es" ? "Cocinar y dibujar — la misma lengua." : "To cook and to draw — the same language."),
+      "nationality": "Mexican",
+      "worksFor": [
+        { "@type": "Restaurant", "name": "Olivea Farm to Table", "url": new URL("/olivea", SITE).toString() },
+        { "@type": "Restaurant", "name": "Fritanguita", "url": new URL("/fritanguita", SITE).toString() },
+      ],
+      // sameAs = other profiles of Daniel himself (not his restaurants'
+      // accounts, and never a mailto) — this is what search engines use
+      // to tie the person together across the web.
+      "sameAs": [
+        daniel?.social?.instagram ?? null,
+        EXTERNAL.oliveaTeamProfile,
+      ].filter(Boolean),
+    })} />
+    <script is:inline type="application/ld+json" set:html={jsonForScript({
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Daniel Nates",
+      "url": SITE,
+      "inLanguage": locale === "es" ? "es-MX" : "en-US",
+    })} />
+    {jsonLd.map((block) => (
+      <script is:inline type="application/ld+json" set:html={jsonForScript(block)} />
+    ))}
+
+    <ClientRouter />
+
+    <!-- Animations opt-in only when JS is running -->
+    {/* set:html, not {`…`} children — Astro emits the braces of an
+        expression inside <script>/<style> literally, so the old form
+        shipped a no-op block and these three tags never ran. */}
+    <script is:inline data-astro-rerun set:html={JS_FLAG} />
+
+    {/* CRITICAL — must run before <body> content is parsed.
+       Pre-sets the entrance-active flag and hides body content so the
+       page never flashes into view before the cinematic entrance can
+       cover it. The same skip conditions as CinematicEntrance's body
+       script are checked here so the head and body agree. */}
+    {showEntrance && (
+      <>
+        <script is:inline data-astro-rerun set:html={ENTRANCE_PREPAINT_JS} />
+        <style is:inline set:html={ENTRANCE_PREPAINT_CSS} />
       </>
     )}
   </head>

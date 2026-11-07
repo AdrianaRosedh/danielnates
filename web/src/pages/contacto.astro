@@ -1,19 +1,25 @@
 ---
-export const prerender = true;
+export const prerender = false;
 
 import BaseLayout from "../components/layout/BaseLayout.astro";
 import TopDock from "../components/layout/TopDock.astro";
 import ContactForm from "../components/ContactForm.astro";
+import NextChapter from "../components/content/NextChapter.astro";
 
-import { ui } from "../lib/i18n";
-import { getLandingCopy } from "../lib/queries";
+import { pressHref, ui } from "../lib/i18n";
+import { EXTERNAL } from "../lib/site";
+import { getDaniel, getLandingCopy } from "../lib/queries";
 import type { Locale } from "../lib/types";
 
 interface PageProps { lang?: Locale }
 const { lang } = Astro.props as PageProps;
 const locale: Locale = lang ?? Astro.locals.locale ?? "es";
 
-const copy = await getLandingCopy();
+const [copy, daniel] = await Promise.all([getLandingCopy(), getDaniel()]);
+const es = locale === "es";
+const igFritanguita = daniel?.social?.fritanguita_instagram ?? EXTERNAL.fritanguitaInstagram;
+const igDaniel = daniel?.social?.instagram ?? null;
+const igHandle = igDaniel ? "@" + igDaniel.replace(/\/+$/, "").split("/").pop() : null;
 
 const ledeFallback = locale === "es"
   ? "Reservas en Olivea o Fritanguita: por sus canales. Para todo lo demás —prensa, colaboraciones, una idea suelta— escribe aquí."
@@ -30,18 +36,97 @@ const ledeField = `copy.contact.lede_${locale}`;
   <div class="shell">
     <TopDock locale={locale} />
 
-    <section class="section reveal">
-      <p class="kicker">{ui("contact", locale)}</p>
-      <h1 class="h1">{ui("contactPrompt", locale)}</h1>
-      <p
-        class="lede"
-        style="margin-top: 18px;"
-        data-edit-field={ledeField}
-        data-edit-multi="1"
-        data-edit-source={lede}
-      >{lede}</p>
-    </section>
+    <div class="contact ui-paper scene--bone" data-scene="bone">
+      <div class="contact__grid">
+        <header class="contact__head">
+          <p class="ui-label">{ui("contact", locale)}</p>
+          <h1 class="contact__title" data-reveal-text data-reveal-mode="letter" aria-label={ui("contactPrompt", locale)}>{ui("contactPrompt", locale)}</h1>
+          <p
+            class="contact__lede reveal"
+            data-edit-field={ledeField}
+            data-edit-multi="1"
+            data-edit-source={lede}
+          >{lede}</p>
 
-    <ContactForm locale={locale} />
+          {/* Where things actually go — reservations aren't taken here. */}
+          <dl class="contact__routes reveal">
+            <div>
+              <dt>{es ? "Reservar en Olivea" : "Book Olivea"}</dt>
+              <dd><a href={EXTERNAL.oliveaReservations} target="_blank" rel="noreferrer">OpenTable ↗</a></dd>
+            </div>
+            <div>
+              <dt>Fritanguita</dt>
+              <dd><a href={igFritanguita} target="_blank" rel="noreferrer">Instagram ↗</a></dd>
+            </div>
+            <div>
+              <dt>{es ? "Prensa" : "Press"}</dt>
+              <dd><a href={pressHref(locale)}>{es ? "Kit de prensa" : "Press kit"} →</a></dd>
+            </div>
+            {igHandle && igDaniel ? (
+              <div>
+                <dt>Daniel</dt>
+                <dd><a href={igDaniel} target="_blank" rel="noreferrer">{igHandle} ↗</a></dd>
+              </div>
+            ) : null}
+          </dl>
+        </header>
+
+        <ContactForm locale={locale} />
+      </div>
+    </div>
+
+    <NextChapter current="contacto" locale={locale} />
   </div>
 </BaseLayout>
+
+<style>
+  .contact__grid{
+    max-width: 1240px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    gap: clamp(40px, 7vw, 128px);
+    align-items: start;
+  }
+  .contact__title{
+    margin: clamp(16px, 2.6vh, 28px) 0 0;
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(80px, 11vw, 200px);
+    line-height: .84;
+    letter-spacing: -0.05em;
+  }
+  .contact__lede{
+    margin: clamp(22px, 3.4vh, 36px) 0 0;
+    max-width: 34ch;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: clamp(20px, 1.6vw, 26px);
+    line-height: 1.35;
+    color: var(--text-2);
+  }
+  .contact__routes{ margin: clamp(36px, 6vh, 64px) 0 0; border-top: 1px solid var(--line); }
+  .contact__routes > div{
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 16px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .contact__routes dt{
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  .contact__routes dd{ margin: 0; font-family: var(--font-display); font-size: clamp(18px, 1.3vw, 21px); }
+  .contact__routes a{ color: var(--text); text-decoration: none; border-bottom: 1px solid var(--line-2); transition: border-color 400ms var(--ease-fluid); }
+  .contact__routes a:hover{ border-color: var(--text); }
+  :global(.contact .cform){ padding-top: clamp(8px, 2vh, 24px); }
+
+  @media (max-width: 880px){
+    .contact__grid{ grid-template-columns: 1fr; }
+  }
+</style>

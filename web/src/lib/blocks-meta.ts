@@ -5,7 +5,6 @@
  * exist, what label/category they show under, and the factory that
  * produces a fresh empty instance with a unique _key.
  */
-import { v4 as uuid } from "uuid";
 import type { PageBlock } from "./types";
 
 export type BlockType = PageBlock["_type"];
@@ -20,7 +19,7 @@ export interface BlockMeta {
   factory: () => PageBlock;
 }
 
-const k = () => uuid();
+const k = () => crypto.randomUUID();
 
 export const BLOCKS: BlockMeta[] = [
   /* ── Text ────────────────────────────────────────────────────────── */
@@ -195,5 +194,5 @@ export const CATEGORY_LABELS: Record<BlockCategory, string> = {
 };
 
 export function newKey(): string {
-  return uuid();
+  return crypto.randomUUID();
 }

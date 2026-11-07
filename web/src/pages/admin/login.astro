@@ -2,14 +2,17 @@
 export const prerender = false;
 import "../../styles/fonts.css";
 import "../../styles/tokens.css";
-import "../../styles/admin.css";
-import { getUserFromRequest } from "../../lib/supabase";
+import { getAdminScopeFor, getUserFromRequest } from "../../lib/supabase";
+import { safeNextPath } from "../../lib/security";
 
-// If already signed in, bounce to dashboard.
+const next = safeNextPath(Astro.url.searchParams.get("next"));
+
+// Signed-in editors go straight through. A signed-in NON-editor stays
+// here (with a sign-out button) — redirecting them to /admin would loop
+// back to this page forever.
 const existing = await getUserFromRequest(Astro.cookies);
-if (existing) return Astro.redirect("/admin");
-
-const next = Astro.url.searchParams.get("next") ?? "/admin";
+const existingIsEditor = existing ? !!(await getAdminScopeFor(existing.email)) : false;
+if (existing && existingIsEditor) return Astro.redirect(next);
 const sentTo = Astro.url.searchParams.get("sent");
 const error = Astro.url.searchParams.get("error");
 const isDev = import.meta.env.DEV;
@@ -20,59 +23,232 @@ const isDev = import.meta.env.DEV;
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Iniciar sesión · Daniel Nates Admin</title>
+    <title>Entrar · Daniel Nates</title>
     <meta name="robots" content="noindex,nofollow" />
   </head>
-  <body class="admin__login">
-    <div class="admin__loginCard">
-      <h1 class="admin__loginTitle">Daniel Nates</h1>
-      <p class="admin__loginSub">
-        Admin. Ingresa con tu correo — te llegará un enlace mágico.
-      </p>
+  <body class="login">
+    <main class="login__stage">
+      <div class="login__card">
+        <p class="login__kicker">Tu sitio te espera</p>
+        <h1 class="login__name">Daniel Nates</h1>
+        <p class="login__line">Entra con tu correo — te llega un enlace, lo tocas, y ya estás editando tu página.</p>
 
-      {sentTo ? (
-        <p class="admin__msg admin__msg--ok">
-          Enlace enviado a <strong>{sentTo}</strong>. Revisa tu bandeja.
-        </p>
-      ) : (
-        <form action="/api/admin/auth/magic" method="post">
-          <input type="hidden" name="next" value={next} />
-          <div class="admin__field">
-            <label class="admin__label" for="email">Correo</label>
-            <input
-              class="admin__input"
-              id="email"
-              name="email"
-              type="email"
-              required
-              autocomplete="email"
-              placeholder="tú@ejemplo.com"
-            />
+        {sentTo ? (
+          <div class="login__sent" role="status">
+            <span class="login__sentDot" aria-hidden="true"></span>
+            <p>
+              Enlace enviado a <strong>{sentTo}</strong>.<br />
+              Revisa tu bandeja y toca el enlace desde este dispositivo.
+            </p>
+            <a class="login__again" href="/admin/login">Usar otro correo</a>
           </div>
-          {error ? <p class="admin__msg admin__msg--err">{error}</p> : null}
-          <button class="admin__btn admin__btn--primary" type="submit" style="width: 100%; justify-content: center;">
-            Enviar enlace
-          </button>
-        </form>
-      )}
+        ) : (
+          <form class="login__form" action="/api/admin/auth/magic" method="post">
+            <input type="hidden" name="next" value={next} />
+            <label class="login__label" for="email">Correo</label>
+            <div class="login__row">
+              <input
+                class="login__input"
+                id="email"
+                name="email"
+                type="email"
+                required
+                autocomplete="email"
+                autofocus
+                placeholder="tu@correo.com"
+              />
+              <button class="login__btn" type="submit">Enviar enlace</button>
+            </div>
+            {error ? <p class="login__error" role="alert">{error}</p> : null}
+            {existing && !existingIsEditor ? (
+              <form class="login__signout" method="post" action="/admin/logout">
+                <p class="login__error" role="status">Esta cuenta ({existing.email}) no tiene acceso de edición.</p>
+                <button type="submit" class="login__signoutBtn">Cerrar sesión</button>
+              </form>
+            ) : null}
+          </form>
+        )}
 
-      {isDev ? (
-        <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line);">
-          <p style="margin: 0 0 10px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-3);">
-            Dev (localhost)
-          </p>
-          <a
-            class="admin__btn"
-            href="/api/admin/auth/dev"
-            style="width: 100%; justify-content: center;"
-          >
-            Entrar como rose@roseiies.com
-          </a>
-          <p class="admin__hint" style="margin-top: 8px;">
-            Atajo solo disponible en localhost — emite una sesión real sin email.
-          </p>
-        </div>
-      ) : null}
-    </div>
+        {isDev ? (
+          <div class="login__dev">
+            <p class="login__devLabel">Dev · localhost</p>
+            <a class="login__devBtn" href="/api/admin/auth/dev">Entrar como rose@roseiies.com</a>
+          </div>
+        ) : null}
+      </div>
+      <p class="login__foot">danielnates.com</p>
+    </main>
   </body>
 </html>
+
+<style>
+  :global(html), :global(body){ height: 100%; margin: 0; }
+  .login{
+    background:
+      radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--moss) 16%, var(--ink)) 0%, var(--ink) 62%);
+    color: var(--bone);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  /* film grain, same spirit as the public site */
+  .login::after{
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: .05;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .login__stage{
+    min-height: 100dvh;
+    display: grid;
+    grid-template-rows: 1fr auto;
+    place-items: center;
+    padding: clamp(20px, 5vw, 64px);
+  }
+  .login__card{
+    width: min(440px, 100%);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .login__kicker{
+    margin: 0;
+    font-size: 11px;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--bone) 55%, transparent);
+  }
+  .login__name{
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(44px, 9vw, 64px);
+    line-height: .98;
+    letter-spacing: -0.02em;
+  }
+  .login__line{
+    margin: 4px 0 18px;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 17px;
+    line-height: 1.5;
+    color: color-mix(in srgb, var(--bone) 82%, transparent);
+    max-width: 38ch;
+  }
+  .login__label{
+    font-size: 11px;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--bone) 55%, transparent);
+  }
+  .login__form{ display: flex; flex-direction: column; gap: 10px; }
+  .login__row{ display: flex; gap: 10px; }
+  .login__input{
+    flex: 1;
+    min-width: 0;
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--bone) 18%, transparent);
+    background: color-mix(in srgb, var(--bone) 5%, transparent);
+    color: var(--bone);
+    font: inherit;
+    font-size: 15px;
+    transition: border-color 300ms var(--ease-fluid), background 300ms var(--ease-fluid);
+  }
+  .login__input::placeholder{ color: color-mix(in srgb, var(--bone) 35%, transparent); }
+  .login__input:focus{
+    outline: none;
+    border-color: color-mix(in srgb, var(--olivar) 80%, var(--bone));
+    background: color-mix(in srgb, var(--bone) 8%, transparent);
+  }
+  .login__btn{
+    appearance: none;
+    border: 1px solid var(--olivar);
+    background: var(--olivar);
+    color: var(--bone);
+    font: inherit;
+    font-size: 12px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    padding: 0 20px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 300ms var(--ease-fluid), transform 300ms var(--ease-fluid);
+  }
+  .login__btn:hover{
+    background: color-mix(in srgb, var(--olivar) 82%, var(--bone));
+    transform: translateY(-1px);
+  }
+  .login__signout{ display: grid; gap: 10px; margin-top: 12px; justify-items: start; }
+  .login__signoutBtn{
+    background: none;
+    border: 1px solid rgba(244,239,230,.25);
+    border-radius: 999px;
+    padding: 8px 16px;
+    color: inherit;
+    font: inherit;
+    font-size: 12px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .login__error{
+    margin: 4px 0 0;
+    font-size: 13px;
+    color: var(--ember);
+  }
+  .login__sent{
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 18px 20px;
+    border: 1px solid color-mix(in srgb, var(--olivar) 45%, transparent);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--olivar) 10%, transparent);
+  }
+  .login__sent p{ margin: 0; line-height: 1.55; font-size: 14px; }
+  .login__sentDot{
+    width: 8px; height: 8px;
+    border-radius: 999px;
+    background: var(--olivar);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--olivar) 25%, transparent);
+  }
+  .login__again{
+    font-size: 12px;
+    letter-spacing: .08em;
+    color: color-mix(in srgb, var(--bone) 60%, transparent);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .login__again:hover{ color: var(--bone); }
+  .login__dev{
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid color-mix(in srgb, var(--bone) 12%, transparent);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .login__devLabel{
+    margin: 0;
+    font-size: 10px;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--bone) 40%, transparent);
+  }
+  .login__devBtn{
+    font-size: 13px;
+    color: color-mix(in srgb, var(--bone) 70%, transparent);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .login__devBtn:hover{ color: var(--bone); }
+  .login__foot{
+    margin: 0;
+    font-size: 10px;
+    letter-spacing: .3em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--bone) 30%, transparent);
+  }
+</style>

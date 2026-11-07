@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import { ADMIN_APP_COOKIE, type AdminApp } from "../../../lib/admin-i18n";
 import { getAdminScopeFor, getUserFromRequest } from "../../../lib/supabase";
+import { safeNextPath, safeRefererPath } from "../../../lib/security";
 
 export const prerender = false;
 
@@ -31,13 +32,19 @@ export const GET: APIRoute = async ({ url, cookies, request }) => {
     path: "/",
     httpOnly: false,
     sameSite: "lax",
+    secure: import.meta.env.PROD,
     maxAge: 60 * 60 * 24 * 365,
   });
 
-  /* Sensible default destinations: /admin for Daniel app, the
-   * Fritanguita project edit for the Fritanguita app. */
-  let dest = url.searchParams.get("from") ?? request.headers.get("referer") ?? "/admin";
-  if (next === "fritanguita") dest = "/admin/projects";
+  /* Same-origin destinations only: /admin (or where the toggle was
+   * clicked) for Daniel, the projects list for Fritanguita. */
+  const from = url.searchParams.get("from");
+  const dest =
+    next === "fritanguita"
+      ? "/admin/projects"
+      : from
+        ? safeNextPath(from)
+        : safeRefererPath(request.headers.get("referer"), url.origin);
 
-  return Response.redirect(new URL(dest, url.origin).toString(), 303);
+  return Response.redirect(`${url.origin}${dest}`, 303);
 };

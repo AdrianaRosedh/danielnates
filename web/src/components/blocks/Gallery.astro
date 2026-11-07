@@ -1,5 +1,6 @@
 ---
 import type { GalleryBlock } from "../../lib/types";
+import SmartImage from "../content/SmartImage.astro";
 
 interface Props { block: GalleryBlock }
 const { block } = Astro.props as Props;
@@ -14,7 +15,7 @@ const images = block.images ?? [];
       const alt = im.alt ?? im.caption ?? "";
       return im.url ? (
         <figure class="gallery__item">
-          <img src={im.url} alt={alt} loading="lazy" decoding="async" />
+          <SmartImage src={im.url} alt={alt} widths={[480, 800]} sizes="(min-width: 880px) 33vw, 50vw" />
           {im.caption ? <figcaption>{im.caption}</figcaption> : null}
         </figure>
       ) : null;
@@ -25,7 +26,7 @@ const images = block.images ?? [];
 
 <style>
   .gallery{ margin: 22px 0; display: grid; gap: 12px; }
-  .gallery__item img{ width: 100%; height: auto; display: block; border-radius: var(--radius2); }
+  .gallery__item :global(img){ width: 100%; height: auto; display: block; border-radius: var(--radius2); }
   .gallery__item figcaption{ font-size: 12px; color: var(--muted2); margin-top: 8px; }
   .gallery__caption{ font-size: 12px; color: var(--muted2); margin: 6px 0 0; }
 

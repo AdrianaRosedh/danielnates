@@ -1,0 +1,101 @@
+---
+/**
+ * SmartImage — responsive, optimized, blur-up images for runtime URLs.
+ *
+ * Renders a plain <img> (so existing per-page CSS keeps applying via
+ * element/class selectors) with:
+ *   • srcset/sizes through the Vercel image optimizer (prod only)
+ *   • a 24px LQIP painted as the element's background → blurry preview
+ *   • opacity/scale settle once the real image decodes (.is-loaded)
+ *   • prefers-reduced-motion + no-JS safe (image always visible there)
+ */
+import { IMG_WIDTHS, LQIP_WIDTH, optimizedSrc, srcsetFor } from "../../lib/img";
+
+interface Props {
+  src: string;
+  alt: string;
+  class?: string;
+  sizes?: string;
+  widths?: number[];
+  eager?: boolean;
+  quality?: number;
+}
+const {
+  src,
+  alt,
+  class: cls,
+  sizes = "100vw",
+  widths = IMG_WIDTHS,
+  eager = false,
+  quality = 72,
+} = Astro.props as Props;
+
+const lqip = optimizedSrc(src, LQIP_WIDTH, 35);
+---
+
+<img
+  class:list={["smartimg", cls]}
+  src={optimizedSrc(src, 1200, quality)}
+  srcset={srcsetFor(src, widths, quality)}
+  sizes={sizes}
+  alt={alt}
+  loading={eager ? "eager" : "lazy"}
+  decoding="async"
+  style={`background-image:url('${lqip}')`}
+  data-blur-up
+/>
+
+<style is:global>
+  img.smartimg{
+    background-size: cover;
+    background-position: center;
+  }
+  /* Only hide-until-loaded when JS is running (html.js set in head).
+     The zero-duration delayed animation is a hard failsafe: even if
+     the load listener never fires (stale HMR, script failure), the
+     image forces itself visible after 1.6s — a photo can never stay
+     an invisible void. */
+  html.js img.smartimg[data-blur-up]{
+    opacity: 0;
+    transform: scale(1.015);
+    transition:
+      opacity var(--dur-base, 800ms) var(--ease-fluid, ease),
+      transform var(--dur-slow, 1200ms) var(--ease-fluid, ease);
+    animation: smartimg-failsafe 0s linear 1.6s forwards;
+  }
+  @keyframes smartimg-failsafe{
+    to{ opacity: 1; transform: scale(1); }
+  }
+  /* --img-scale lets a hosting card zoom the cover on hover (set the
+     var on the card; the blur-up transition makes it a slow, cinematic
+     push-in). Defaults to 1 = at rest. */
+  html.js img.smartimg.is-loaded{
+    opacity: 1;
+    transform: scale(var(--img-scale, 1));
+  }
+  @media (prefers-reduced-motion: reduce){
+    html.js img.smartimg[data-blur-up]{
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+  }
+</style>
+
+<script>
+  function bindBlurUp() {
+    document
+      .querySelectorAll<HTMLImageElement>("img[data-blur-up]:not([data-bu])")
+      .forEach((img) => {
+        img.dataset.bu = "1";
+        const done = () => img.classList.add("is-loaded");
+        if (img.complete && img.naturalWidth > 0) done();
+        else {
+          img.addEventListener("load", done, { once: true });
+          img.addEventListener("error", done, { once: true });
+        }
+      });
+  }
+  bindBlurUp();
+  document.addEventListener("astro:page-load", bindBlurUp);
+</script>

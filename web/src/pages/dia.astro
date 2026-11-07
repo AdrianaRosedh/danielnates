@@ -1,8 +1,11 @@
 ---
 export const prerender = false;
 
+import EmptyState from "../components/content/EmptyState.astro";
 import BaseLayout from "../components/layout/BaseLayout.astro";
 import TopDock from "../components/layout/TopDock.astro";
+import SmartImage from "../components/content/SmartImage.astro";
+import NextChapter from "../components/content/NextChapter.astro";
 import { getSupabase, getSupabaseServer } from "../lib/supabase";
 import { dateFormat } from "../lib/i18n";
 import type { Locale } from "../lib/types";
@@ -78,7 +81,12 @@ const localizedLine = (b: Brief) =>
                 <article class="dia__card">
                   <div class="dia__cover" data-edit-image-field={`daily.${b.id}.image_url`}>
                     {b.image_url ? (
-                      <img src={b.image_url} alt={line || b.date} loading="lazy" />
+                      <SmartImage
+                        src={b.image_url}
+                        alt={line || b.date}
+                        widths={[480, 800]}
+                        sizes="(min-width: 880px) 33vw, 100vw"
+                      />
                     ) : (
                       <div class="dia__noimg" aria-hidden="true"></div>
                     )}
@@ -106,14 +114,15 @@ const localizedLine = (b: Brief) =>
         </ol>
       </section>
     ) : (
-      <section class="section reveal">
-        <p class="lede" style="max-width: 60ch;">
-          {locale === "es"
-            ? "Aún no hay entradas. Activa Editar y pulsa “+ Nuevo brief”."
-            : "No entries yet. Toggle Editar and hit “+ Nuevo brief”."}
-        </p>
-      </section>
+      <EmptyState
+        sketch="mesa"
+        line={locale === "es" ? "La primera nota está por escribirse." : "The first note is still to be written."}
+        note={locale === "es" ? "Una imagen y una línea, cada día, desde la cocina." : "One image and one line, every day, from the kitchen."}
+        adminHint="Activa Editar y pulsa “+ Nuevo brief” para publicar la primera."
+      />
     )}
+
+    <NextChapter current="dia" locale={locale} />
   </div>
 </BaseLayout>
 
@@ -139,8 +148,9 @@ const localizedLine = (b: Brief) =>
   .dia__card:hover{
     border-color: color-mix(in srgb, var(--text) 18%, transparent);
     transform: translateY(-2px);
+    --img-scale: 1.045;
   }
-  .dia__cover{ display: block; width: 100%; aspect-ratio: 4/5; position: relative; }
+  .dia__cover{ display: block; width: 100%; aspect-ratio: 4/5; position: relative; overflow: hidden; }
   .dia__draftPill{
     position: absolute;
     top: 8px; left: 8px;
@@ -154,7 +164,7 @@ const localizedLine = (b: Brief) =>
     border-radius: 999px;
     pointer-events: none;
   }
-  .dia__card img,
+  .dia__card :global(img),
   .dia__noimg{
     width: 100%;
     aspect-ratio: 4/5;

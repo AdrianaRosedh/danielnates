@@ -2,58 +2,70 @@ import type { MiddlewareHandler } from "astro";
 import { getLocaleFromUrl } from "./lib/i18n";
 import { getAdminScopeFor, getUserFromRequest } from "./lib/supabase";
 import { effectiveAdminApp, getAdminLang } from "./lib/admin-i18n";
+import { runWithRequestCache } from "./lib/request-cache";
+import { securityHeaders } from "./lib/security";
 
-export const onRequest: MiddlewareHandler = async (context, next) => {
-  context.locals.locale = getLocaleFromUrl(context.url);
+const HEADERS = Object.entries(securityHeaders(import.meta.env.PROD));
 
-  const path = context.url.pathname;
+/** Admin routes reachable without an admin session. Logout must stay
+ *  open to any signed-in user, or a non-admin could never sign out. */
+const ADMIN_OPEN = ["/admin/login", "/admin/auth", "/admin/logout"];
 
-  // Resolve admin chrome language for any admin/* request (cheap cookie read).
-  if (path.startsWith("/admin") || path.startsWith("/api/admin")) {
-    context.locals.adminLang = getAdminLang(context.cookies);
+/** Merge the security headers into a response. Some responses (e.g.
+ *  Response.redirect) carry immutable headers — rebuild those. */
+function withSecurityHeaders(res: Response): Response {
+  try {
+    for (const [k, v] of HEADERS) if (!res.headers.has(k)) res.headers.set(k, v);
+    return res;
+  } catch {
+    const headers = new Headers(res.headers);
+    for (const [k, v] of HEADERS) if (!headers.has(k)) headers.set(k, v);
+    return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
   }
+}
 
-  // Gate /admin/* — but allow login + auth callback
-  if (path.startsWith("/admin") && !path.startsWith("/admin/login") && !path.startsWith("/admin/auth")) {
-    const user = await getUserFromRequest(context.cookies);
-    if (!user) {
-      return context.redirect(`/admin/login?next=${encodeURIComponent(path)}`);
+export const onRequest: MiddlewareHandler = (context, next) =>
+  runWithRequestCache(async () => {
+    context.locals.locale = getLocaleFromUrl(context.url);
+
+    // Prerendered routes (404s) build without a real request — no
+    // cookies/headers exist, so skip the session work entirely.
+    if (context.isPrerendered) return next();
+
+    const path = context.url.pathname;
+
+    // Admin chrome language for any admin/* request (cheap cookie read).
+    if (path.startsWith("/admin") || path.startsWith("/api/admin")) {
+      context.locals.adminLang = getAdminLang(context.cookies);
     }
-    context.locals.user = user;
 
-    // Resolve admin scope: 'all' = full admin, '<slug>' = scoped to one
-    // project. If the user is logged in but not in admin_emails at all,
-    // bounce to login (denied at DB level anyway, but better UX).
-    const scope = await getAdminScopeFor(user.email);
-    if (!scope) {
-      return context.redirect(`/admin/login?error=No+autorizado`);
-    }
-    context.locals.adminScope = scope;
+    if (path.startsWith("/admin") && !ADMIN_OPEN.some((p) => path.startsWith(p))) {
+      const user = await getUserFromRequest(context.cookies);
+      if (!user) {
+        return withSecurityHeaders(context.redirect(`/admin/login?next=${encodeURIComponent(path)}`));
+      }
+      context.locals.user = user;
 
-    // Effective admin app: cookie-driven for full admins, scope-locked
-    // for scoped users. This drives the sidebar nav + filtered views.
-    context.locals.adminApp = effectiveAdminApp(context.cookies, scope);
-    context.locals.isAdmin = true;
-  }
-  // Resolve admin status on PUBLIC pages too — non-blocking. If the
-  // visitor is signed in AND in admin_emails, the public BaseLayout
-  // mounts the inline-edit overlay so they can edit content directly
-  // on the live site. Skip for static assets and API routes.
-  else if (
-    !path.startsWith("/api/") &&
-    !path.startsWith("/_") &&
-    !/\.[a-z0-9]+$/i.test(path)
-  ) {
-    const user = await getUserFromRequest(context.cookies);
-    if (user) {
+      // 'all' = full admin, '<slug>' = scoped to one project. Signed in
+      // but not on the allowlist → back to login (RLS denies anyway).
       const scope = await getAdminScopeFor(user.email);
-      if (scope) {
-        context.locals.user = user;
-        context.locals.adminScope = scope;
-        context.locals.isAdmin = true;
+      if (!scope) return withSecurityHeaders(context.redirect("/admin/login?error=No+autorizado"));
+      context.locals.adminScope = scope;
+      context.locals.adminApp = effectiveAdminApp(context.cookies, scope);
+      context.locals.isAdmin = true;
+    } else if (!path.startsWith("/api/") && !path.startsWith("/_") && !/\.[a-z0-9]+$/i.test(path)) {
+      // Public pages: resolve admin status (non-blocking) so BaseLayout
+      // can mount the inline-edit overlay for allowlisted editors.
+      const user = await getUserFromRequest(context.cookies);
+      if (user) {
+        const scope = await getAdminScopeFor(user.email);
+        if (scope) {
+          context.locals.user = user;
+          context.locals.adminScope = scope;
+          context.locals.isAdmin = true;
+        }
       }
     }
-  }
 
-  return next();
-};
+    return withSecurityHeaders(await next());
+  });

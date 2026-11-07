@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
-import { ImageResponse } from "@vercel/og";
-import React, { type ReactNode, type CSSProperties } from "react";
+import satori from "satori";
+import { Resvg } from "@resvg/resvg-js";
 
 export const prerender = false;
 
@@ -19,43 +19,54 @@ const BRAND_COLORS: Record<string, string> = {
   daniel: BONE,
 };
 
-let cachedSerif: ArrayBuffer | null = null;
-let cachedSans: ArrayBuffer | null = null;
+/* Fonts are pinned (no @latest drift) and only cached on success — a
+ * failed fetch used to be cached forever as an empty buffer. */
+const FONT_URLS = {
+  serif: "https://cdn.jsdelivr.net/fontsource/fonts/instrument-serif@5.3.0/latin-400-normal.woff",
+  sans: "https://cdn.jsdelivr.net/fontsource/fonts/inter@5.3.0/latin-500-normal.woff",
+} as const;
+const fontCache = new Map<keyof typeof FONT_URLS, Promise<ArrayBuffer>>();
 
-async function loadSerif(): Promise<ArrayBuffer> {
-  if (cachedSerif) return cachedSerif;
-  const res = await fetch(
-    "https://cdn.jsdelivr.net/fontsource/fonts/instrument-serif@latest/latin-400-normal.woff",
-  );
-  cachedSerif = await res.arrayBuffer();
-  return cachedSerif;
+function loadFont(which: keyof typeof FONT_URLS): Promise<ArrayBuffer> {
+  const hit = fontCache.get(which);
+  if (hit) return hit;
+  const pending = fetch(FONT_URLS[which], { signal: AbortSignal.timeout(6_000) }).then((res) => {
+    if (!res.ok) throw new Error(`font ${which}: HTTP ${res.status}`);
+    return res.arrayBuffer();
+  });
+  fontCache.set(which, pending);
+  pending.catch(() => fontCache.delete(which));
+  return pending;
 }
 
-async function loadSans(): Promise<ArrayBuffer> {
-  if (cachedSans) return cachedSans;
-  const res = await fetch(
-    "https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-500-normal.woff",
-  );
-  cachedSans = await res.arrayBuffer();
-  return cachedSans;
-}
-
-/* Compact React.createElement helper — keeps the OG tree readable
- * without needing JSX (which Astro won't register as a page route). */
-const h = (tag: string, style: CSSProperties, children: ReactNode | null = null) =>
-  React.createElement(tag, { style }, children);
+/* Satori accepts plain {type, props} element objects — children live
+ * inside props.children — so no React dependency is needed. */
+type OgStyle = Record<string, string | number>;
+type OgEl = { type: string; props: { style?: OgStyle; children?: unknown } };
+type OgChild = OgEl | string | null;
+const h = (tag: string, style: OgStyle, children: OgChild | OgChild[] | string | null = null): OgEl =>
+  ({ type: tag, props: { style, children } });
 
 export const GET: APIRoute = async ({ url }) => {
   const params = url.searchParams;
   const title = (params.get("title") ?? "Daniel Nates").slice(0, 90);
   const kicker = (params.get("kicker") ?? "").slice(0, 60);
   const sig = (params.get("sig") ?? "").slice(0, 90);
-  const brand = params.get("brand") ?? "daniel";
+  const brandParam = params.get("brand") ?? "daniel";
+  // Own-property lookup only — "constructor"/"toString" must not resolve.
+  const brand = Object.hasOwn(BRAND_COLORS, brandParam) ? brandParam : "daniel";
   const meta = (params.get("meta") ?? "danielnates.com").slice(0, 80);
 
-  const accent = BRAND_COLORS[brand] ?? BRAND_COLORS.daniel;
+  const accent = BRAND_COLORS[brand];
 
-  const [serifFont, sansFont] = await Promise.all([loadSerif(), loadSans()]);
+  let serifFont: ArrayBuffer;
+  let sansFont: ArrayBuffer;
+  try {
+    [serifFont, sansFont] = await Promise.all([loadFont("serif"), loadFont("sans")]);
+  } catch (err) {
+    console.error("[og] font load failed:", err instanceof Error ? err.message : err);
+    return new Response("OG image temporarily unavailable", { status: 503, headers: { "retry-after": "60" } });
+  }
 
   /* Brand mark — small bullet + name */
   const brandMark = h(
@@ -193,14 +204,21 @@ export const GET: APIRoute = async ({ url }) => {
     [brandMark, topRule, center, bottomRule, footer],
   );
 
-  return new ImageResponse(tree, {
+  /* satori → SVG, resvg → PNG. (Replaces @vercel/og, whose 1.x Node
+   * build cannot load under ESM: "Dynamic require of fs".) */
+  const svg = await satori(tree as unknown as Parameters<typeof satori>[0], {
     width: W,
     height: H,
     fonts: [
       { name: "Instrument Serif", data: serifFont, weight: 400, style: "normal" },
       { name: "Inter", data: sansFont, weight: 500, style: "normal" },
     ],
+  });
+  const png = new Resvg(svg, { fitTo: { mode: "width", value: W } }).render().asPng();
+
+  return new Response(new Uint8Array(png), {
     headers: {
+      "content-type": "image/png",
       "cache-control": "public, max-age=31536000, immutable",
     },
   });

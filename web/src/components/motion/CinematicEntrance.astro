@@ -113,6 +113,8 @@ if (!enabled) return null;
           setTimeout(function(){ try { el.remove(); } catch(_){} }, 380);
         }
         try { localStorage.setItem('dn_entered_v1', '1'); } catch(_) {}
+        // AnimationDirector restarts Lenis and re-measures the page.
+        document.dispatchEvent(new CustomEvent('dn:entrance-released'));
         window.removeEventListener('wheel', release, { passive: true });
         window.removeEventListener('touchmove', release, { passive: true });
         window.removeEventListener('touchstart', release, { passive: true });

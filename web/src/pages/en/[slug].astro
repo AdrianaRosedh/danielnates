@@ -1,4 +1,10 @@
 ---
+/* English route: resolve here — the Spanish page below is rendered as a
+ * child component, and a child cannot return a 404. */
 import Page from "../[slug].astro";
+import { resolveProjectPage } from "../../lib/page-resolvers";
+
+const resolved = await resolveProjectPage(Astro, "en");
+if ("notFound" in resolved) return resolved.notFound;
 ---
 <Page lang="en" />

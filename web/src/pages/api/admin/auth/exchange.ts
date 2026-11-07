@@ -10,11 +10,14 @@ export const prerender = false;
  * shared adapter so the middleware can read it back.
  */
 export const POST: APIRoute = async ({ request, cookies }) => {
-  const { access, refresh } = (await request.json().catch(() => ({}))) as {
-    access?: string;
-    refresh?: string;
+  const body: unknown = await request.json().catch(() => null);
+  const { access, refresh } = (body && typeof body === "object" ? body : {}) as {
+    access?: unknown;
+    refresh?: unknown;
   };
-  if (!access || !refresh) return new Response("bad request", { status: 400 });
+  if (typeof access !== "string" || typeof refresh !== "string" || !access || !refresh) {
+    return new Response("bad request", { status: 400 });
+  }
 
   const supabase = getSupabaseServer(cookies);
   if (!supabase) return new Response("Supabase not configured", { status: 500 });
@@ -23,7 +26,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     access_token: access,
     refresh_token: refresh,
   });
-  if (error) return new Response(error.message, { status: 400 });
+  if (error) {
+    console.error("[auth/exchange] setSession failed:", error.message);
+    return new Response("invalid session", { status: 400 });
+  }
 
   return new Response(JSON.stringify({ ok: true }), {
     status: 200,

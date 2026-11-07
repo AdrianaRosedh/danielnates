@@ -106,7 +106,6 @@ type UiKey =
   | "diary"
   | "art"
   | "projects"
-  | "fieldNotes"
   | "press"
   | "contact"
   | "explore"
@@ -149,7 +148,6 @@ const messages: Record<Locale, Record<UiKey, string>> = {
     diary: "Diario",
     art: "Arte",
     projects: "Proyectos",
-    fieldNotes: "Field Notes",
     press: "Prensa",
     contact: "Contacto",
     explore: "Explorar",
@@ -191,7 +189,6 @@ const messages: Record<Locale, Record<UiKey, string>> = {
     diary: "Journal",
     art: "Art",
     projects: "Projects",
-    fieldNotes: "Field Notes",
     press: "Press",
     contact: "Contact",
     explore: "Explore",

@@ -5,8 +5,11 @@ import BaseLayout from "../../components/layout/BaseLayout.astro";
 import TopDock from "../../components/layout/TopDock.astro";
 import PortableText from "../../components/content/PortableText.astro";
 import BlockRenderer from "../../components/blocks/BlockRenderer.astro";
+import SmartImage from "../../components/content/SmartImage.astro";
+import NextChapter from "../../components/content/NextChapter.astro";
 
-import { getArticle } from "../../lib/queries";
+import { getArticles } from "../../lib/queries";
+import { resolveArticlePage } from "../../lib/page-resolvers";
 import { dateFormat, href, t2, tb2, ui } from "../../lib/i18n";
 import type { Locale } from "../../lib/types";
 
@@ -14,69 +17,285 @@ interface PageProps { lang?: Locale }
 const { lang } = Astro.props as PageProps;
 const locale: Locale = lang ?? Astro.locals.locale ?? "es";
 
-const { slug } = Astro.params as { slug: string };
-const article = await getArticle(slug);
-if (!article) return Astro.redirect(href("/404", locale));
+const page = await resolveArticlePage(Astro, locale);
+if ("notFound" in page) return page.notFound;
+const { article } = page;
+const slug = article.slug;
+
+/* The archive reads backwards in time — the entry after this one is
+ * the next-older published piece. */
+const archive = await getArticles();
+const archiveIdx = archive.findIndex((a) => a.slug === slug);
+const nextEntry = archiveIdx >= 0 ? archive[archiveIdx + 1] ?? null : null;
 
 const title = article.title;
 const excerpt = t2(article.excerpt_es, article.excerpt_en, locale);
 const body = tb2(article.body_es, article.body_en, locale);
 
-/* Inline-edit field paths. The bodyText is what the popover modal
- * pre-populates the textarea with — converted from PortableText
- * blocks to plain text (paragraphs separated by blank lines). On
- * save, the endpoint converts back to blocks via textToBlocks(). */
+/* Inline-edit field paths. The body is edited in place — the rendered
+ * PortableText itself becomes contentEditable with a formatting
+ * toolbar, and saves round-trip real blocks (bold/italic/links kept). */
 const titleField   = `article.${slug}.title`;
 const excerptField = `article.${slug}.excerpt_${locale}`;
 const bodyField    = `article.${slug}.body_${locale}`;
-const bodyText = body.length
-  ? body
-      .map((b) => {
-        const block = b as { _type?: string; children?: { text?: string }[] };
-        if (block?._type !== "block" || !Array.isArray(block.children)) return "";
-        return block.children.map((c) => c?.text ?? "").join("");
-      })
-      .filter(Boolean)
-      .join("\n\n")
-  : "";
+const isAdmin = !!Astro.locals.isAdmin;
+
+// Reading time for the side rail (~200 wpm, Spanish/English alike).
+const bodyText = (body as unknown as Array<{ children?: Array<{ text?: string }> }>)
+  .map((b) => (b.children ?? []).map((c) => c.text ?? "").join(" "))
+  .join(" ");
+const wordCount = bodyText.trim().split(/\s+/).filter(Boolean).length;
+const minutes = Math.max(1, Math.round(wordCount / 200));
+const readLabel = locale === "es" ? `${minutes} min de lectura` : `${minutes} min read`;
 ---
 
 <BaseLayout
   title={`${title} — ${ui("diary", locale)}`}
   description={excerpt}
   locale={locale}
+  ogType="article"
+  ogArticle={{
+    publishedTime: article.date ? `${article.date}T00:00:00Z` : null,
+    modifiedTime: article.updated_at ?? null,
+    section: locale === "es" ? "Diario" : "Journal",
+    tags: article.tags ?? null,
+    author: "Daniel Nates",
+  }}
+  jsonLd={[{
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": title,
+    "description": excerpt,
+    "image": article.cover_url ? [article.cover_url] : undefined,
+    "datePublished": article.date ? `${article.date}T00:00:00Z` : undefined,
+    "dateModified": article.updated_at ?? undefined,
+    "inLanguage": locale === "es" ? "es-MX" : "en-US",
+    "author": { "@type": "Person", "name": "Daniel Nates" },
+    "keywords": (article.tags ?? []).join(", ") || undefined,
+  }]}
   editContext={{
     entity: "article",
     id: slug,
     published: !!article.published,
-    indexHref: "/admin/articles",
+    indexHref: "/admin",
   }}
 >
   <div class="shell">
     <TopDock locale={locale} />
 
-    <article class="articleHeader reveal">
-      <p class="kicker">{ui("diary", locale)} · {dateFormat(article.date, locale)}</p>
-      <h1 class="h1" data-edit-field={titleField}>{title}</h1>
-      {excerpt ? <p class="sub" style="margin-top:14px;" data-edit-field={excerptField}>{excerpt}</p> : null}
-      <div class="articleHeader__coverWrap" data-edit-image-field={`article.${slug}.cover_url`}>
-        {article.cover_url ? <img class="articleHeader__cover" src={article.cover_url} alt={title} /> : null}
+    {/* The entry is read on paper: bone scene, display headline,
+        a quiet side rail, and a reading measure for the body. */}
+    <article class="entry ui-paper scene--bone" data-scene="bone">
+      <header class="entry__head">
+        <p class="entry__kicker ui-label">
+          <a href={href("/diario", locale)}>{ui("diary", locale)}</a>
+          <span aria-hidden="true">·</span>
+          <time datetime={article.date ?? undefined}>{dateFormat(article.date, locale)}</time>
+        </p>
+        <h1 class="entry__title" data-edit-field={titleField} data-reveal-text data-reveal-mode="word" aria-label={title}>{title}</h1>
+        {excerpt ? <p class="entry__standfirst reveal" data-edit-field={excerptField}>{excerpt}</p> : null}
+      </header>
+
+      <div class="entry__cover" data-edit-image-field={`article.${slug}.cover_url`} data-has-cover={article.cover_url ? "1" : undefined}>
+        {article.cover_url ? (
+          <SmartImage
+            class="entry__coverImg"
+            src={article.cover_url}
+            alt={title}
+            eager
+            sizes="(min-width: 1320px) 1240px, 100vw"
+          />
+        ) : null}
+      </div>
+
+      <div class="entry__grid">
+        <aside class="entry__rail" aria-label={locale === "es" ? "Sobre esta entrada" : "About this entry"}>
+          <div class="entry__railSticky">
+            <p class="entry__sig">Daniel Nates</p>
+            <p class="entry__railMeta">{dateFormat(article.date, locale)}</p>
+            {wordCount > 0 ? <p class="entry__railMeta">{readLabel}</p> : null}
+            {article.tags?.length ? (
+              <ul class="entry__tags">{article.tags.map((t) => <li>{t}</li>)}</ul>
+            ) : null}
+          </div>
+        </aside>
+
+        <div class="entry__body">
+          {body.length ? (
+            <div data-edit-field={bodyField} data-edit-portable="1" data-reveal-body>
+              <PortableText value={body} lead />
+            </div>
+          ) : (
+            <div data-edit-field={bodyField} data-edit-portable="1" data-edit-empty="1">
+              {isAdmin ? <p class="bodyHint">Toca aquí para escribir la entrada…</p> : null}
+            </div>
+          )}
+          {article.blocks?.length ? <BlockRenderer blocks={article.blocks} locale={locale} /> : null}
+
+          <div class="finis" aria-hidden="true">⁂</div>
+
+          {nextEntry ? (
+            <nav class="entryNext reveal" aria-label={locale === "es" ? "Siguiente entrada" : "Next entry"}>
+              <p class="entryNext__kicker">{locale === "es" ? "Siguiente entrada" : "Next entry"}</p>
+              <a class="entryNext__link" href={href(`/diario/${nextEntry.slug}`, locale)}>
+                <span class="entryNext__title">{nextEntry.title}</span>
+                <span class="entryNext__date">{dateFormat(nextEntry.date, locale)}</span>
+              </a>
+            </nav>
+          ) : null}
+        </div>
       </div>
     </article>
 
-    {body.length ? (
-      <div data-edit-field={bodyField} data-edit-multi="1" data-edit-source={bodyText}>
-        <PortableText value={body} />
-      </div>
-    ) : (
-      <div data-edit-field={bodyField} data-edit-multi="1" data-edit-source="" />
-    )}
-    {article.blocks?.length ? <BlockRenderer blocks={article.blocks} locale={locale} /> : null}
+    <NextChapter current="diario" locale={locale} />
   </div>
 </BaseLayout>
 
 <style>
-  .articleHeader{ margin: 14px 0 18px; }
-  .articleHeader__coverWrap{ display: block; margin-top: 22px; }
-  .articleHeader__cover{ width: 100%; height: auto; border-radius: var(--r-3); display: block; }
+  /* ── The paper ─────────────────────────────────────────────────── */
+  .entry{ --entry-max: 1240px; }
+  .entry__head,
+  .entry__cover,
+  .entry__grid{
+    max-width: var(--entry-max);
+    margin-inline: auto;
+  }
+
+  .entry__kicker{
+    display: flex;
+    gap: 12px;
+    margin-bottom: clamp(20px, 3vh, 32px);
+  }
+  .entry__kicker a{ color: inherit; text-decoration: none; transition: color 400ms var(--ease-fluid); }
+  .entry__kicker a:hover{ color: var(--text); }
+  .entry__title{
+    margin: 0;
+    max-width: 16ch;
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(48px, 7.4vw, 136px);
+    line-height: .92;
+    letter-spacing: -0.04em;
+    text-wrap: balance;
+  }
+  .entry__standfirst{
+    margin: clamp(22px, 3.4vh, 40px) 0 0;
+    max-width: 34ch;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: clamp(22px, 2vw, 32px);
+    line-height: 1.28;
+    color: var(--text-2);
+  }
+
+  .entry__cover{ margin-top: clamp(48px, 8vh, 96px); }
+  .entry__cover:not([data-has-cover]){ margin-top: 0; }
+  :global(img.entry__coverImg){
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 82vh;
+    object-fit: cover;
+  }
+
+  .entry__grid{
+    margin-top: clamp(56px, 9vh, 110px);
+    padding-top: clamp(28px, 4vh, 44px);
+    border-top: 1px solid var(--line);
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 9fr);
+    gap: clamp(28px, 5vw, 96px);
+  }
+  .entry__railSticky{
+    position: sticky;
+    top: clamp(96px, 14vh, 140px);
+    display: grid;
+    gap: 6px;
+  }
+  .entry__sig{
+    margin: 0 0 6px;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: clamp(20px, 1.6vw, 26px);
+    color: var(--text);
+  }
+  .entry__railMeta{
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  .entry__tags{
+    list-style: none;
+    margin: 14px 0 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--text-2);
+  }
+  .entry__body{ min-width: 0; }
+
+  @media (max-width: 880px){
+    .entry__grid{ grid-template-columns: 1fr; }
+    .entry__railSticky{ position: static; grid-auto-flow: column; justify-content: start; gap: 16px; align-items: baseline; }
+    .entry__sig{ margin: 0; }
+    .entry__tags{ display: none; }
+  }
+
+  .bodyHint{ color: var(--text-3); font-style: italic; }
+
+  /* The entry signs off — asterism, then the road onward. */
+  .finis{
+    margin: clamp(48px, 7vw, 88px) 0 0;
+    max-width: 64ch;
+    text-align: center;
+    font-size: 18px;
+    letter-spacing: .4em;
+    color: var(--text-3);
+  }
+  .entryNext{
+    margin-top: clamp(40px, 6vw, 72px);
+    padding-top: clamp(18px, 2.6vw, 28px);
+    border-top: 1px solid var(--line);
+  }
+  .entryNext__kicker{
+    margin: 0 0 12px;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  .entryNext__link{
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+    gap: 20px;
+    color: var(--text);
+    transition: padding-left 600ms var(--ease-fluid);
+  }
+  .entryNext__link:hover{ padding-left: clamp(6px, 1.2vw, 14px); }
+  .entryNext__title{
+    font-family: var(--font-display);
+    font-size: clamp(22px, 3vw, 34px);
+    letter-spacing: -0.015em;
+    line-height: 1.15;
+  }
+  .entryNext__date{
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  @media (max-width: 720px){
+    .entryNext__link{ grid-template-columns: 1fr; gap: 6px; }
+  }
 </style>

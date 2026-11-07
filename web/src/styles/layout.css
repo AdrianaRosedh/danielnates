@@ -2,7 +2,7 @@
   position: relative;
   max-width: var(--max);
   margin: 0 auto;
-  padding: clamp(80px, 9vw, 120px) clamp(18px, 3vw, 36px) var(--s-9);
+  padding: var(--shell-offset) clamp(18px, 3vw, 36px) var(--s-9);
   /* top padding clears the floating dock + brand mark */
 }
 

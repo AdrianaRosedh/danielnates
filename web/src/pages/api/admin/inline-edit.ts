@@ -1,5 +1,7 @@
 import type { APIRoute } from "astro";
 import { jsonOk, requireAdmin, textToBlocks } from "../../../lib/admin-helpers";
+import { sanitizeBlocks } from "../../../lib/portable";
+import { isSafeHref } from "../../../lib/security";
 
 /**
  * Inline-edit endpoint for the public-site admin overlay.
@@ -117,7 +119,7 @@ const ALLOWLIST: Record<string, FieldSpec> = {
  * Validation is by namespace prefix to avoid maintaining a duplicate
  * list of every individual key (the seed in 20260507_landing_copy.sql
  * is the source of truth). */
-const COPY_KEY_PREFIXES = ["frame.", "notebook.", "ledger.", "closing.", "cold.", "contact.", "press.", "sobre."] as const;
+const COPY_KEY_PREFIXES = ["frame.", "notebook.", "ledger.", "closing.", "cold.", "contact.", "press.", "sobre.", "prologue."] as const;
 function isWritableCopyKey(rawKey: string): boolean {
   return (
     rawKey.length > 0 &&
@@ -198,6 +200,31 @@ function resolveEntityPath(fieldKey: string): EntityHit | null {
 }
 
 const MAX_LEN = 4000;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Name of the column / JSON key / copy key a write lands in — used to
+ *  apply type-specific validation (URLs, emails). */
+function targetName(spec: FieldSpec, entityHit: EntityHit | null, copyKey: string | null): string {
+  if (entityHit) return entityHit.column;
+  if (copyKey) return copyKey;
+  if (spec.kind === "json") return spec.jsonKey;
+  if (spec.kind === "scalar") return spec.column;
+  return "";
+}
+
+/** Rejects values that would become dangerous or broken when rendered:
+ *  URL fields must be http(s)/mailto/site paths (no javascript:), email
+ *  fields must look like an email. Empty/null always clears. */
+function validateValue(name: string, value: string | null): string | null {
+  if (!value) return null;
+  if (/(^|[._])url$/.test(name) && !isSafeHref(value)) {
+    return "URL must start with https:// (or be a path on this site)";
+  }
+  if (/(^|[._])email$/.test(name) && !EMAIL_RE.test(value.trim())) {
+    return "Invalid email address";
+  }
+  return null;
+}
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   const auth = await requireAdmin(cookies);
@@ -206,6 +233,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   const body = (await request.json().catch(() => ({}))) as {
     field?: string;
     value?: string | null;
+    /** Rich payload from the in-place editor — full Portable Text
+     *  blocks. Only accepted for fields registered as portable. */
+    blocks?: unknown;
   };
 
   const fieldKey = (body.field ?? "").trim();
@@ -240,18 +270,46 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   if (value && value.length > limit) {
     return new Response(`Value too long for inline edit (>${limit} chars)`, { status: 413 });
   }
+  const invalid = validateValue(targetName(spec, entityHit, copyKey), value);
+  if (invalid) return new Response(invalid, { status: 400 });
+
+  // Rich-blocks payload — only valid against portable columns. An
+  // empty array means "clear the field"; anything else must survive
+  // sanitization (styles, marks, link hrefs) or the write is refused.
+  let richBlocks: ReturnType<typeof sanitizeBlocks> | undefined;
+  if (body.blocks !== undefined) {
+    const isPortableTarget =
+      entityHit?.kind === "portable" ||
+      (spec.kind === "scalar" && spec.portable === true);
+    if (!isPortableTarget) {
+      return new Response(`Field does not accept rich blocks: ${fieldKey}`, { status: 400 });
+    }
+    if (!Array.isArray(body.blocks)) {
+      return new Response("blocks must be an array", { status: 400 });
+    }
+    richBlocks = body.blocks.length === 0 ? null : sanitizeBlocks(body.blocks);
+    if (body.blocks.length > 0 && richBlocks === null) {
+      return new Response("blocks failed validation", { status: 400 });
+    }
+  }
 
   // Slug- or id-keyed entity write — scalar or PortableText conversion.
   if (entityHit) {
     const ent = ENTITY_REGISTRY[entityHit.entity];
     const pk = ent.pkColumn ?? "slug";
-    const writeValue = entityHit.kind === "portable" ? textToBlocks(value) : value;
-    const { error } = await auth.supabase
+    const writeValue =
+      entityHit.kind === "portable"
+        ? (richBlocks !== undefined ? richBlocks : textToBlocks(value))
+        : value;
+    const { data: updated, error } = await auth.supabase
       .from(ent.table)
       .update({ [entityHit.column]: writeValue })
-      .eq(pk, entityHit.slug);
+      .eq(pk, entityHit.slug)
+      .select(pk);
     if (error) return new Response(error.message, { status: 400 });
-    return jsonOk({ field: fieldKey, value });
+    // RLS filters (not errors) rows the editor may not touch — report it.
+    if (!updated?.length) return new Response("Not found or not permitted", { status: 404 });
+    return jsonOk({ field: fieldKey, value, blocks: richBlocks });
   }
 
   if (spec.kind === "copy") {
@@ -264,7 +322,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   }
 
   if (spec.kind === "scalar") {
-    const writeValue = spec.portable ? textToBlocks(value) : value;
+    const writeValue = spec.portable
+      ? (richBlocks !== undefined ? richBlocks : textToBlocks(value))
+      : value;
     const patch: Record<string, unknown> = {
       [spec.pk.column]: spec.pk.value,
       [spec.column]: writeValue,
@@ -273,7 +333,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       .from(spec.table)
       .upsert(patch, { onConflict: spec.pk.column });
     if (error) return new Response(error.message, { status: 400 });
-    return jsonOk({ field: fieldKey, value });
+    return jsonOk({ field: fieldKey, value, blocks: richBlocks });
   }
 
   // kind === "json": read-modify-write the JSONB column.

@@ -1,74 +1,122 @@
 ---
 /**
- * Legacy hero used on project pages when no full block layout is set.
- * No CMS dependency — pure presentation. Fed by the project page directly.
+ * HeroFilm — the chapter hero for project pages (Olivea, Fritanguita,
+ * Maizal, …). One full-bleed screen: the chapter's footage runs under
+ * a hairline frame, the kicker sits above a monument-size title that
+ * arrives letter by letter, the meta rides the bottom rule.
+ *
+ * Media: the project's hero video/photo from Supabase (editable via
+ * data-edit-image-field). The page passes the repo's own footage as a
+ * fallback so a chapter never opens on a black screen.
+ *
+ * Motion: data-hero-scroll (parallax + fade on the way out) and the
+ * title's data-reveal-text are both conducted by AnimationDirector;
+ * the inline script only plays/pauses the video by visibility.
  */
+import SmartImage from "../content/SmartImage.astro";
+import type { VideoSource } from "../../lib/chapter-media";
+
 interface Props {
   title?: string;
   sub?: string | null;
+  kicker?: string | null;
+  meta?: string | null;
   videoUrl?: string | null;
+  /** Ordered <source> list (codec + media fallbacks). Wins over videoUrl. */
+  videoSources?: VideoSource[] | null;
   posterUrl?: string | null;
+  /** object-position x for the poster on portrait screens, matching
+   *  the portrait video crop so nothing jumps when playback starts. */
+  portraitX?: string | null;
   transitionKey?: string | null;
   /** Inline-edit field bindings (e.g. "project.olivea.title"). */
   titleField?: string | null;
   subField?: string | null;
+  kickerField?: string | null;
+  metaField?: string | null;
   imageField?: string | null;
+  locale?: "es" | "en";
 }
 
 const {
   title,
   sub,
+  kicker = null,
+  meta = null,
   videoUrl = null,
+  videoSources = null,
   posterUrl = null,
+  portraitX = null,
   transitionKey = null,
   titleField = null,
   subField = null,
+  kickerField = null,
+  metaField = null,
   imageField = null,
+  locale = "es",
 } = Astro.props as Props;
 ---
 
-<section id="inicio" class="hero" data-hero-scroll>
+<section id="inicio" class="chHero scene--ink" data-scene="ink" data-hero-scroll>
   <div
-    class="heroCard"
+    class="chHero__media"
+    data-hero-media
+    data-edit-image-field={imageField ?? undefined}
+    data-edit-badge="br"
+    aria-hidden="true"
+    style={portraitX ? `--portrait-x: ${portraitX};` : undefined}
     transition:name={transitionKey ? `proj-${transitionKey}` : undefined}
   >
-    <div
-      class="heroMedia"
-      data-hero-media
-      data-edit-image-field={imageField ?? undefined}
-      aria-hidden="true"
-    >
-      {posterUrl ? <img src={posterUrl} alt="" loading="eager" decoding="async" /> : null}
-      {videoUrl ? (
-        <video
-          data-hero-video
-          muted playsinline loop preload="metadata"
-          poster={posterUrl ?? undefined}
-        >
-          <source src={videoUrl} />
-        </video>
-      ) : null}
-    </div>
+    {posterUrl ? (
+      <SmartImage src={posterUrl} alt="" eager widths={[800, 1200, 1800]} sizes="100vw" class="chHero__img" />
+    ) : null}
+    {videoSources?.length || videoUrl ? (
+      <video
+        class="chHero__video"
+        data-hero-video
+        muted playsinline loop preload="metadata"
+        poster={posterUrl ?? undefined}
+      >
+        {videoSources?.length
+          ? videoSources.map((v) => <source src={v.src} type={v.type} media={v.media} />)
+          : <source src={videoUrl!} type="video/mp4" />}
+      </video>
+    ) : null}
+  </div>
 
-    <div class="heroScrim"></div>
+  <div class="chHero__scrim" aria-hidden="true"></div>
+  <div class="chHero__frame" aria-hidden="true">
+    <span class="chHero__rule chHero__rule--top"></span>
+    <span class="chHero__rule chHero__rule--bottom"></span>
+  </div>
 
-    <div class="heroInner" data-hero-inner>
-      {title ? (
-        <h1
-          class="h1"
-          transition:name={transitionKey ? `proj-title-${transitionKey}` : undefined}
-          data-edit-field={titleField ?? undefined}
-        >
-          {title}
-        </h1>
-      ) : null}
-      {sub ? <p class="sub" data-edit-field={subField ?? undefined}>{sub}</p> : null}
-    </div>
+  <div class="chHero__inner" data-hero-inner>
+    {kicker ? (
+      <p class="chHero__kicker">
+        <span class="chHero__kickerRule" aria-hidden="true"></span>
+        <span data-edit-field={kickerField ?? undefined}>{kicker}</span>
+      </p>
+    ) : null}
+    {title ? (
+      <h1
+        class="chHero__title"
+        transition:name={transitionKey ? `proj-title-${transitionKey}` : undefined}
+        data-edit-field={titleField ?? undefined}
+        data-reveal-text
+        data-reveal-mode="letter"
+        aria-label={title}
+      >{title}</h1>
+    ) : null}
+    {sub ? <p class="chHero__sub" data-edit-field={subField ?? undefined}>{sub}</p> : null}
+  </div>
+
+  <div class="chHero__foot">
+    {meta ? <span class="chHero__meta" data-edit-field={metaField ?? undefined}>{meta}</span> : <span></span>}
+    <span class="chHero__cue" aria-hidden="true">{locale === "es" ? "Desliza" : "Scroll"} ↓</span>
   </div>
 </section>
 
-<script is:inline>
-{`
+<script is:inline data-astro-rerun>
 (function(){
   var v = document.querySelector('[data-hero-video]');
   if (!v) return;
@@ -79,8 +127,135 @@ const {
     var e = es[0]; if (!e) return;
     if (e.isIntersecting) v.play().catch(function(){});
     else v.pause();
-  }, { threshold: .35 });
+  }, { threshold: .2 });
   io.observe(v);
 })();
-`}
 </script>
+
+<style>
+  .chHero{
+    position: relative;
+    /* Full-bleed out of .shell, and up under the floating dock. */
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    margin-top: calc(-1 * var(--shell-offset));
+    height: 100svh;
+    min-height: 560px;
+    overflow: clip;
+    background: var(--ink);
+    color: var(--bone);
+    display: grid;
+    grid-template-rows: 1fr auto;
+  }
+
+  .chHero__media{
+    position: absolute;
+    inset: -4% 0;           /* headroom for the scroll parallax */
+    will-change: transform;
+  }
+  .chHero__media :global(img.chHero__img),
+  .chHero__video{
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: contrast(1.06) brightness(.92);
+  }
+
+  /* Portrait screens play the 9:16 crop; line the poster up with it. */
+  @media (max-aspect-ratio: 3/4){
+    .chHero__media :global(img.chHero__img){ object-position: var(--portrait-x, 50%) 50%; }
+  }
+
+  .chHero__scrim{
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(70% 60% at 18% 88%, color-mix(in srgb, var(--brand-primary, var(--olivar)) 22%, transparent), transparent 70%),
+      linear-gradient(180deg,
+        color-mix(in srgb, var(--ink) 55%, transparent) 0%,
+        transparent 28%,
+        transparent 46%,
+        color-mix(in srgb, var(--ink) 82%, transparent) 100%);
+    pointer-events: none;
+  }
+
+  .chHero__frame{ position: absolute; inset: 0; pointer-events: none; }
+  .chHero__rule{
+    position: absolute;
+    left: var(--chh-gutter);
+    right: var(--chh-gutter);
+    height: 1px;
+    background: color-mix(in srgb, var(--bone) 18%, transparent);
+  }
+  .chHero__rule--top{ top: clamp(76px, 10vh, 104px); }
+  .chHero__rule--bottom{ bottom: clamp(64px, 9vh, 92px); }
+
+  .chHero{ --chh-gutter: clamp(20px, 4vw, 64px); }
+
+  .chHero__inner{
+    position: relative;
+    align-self: end;
+    padding: 0 var(--chh-gutter) clamp(28px, 5vh, 56px);
+    max-width: 100%;
+  }
+  .chHero__kicker{
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 0 0 clamp(14px, 2vh, 24px);
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .3em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--bone) 72%, transparent);
+  }
+  .chHero__kickerRule{
+    width: clamp(28px, 4vw, 56px);
+    height: 1px;
+    background: color-mix(in srgb, var(--brand-primary, var(--olivar)) 80%, var(--bone));
+  }
+  .chHero__title{
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(72px, 14vw, 248px);
+    line-height: .86;
+    letter-spacing: -0.045em;
+    color: var(--bone);
+    /* Keep the descenders inside the letter masks. */
+    padding-bottom: .04em;
+  }
+  .chHero__sub{
+    margin: clamp(16px, 2.4vh, 28px) 0 0;
+    max-width: 44ch;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: clamp(18px, 1.6vw, 26px);
+    line-height: 1.35;
+    color: color-mix(in srgb, var(--bone) 84%, transparent);
+  }
+
+  .chHero__foot{
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+    height: clamp(64px, 9vh, 92px);
+    padding: 0 var(--chh-gutter);
+    font-family: var(--font-sans);
+    font-size: 10.5px;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--bone) 58%, transparent);
+  }
+  .chHero__cue{ white-space: nowrap; }
+
+  @media (max-width: 720px){
+    .chHero__foot{ font-size: 9.5px; letter-spacing: .2em; }
+    .chHero__cue{ display: none; }
+  }
+</style>

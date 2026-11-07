@@ -4,12 +4,16 @@ export const prerender = false;
 import BaseLayout from "../components/layout/BaseLayout.astro";
 import TopDock from "../components/layout/TopDock.astro";
 import VoiceMark from "../components/motion/VoiceMark.astro";
-import TextReveal from "../components/motion/TextReveal.astro";
 import PortableText from "../components/content/PortableText.astro";
+import SmartImage from "../components/content/SmartImage.astro";
+import Sketch from "../components/content/Sketch.astro";
+import NextChapter from "../components/content/NextChapter.astro";
 
 import { getDaniel, getPressKit } from "../lib/queries";
 import { href, pressHref, t2, tb2 } from "../lib/i18n";
+import { MEDIA } from "../lib/site";
 import type { Locale, PressRecognition } from "../lib/types";
+import type { PortableTextBlock } from "@portabletext/types";
 
 interface PageProps { lang?: Locale }
 const { lang } = Astro.props as PageProps;
@@ -50,30 +54,78 @@ const defaultRecs: PressRecognition[] = [
   { year: "2017", label: locale === "es" ? "Apertura de Maizal" : "Maizal opens", org: "Puebla" },
   { year: "2016", label: locale === "es" ? "S.Pellegrino Young Chef · Mensaje Más Inspirador" : "S.Pellegrino Young Chef · Most Inspiring Message", org: locale === "es" ? "Latinoamérica · Quiltamal" : "Latin America · Quiltamal" },
 ];
+/* The arc reads as a story — oldest first, grouped by year. */
 const recs = (kit?.recognitions?.length ? kit.recognitions : defaultRecs)
   .slice()
-  .sort((a, b) => Number(b.year) - Number(a.year));
+  .sort((a, b) => Number(a.year) - Number(b.year));
+const arcYears: { year: string; items: PressRecognition[] }[] = [];
+for (const r of recs) {
+  const last = arcYears[arcYears.length - 1];
+  if (last && last.year === r.year) last.items.push(r);
+  else arcYears.push({ year: r.year, items: [r] });
+}
 
-const portrait = daniel?.portrait_url ?? null;
+// Until Daniel sets a portrait inline, use his garden photograph
+// (the same image the site's Person JSON-LD falls back to).
+const portrait = daniel?.portrait_url ?? MEDIA.portrait;
+const portraitIsFallback = !daniel?.portrait_url;
 
 const headline = locale === "es" ? "Sobre" : "About";
+const es = locale === "es";
 
-/* Inline-edit field paths. The bio is PortableText — we serialize
- * blocks to plain text for the popover modal's textarea source, and
- * the endpoint converts back to blocks via textToBlocks() on save. */
+/* Until Daniel saves his own bio, render the researched default through
+ * PortableText too, so it gets the same editorial typography (and the
+ * first inline save serializes exactly what's on screen). */
+const bioValue: PortableTextBlock[] = bioBlocks.length
+  ? (bioBlocks as PortableTextBlock[])
+  : defaultBioParas.map((text, i) => ({
+      _type: "block",
+      _key: `b${i}`,
+      style: "normal",
+      markDefs: [],
+      children: [{ _type: "span", _key: `s${i}`, text, marks: [] }],
+    }) as unknown as PortableTextBlock);
+
+/* Fact sheet — the profile at a glance (public, verified facts). */
+const igHandle = daniel?.social?.instagram
+  ? "@" + daniel.social.instagram.replace(/\/+$/, "").split("/").pop()
+  : null;
+const facts: { k: string; v: string; href?: string }[] = [
+  { k: es ? "Origen" : "Origin", v: "Puebla, México" },
+  { k: es ? "Vive" : "Lives", v: "Valle de Guadalupe, Baja California" },
+  { k: es ? "Cocina" : "Cooks", v: es ? "Olivea Farm to Table — chef ejecutivo" : "Olivea Farm to Table — executive chef", href: href("/olivea", locale) },
+  { k: es ? "Socio" : "Partner", v: "Fritanguita — Roma Norte, CDMX", href: href("/fritanguita", locale) },
+  { k: es ? "Antes" : "Before", v: "Maizal — Puebla, 2017–2024", href: href("/maizal", locale) },
+  { k: es ? "Formación" : "Training", v: "Centro Culinario Internacional, Universidad de Oriente" },
+  ...(igHandle && daniel?.social?.instagram ? [{ k: "Instagram", v: igHandle, href: daniel.social.instagram }] : []),
+];
+
+/* Three kitchens, in the order he cooked in them. */
+const kitchens = [
+  {
+    slug: "maizal", title: "Maizal", when: "2017–2024", where: "Puebla",
+    line: es ? "Su primer restaurante. Ocho años; el primer maestro." : "His first restaurant. Eight years; the first teacher.",
+    img: "/media/stills/maizal-poster.jpg", pos: "62% 50%",
+  },
+  {
+    slug: "olivea", title: "Olivea", when: es ? "Hoy" : "Now", where: "Valle de Guadalupe",
+    line: es ? "Chef ejecutivo. Estrella Michelin y Estrella Verde; la carta la escribe el huerto." : "Executive chef. Michelin Star and Green Star; the garden writes the menu.",
+    img: "/media/stills/olivea-poster.jpg", pos: "45% 50%",
+  },
+  {
+    slug: "fritanguita", title: "Fritanguita", when: es ? "Desde 2025" : "Since 2025", where: "Roma Norte, CDMX",
+    line: es ? "Socio, con Santiago Muñoz. Fritanga poblana, de pie, en la esquina." : "Partner, with Santiago Muñoz. Poblano fritanga, standing, on the corner.",
+    img: "/media/stills/fritanguita-poster.jpg", pos: "42% 50%",
+  },
+];
+
+/* Inline-edit field paths. The bio is PortableText, edited in place —
+ * the rendered paragraphs themselves become contentEditable, with a
+ * floating toolbar for bold/italic/links/headings. First save of the
+ * default (researched) bio serializes the visible paragraphs as-is. */
 const taglineField = `daniel.tagline_${locale}`;
 const sublineField = `daniel.subline_${locale}`;
 const bioField     = `daniel.bio_long_${locale}`;
-const bioText = bioBlocks.length
-  ? bioBlocks
-      .map((b) => {
-        const block = b as { _type?: string; children?: { text?: string }[] };
-        if (block?._type !== "block" || !Array.isArray(block.children)) return "";
-        return block.children.map((c) => c?.text ?? "").join("");
-      })
-      .filter(Boolean)
-      .join("\n\n")
-  : defaultBioParas.join("\n\n");
 ---
 
 <BaseLayout
@@ -82,87 +134,111 @@ const bioText = bioBlocks.length
   locale={locale}
   og={{
     title: name,
-    kicker: locale === "es" ? "Sobre" : "About",
+    kicker: es ? "Sobre" : "About",
     sig: tagline,
     brand: "daniel",
-    meta: locale === "es" ? "Valle de Guadalupe · CDMX" : "Valle de Guadalupe · Mexico City",
+    meta: es ? "Valle de Guadalupe · CDMX" : "Valle de Guadalupe · Mexico City",
   }}
 >
   <TopDock locale={locale} />
 
-  {/* ── Hero — portrait + name + signature ───────────────────── */}
-  <section class="about__hero scene--ink" data-scene="ink">
-    <div class="about__heroGrid">
-      <div class="about__heroMedia" data-edit-image-field="daniel.portrait_url">
-        {portrait ? (
-          <img src={portrait} alt={name} loading="eager" />
-        ) : (
-          <div class="about__heroPlate" aria-hidden="true"></div>
-        )}
-      </div>
+  {/* I — The profile opener: the name on paper, the man in the garden. */}
+  <section class="ab-hero scene--bone" data-scene="bone">
+    <div class="ab-hero__text">
+      <p class="ab-kicker"><span class="ab-kicker__rule" aria-hidden="true"></span>{headline}</p>
+      <h1 class="ab-hero__name" data-edit-field="daniel.name" data-reveal-text data-reveal-mode="letter" aria-label={name}>{name}</h1>
+      <p class="ab-hero__subline" data-edit-field={sublineField}>{subline}</p>
+      <p class="ab-hero__place">{es ? "Valle de Guadalupe · Ciudad de México" : "Valle de Guadalupe · Mexico City"}</p>
+      {daniel?.voice ? (
+        <div class="ab-hero__voice">
+          <VoiceMark voice={daniel.voice} locale={locale} variant="inline" label={es ? "Su voz" : "His voice"} />
+        </div>
+      ) : null}
+    </div>
+    <figure class="ab-hero__media" data-edit-image-field="daniel.portrait_url" data-fallback={portraitIsFallback ? "1" : undefined}>
+      <SmartImage src={portrait} alt={name} eager widths={[800, 1200, 1800]} sizes="(min-width: 880px) 58vw, 100vw" />
+    </figure>
+  </section>
 
-      <div class="about__heroBody">
-        <p class="kicker about__kicker">{locale === "es" ? "Sobre" : "About"}</p>
-        <TextReveal as="h1" mode="word" class="about__name" editField="daniel.name">{name}</TextReveal>
-        <p class="about__tagline" data-edit-field={taglineField}>{tagline}</p>
-        <p class="about__subline" data-edit-field={sublineField}>{subline}</p>
-
-        {daniel?.voice ? (
-          <div style="margin-top: clamp(28px, 4vw, 48px);">
-            <VoiceMark
-              voice={daniel.voice}
-              locale={locale}
-              variant="inline"
-              label={locale === "es" ? "Su voz" : "His voice"}
-            />
-          </div>
-        ) : null}
-      </div>
+  {/* II — The thesis, at display scale, while the hand draws. */}
+  <section class="ab-thesis scene--ink" data-scene="ink">
+    <div class="ab-thesis__grid">
+      <p class="ab-thesis__quote" data-edit-field={taglineField} data-reveal-text data-reveal-mode="word" aria-label={tagline}>{tagline}</p>
+      <Sketch kind="mano" tone="ink" class="ab-thesis__sketch" label={es ? "Fig. — la mano" : "Fig. — the hand"} />
     </div>
   </section>
 
-  {/* ── Bio — long-form editorial ────────────────────────────── */}
-  <section class="about__bio scene--ink" data-scene="ink">
-    <div class="about__bioInner">
-      <p class="kicker">{locale === "es" ? "Bio" : "Bio"}</p>
-
-      {bioBlocks.length ? (
-        <div
-          class="about__bioBlocks"
-          data-edit-field={bioField}
-          data-edit-multi="1"
-          data-edit-source={bioText}
-        >
-          <PortableText value={bioBlocks} />
-        </div>
-      ) : (
-        <div
-          class="about__bioBlocks"
-          data-edit-field={bioField}
-          data-edit-multi="1"
-          data-edit-source={bioText}
-        >
-          {defaultBioParas.map((p) => <p>{p}</p>)}
-        </div>
-      )}
-    </div>
-  </section>
-
-  {/* ── Arc / Recognitions timeline ──────────────────────────── */}
-  {recs.length ? (
-    <section class="about__arc scene--ink" data-scene="ink">
-      <div class="about__arcInner">
-        <p class="kicker">{locale === "es" ? "Trayecto" : "Arc"}</p>
-        <h2 class="about__arcTitle">{locale === "es" ? "Lo que llevo." : "What I carry."}</h2>
-
-        <ol class="about__timeline">
-          {recs.map((r) => (
-            <li class="about__t">
-              <span class="about__tYear">{r.year}</span>
-              <div class="about__tBody">
-                <p class="about__tLabel">{r.label}</p>
-                {r.org ? <p class="about__tOrg">{r.org}</p> : null}
+  {/* III — The bio, read on paper, with the fact sheet alongside. */}
+  <section class="ab-bio scene--bone" data-scene="bone">
+    <div class="ab-bio__grid">
+      <aside class="ab-bio__rail">
+        <div class="ab-bio__sticky">
+          <p class="ab-label ui-label">{es ? "Ficha" : "At a glance"}</p>
+          <dl class="ab-facts">
+            {facts.map((f) => (
+              <div class="ab-facts__row">
+                <dt>{f.k}</dt>
+                <dd>{f.href ? <a href={f.href} target={f.href.startsWith("http") ? "_blank" : undefined} rel={f.href.startsWith("http") ? "noreferrer" : undefined}>{f.v}</a> : f.v}</dd>
               </div>
+            ))}
+          </dl>
+        </div>
+      </aside>
+      <div class="ab-bio__body">
+        <p class="ab-label ui-label">Bio</p>
+        <div data-edit-field={bioField} data-edit-portable="1" data-reveal-body>
+          <PortableText value={bioValue} lead />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {/* IV — Three kitchens, in the order he cooked in them. */}
+  <section class="ab-kitchens scene--ink" data-scene="ink">
+    <div class="ab-wrap">
+      <header class="ab-sectionHead">
+        <p class="ab-label ui-label">{es ? "Tres cocinas" : "Three kitchens"}</p>
+        <h2 class="ab-h2">{es ? "Lo lento, lo rápido, lo que enseñó." : "The slow, the fast, the one that taught."}</h2>
+      </header>
+      <ol class="ab-kitchens__list reveal-stagger">
+        {kitchens.map((k, i) => (
+          <li>
+            <a class="ab-kitchen" href={href(`/${k.slug}`, locale)}>
+              <span class="ab-kitchen__img" style={`--pos: ${k.pos};`}>
+                <SmartImage src={k.img} alt="" widths={[480, 800]} sizes="(min-width: 880px) 30vw, 100vw" />
+              </span>
+              <span class="ab-kitchen__num">{String(i + 1).padStart(2, "0")} · {k.when}</span>
+              <span class="ab-kitchen__title">{k.title}</span>
+              <span class="ab-kitchen__where">{k.where}</span>
+              <span class="ab-kitchen__line">{k.line}</span>
+              <span class="ab-kitchen__go">{es ? "Abrir capítulo" : "Open chapter"} <span aria-hidden="true">→</span></span>
+            </a>
+          </li>
+        ))}
+      </ol>
+    </div>
+  </section>
+
+  {/* V — The arc, oldest first: a story, not a trophy shelf. */}
+  {arcYears.length ? (
+    <section class="ab-arc scene--bone" data-scene="bone">
+      <div class="ab-wrap">
+        <header class="ab-sectionHead">
+          <p class="ab-label ui-label">{es ? "Trayecto" : "Arc"}</p>
+          <h2 class="ab-h2">{es ? "Lo que llevo." : "What I carry."}</h2>
+        </header>
+        <ol class="ab-arc__list">
+          {arcYears.map((y) => (
+            <li class="ab-arc__year reveal">
+              <span class="ab-arc__num">{y.year}</span>
+              <ul class="ab-arc__items">
+                {y.items.map((r) => (
+                  <li>
+                    <p class="ab-arc__label">{r.url ? <a href={r.url} target="_blank" rel="noreferrer">{r.label}</a> : r.label}</p>
+                    {r.org ? <p class="ab-arc__org">{r.org}</p> : null}
+                  </li>
+                ))}
+              </ul>
             </li>
           ))}
         </ol>
@@ -170,250 +246,297 @@ const bioText = bioBlocks.length
     </section>
   ) : null}
 
-  {/* ── Doors — links to projects, journal, art, press, contact ── */}
-  <section class="about__doors scene--ink" data-scene="ink">
-    <div class="about__doorsInner">
-      <p class="kicker">{locale === "es" ? "Sigue" : "Continue"}</p>
-      <ul class="about__doorList">
-        <li>
-          <a href={href("/olivea", locale)}>
-            <span class="about__doorLabel">Olivea</span>
-            <span class="about__doorMeta">{locale === "es" ? "Lo lento · Valle de Guadalupe" : "The slow · Valle de Guadalupe"}</span>
-          </a>
-        </li>
-        <li>
-          <a href={href("/fritanguita", locale)}>
-            <span class="about__doorLabel">Fritanguita</span>
-            <span class="about__doorMeta">{locale === "es" ? "Lo rápido · Roma Norte, CDMX" : "The fast · Roma Norte, Mexico City"}</span>
-          </a>
-        </li>
-        <li>
-          <a href={href("/diario", locale)}>
-            <span class="about__doorLabel">{locale === "es" ? "Diario" : "Journal"}</span>
-            <span class="about__doorMeta">{locale === "es" ? "Notas, ensayos y archivo" : "Notes, essays, archive"}</span>
-          </a>
-        </li>
-        <li>
-          <a href={href("/arte", locale)}>
-            <span class="about__doorLabel">{locale === "es" ? "Arte" : "Art"}</span>
-            <span class="about__doorMeta">{locale === "es" ? "Lo que también hace la mano" : "What the hand also does"}</span>
-          </a>
-        </li>
-        <li>
-          <a href={pressHref(locale)}>
-            <span class="about__doorLabel">{locale === "es" ? "Prensa" : "Press"}</span>
-            <span class="about__doorMeta">{locale === "es" ? "Bio, fotos, menciones" : "Bio, photos, mentions"}</span>
-          </a>
-        </li>
-        <li>
-          <a href={href("/contacto", locale)}>
-            <span class="about__doorLabel">{locale === "es" ? "Escribe" : "Write"}</span>
-            <span class="about__doorMeta">{locale === "es" ? "Prensa, colabs, una idea" : "Press, collabs, an idea"}</span>
-          </a>
-        </li>
-      </ul>
+  {/* VI — Coda: an open door. */}
+  <section class="ab-coda scene--ink" data-scene="ink">
+    <div class="ab-wrap">
+      <p class="ab-coda__line">{es ? "¿Prensa, una colaboración, una idea suelta?" : "Press, a collaboration, a loose idea?"}</p>
+      <div class="ab-coda__ctas">
+        <a class="ui-pill ui-pill--solid" href={href("/contacto", locale)}>{es ? "Escribe" : "Write"} <span aria-hidden="true">→</span></a>
+        <a class="ui-pill" href={pressHref(locale)}>{es ? "Kit de prensa" : "Press kit"} <span aria-hidden="true">→</span></a>
+      </div>
+      <NextChapter current="sobre" locale={locale} />
     </div>
   </section>
 </BaseLayout>
 
 <style>
-  /* ── Hero ─────────────────────────────────────────────────── */
-  .about__hero{
-    width: 100vw;
-    margin-left: calc(50% - 50vw);
-    margin-right: calc(50% - 50vw);
-    background: var(--ink);
-    color: var(--bone);
-    padding: clamp(120px, 14vw, 200px) 0 clamp(80px, 10vw, 140px);
-  }
-  .about__heroGrid{
-    max-width: 1280px;
-    margin: 0 auto;
-    padding: 0 clamp(20px, 5vw, 80px);
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: clamp(32px, 5vw, 64px);
-    align-items: center;
-  }
-  @media (min-width: 880px){
-    .about__heroGrid{ grid-template-columns: 5fr 7fr; gap: clamp(40px, 6vw, 80px); }
-  }
-  .about__heroMedia img{
-    width: 100%;
-    aspect-ratio: 4/5;
-    object-fit: cover;
-    display: block;
-    border-radius: var(--r-2);
-    background: rgba(239, 230, 212, .04);
-    filter: saturate(.94);
-  }
-  .about__heroPlate{
-    width: 100%;
-    aspect-ratio: 4/5;
-    border-radius: var(--r-2);
-    background:
-      radial-gradient(60% 50% at 50% 50%, color-mix(in srgb, var(--ochre) 18%, transparent), transparent 70%),
-      var(--ink-2);
-  }
-
-  .about__kicker{ color: rgba(239, 230, 212, .55); margin: 0 0 clamp(20px, 3vw, 36px); }
-  .about__name{
+  /* ── Shared ───────────────────────────────────────────────── */
+  .ab-wrap{ max-width: 1320px; margin: 0 auto; padding: 0 clamp(20px, 4vw, 64px); }
+  .ab-label{ margin-bottom: clamp(14px, 2vh, 22px); }
+  .ab-h2{
+    margin: 0;
+    max-width: 18ch;
     font-family: var(--font-display);
     font-weight: 400;
-    font-size: clamp(56px, 9vw, 132px);
-    line-height: .95;
-    letter-spacing: -0.025em;
-    color: var(--bone);
-    margin: 0;
+    font-size: clamp(40px, 5.4vw, 96px);
+    line-height: .96;
+    letter-spacing: -0.035em;
+    text-wrap: balance;
   }
-  .about__tagline{
-    margin: clamp(20px, 2.4vw, 32px) 0 0;
+  .ab-sectionHead{ margin-bottom: clamp(48px, 8vh, 96px); }
+  /* position: relative — every scene must contain the global ink
+     vignette (.scene--ink::after is absolutely positioned); unpositioned,
+     it escapes and lays itself over the top of the page. */
+  .ab-hero, .ab-thesis, .ab-bio, .ab-kitchens, .ab-arc, .ab-coda{
+    position: relative;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .ab-thesis > *, .ab-kitchens > *, .ab-coda > *{ position: relative; z-index: 1; }
+
+  /* ── I · Hero ─────────────────────────────────────────────── */
+  .ab-hero{
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    min-height: 100svh;
+  }
+  .ab-hero__text{
+    align-self: end;
+    padding: clamp(140px, 20vh, 220px) clamp(20px, 4vw, 64px) clamp(48px, 9vh, 104px);
+  }
+  .ab-kicker{
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 0 0 clamp(18px, 3vh, 30px);
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .3em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  .ab-kicker__rule{ width: clamp(28px, 4vw, 56px); height: 1px; background: var(--olivar); }
+  .ab-hero__name{
+    margin: 0;
+    max-width: 6ch;
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(76px, 10.5vw, 196px);
+    line-height: .84;
+    letter-spacing: -0.05em;
+    padding-bottom: .04em;
+  }
+  .ab-hero__subline{
+    margin: clamp(26px, 4vh, 44px) 0 0;
+    max-width: 30ch;
     font-family: var(--font-display);
     font-style: italic;
-    font-size: clamp(20px, 2.2vw, 28px);
-    line-height: 1.35;
-    color: rgba(239, 230, 212, .9);
-    max-width: 36ch;
+    font-size: clamp(20px, 1.7vw, 28px);
+    line-height: 1.3;
+    color: var(--text-2);
   }
-  .about__subline{
-    margin: clamp(16px, 2vw, 24px) 0 0;
+  .ab-hero__place{
+    margin: 16px 0 0;
     font-family: var(--font-sans);
-    font-size: 12px;
-    letter-spacing: .22em;
+    font-size: 11px;
+    letter-spacing: .24em;
     text-transform: uppercase;
-    color: rgba(239, 230, 212, .55);
+    color: var(--text-3);
   }
+  .ab-hero__voice{ margin-top: clamp(24px, 4vh, 40px); }
+  .ab-hero__media{
+    position: relative;
+    margin: 0;
+    min-height: 100%;
+    overflow: hidden;
+  }
+  .ab-hero__media :global(img){
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: saturate(.92) contrast(1.03);
+  }
+  .ab-hero__media[data-fallback] :global(img){ object-position: 68% 40%; }
 
-  /* ── Bio ──────────────────────────────────────────────────── */
-  .about__bio{
-    width: 100vw;
-    margin-left: calc(50% - 50vw);
-    margin-right: calc(50% - 50vw);
-    background: #100F0C;
-    color: var(--bone);
-    padding: clamp(80px, 10vw, 140px) clamp(20px, 5vw, 80px);
-    border-top: 1px solid rgba(239, 230, 212, .06);
-  }
-  .about__bioInner{ max-width: 760px; margin: 0 auto; }
-  .about__bioInner .kicker{ margin: 0 0 clamp(24px, 3vw, 40px); }
-  .about__bioBlocks p{
-    margin: 0 0 clamp(18px, 2vw, 28px);
-    font-family: var(--font-display);
-    font-size: clamp(18px, 1.6vw, 22px);
-    line-height: 1.55;
-    color: rgba(239, 230, 212, .92);
-  }
-  .about__bioBlocks p:first-child::first-letter{
-    font-family: var(--font-display);
-    font-size: 4.2em;
-    float: left;
-    line-height: .9;
-    margin: 0.06em 0.08em 0 0;
-    color: var(--bone);
-  }
-
-  /* ── Arc / Timeline ──────────────────────────────────────── */
-  .about__arc{
-    width: 100vw;
-    margin-left: calc(50% - 50vw);
-    margin-right: calc(50% - 50vw);
-    background: var(--ink);
-    color: var(--bone);
-    padding: clamp(80px, 10vw, 140px) clamp(20px, 5vw, 80px);
-    border-top: 1px solid rgba(239, 230, 212, .06);
-  }
-  .about__arcInner{ max-width: 1080px; margin: 0 auto; }
-  .about__arcTitle{
-    margin: clamp(16px, 2vw, 24px) 0 clamp(40px, 5vw, 64px);
-    font-family: var(--font-display);
-    font-weight: 400;
-    font-size: clamp(40px, 6vw, 80px);
-    line-height: 1;
-    letter-spacing: -0.025em;
-    color: var(--bone);
-  }
-  .about__timeline{
-    list-style: none; margin: 0; padding: 0;
-    display: grid; gap: 0;
-  }
-  .about__t{
+  /* ── II · Thesis ──────────────────────────────────────────── */
+  .ab-thesis{ padding: clamp(110px, 18vh, 220px) clamp(20px, 4vw, 64px); }
+  .ab-thesis__grid{
+    max-width: 1320px;
+    margin: 0 auto;
     display: grid;
-    grid-template-columns: 80px 1fr;
-    gap: clamp(20px, 3vw, 36px);
-    padding: clamp(18px, 2.4vw, 28px) 0;
-    border-top: 1px solid rgba(239, 230, 212, .08);
-    align-items: baseline;
+    grid-template-columns: minmax(0, 8fr) minmax(0, 4fr);
+    align-items: center;
+    gap: clamp(32px, 6vw, 112px);
   }
-  .about__t:last-child{ border-bottom: 1px solid rgba(239, 230, 212, .08); }
-  .about__tYear{
-    font-family: var(--font-mono);
-    font-size: 13px;
-    letter-spacing: .04em;
-    color: rgba(239, 230, 212, .45);
-  }
-  .about__tLabel{
+  .ab-thesis__quote{
     margin: 0;
     font-family: var(--font-display);
-    font-size: clamp(20px, 2.2vw, 28px);
-    letter-spacing: -0.01em;
-    color: var(--bone);
+    font-style: italic;
+    font-weight: 400;
+    font-size: clamp(48px, 7.2vw, 136px);
+    line-height: .96;
+    letter-spacing: -0.035em;
+    text-wrap: balance;
   }
-  .about__tOrg{
-    margin: 6px 0 0;
-    font-family: var(--font-sans);
-    font-size: 12px;
-    letter-spacing: .14em;
-    text-transform: uppercase;
-    color: rgba(239, 230, 212, .5);
-  }
+  :global(.ab-thesis__sketch){ width: min(100%, 360px); justify-self: center; }
 
-  /* ── Doors ───────────────────────────────────────────────── */
-  .about__doors{
-    width: 100vw;
-    margin-left: calc(50% - 50vw);
-    margin-right: calc(50% - 50vw);
-    background: #08090A;
-    color: var(--bone);
-    padding: clamp(80px, 10vw, 140px) clamp(20px, 5vw, 80px) clamp(120px, 14vw, 200px);
-    border-top: 1px solid rgba(239, 230, 212, .06);
-  }
-  .about__doorsInner{ max-width: 1080px; margin: 0 auto; }
-  .about__doorList{
-    list-style: none; margin: clamp(28px, 3vw, 40px) 0 0; padding: 0;
-    display: grid; gap: 0;
-  }
-  .about__doorList li{ border-top: 1px solid rgba(239, 230, 212, .08); }
-  .about__doorList li:last-child{ border-bottom: 1px solid rgba(239, 230, 212, .08); }
-  .about__doorList a{
+  /* ── III · Bio ────────────────────────────────────────────── */
+  .ab-bio{ padding: clamp(100px, 15vh, 180px) clamp(20px, 4vw, 64px) clamp(110px, 16vh, 200px); }
+  .ab-bio__grid{
+    max-width: 1320px;
+    margin: 0 auto;
     display: grid;
-    grid-template-columns: 1fr auto;
-    align-items: baseline;
-    gap: 24px;
-    padding: clamp(20px, 2.6vw, 32px) 0;
-    color: var(--bone);
-    transition:
-      padding-left 700ms var(--ease-fluid),
-      color 700ms var(--ease-fluid);
+    grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+    gap: clamp(36px, 6vw, 112px);
   }
-  .about__doorList a:hover{
-    padding-left: clamp(8px, 1.5vw, 18px);
+  .ab-bio__sticky{ position: sticky; top: clamp(96px, 14vh, 140px); }
+  .ab-facts{ margin: 0; display: grid; border-top: 1px solid var(--line); }
+  .ab-facts__row{
+    display: grid;
+    grid-template-columns: 7.5em 1fr;
+    gap: 14px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--line);
   }
-  .about__doorLabel{
-    font-family: var(--font-display);
-    font-size: clamp(28px, 4vw, 56px);
-    letter-spacing: -0.02em;
-    line-height: 1;
-  }
-  .about__doorMeta{
+  .ab-facts dt{
     font-family: var(--font-sans);
     font-size: 11px;
     letter-spacing: .2em;
     text-transform: uppercase;
-    color: rgba(239, 230, 212, .5);
-    text-align: right;
+    color: var(--text-3);
+    padding-top: .3em;
   }
-  @media (max-width: 720px){
-    .about__doorList a{ grid-template-columns: 1fr; gap: 6px; }
-    .about__doorMeta{ text-align: left; }
+  .ab-facts dd{
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(17px, 1.25vw, 20px);
+    line-height: 1.3;
+  }
+  .ab-facts a{
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-decoration-color: color-mix(in srgb, var(--olivar) 55%, transparent);
+    text-underline-offset: .2em;
+  }
+
+  /* ── IV · Kitchens ────────────────────────────────────────── */
+  .ab-kitchens{ padding: clamp(110px, 16vh, 200px) 0; }
+  .ab-kitchens__list{
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: clamp(20px, 3vw, 48px);
+  }
+  .ab-kitchen{ display: grid; gap: 10px; color: var(--text); text-decoration: none; }
+  .ab-kitchen__img{
+    display: block;
+    aspect-ratio: 4 / 5;
+    overflow: hidden;
+    margin-bottom: 12px;
+    background: var(--ink-2);
+  }
+  .ab-kitchen__img :global(img){
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: var(--pos, 50% 50%);
+    filter: contrast(1.05) brightness(.88);
+    transition: transform 1400ms var(--ease-fluid), filter 1400ms var(--ease-fluid);
+  }
+  .ab-kitchen:hover .ab-kitchen__img :global(img){ transform: scale(1.04); filter: contrast(1.08) brightness(1); }
+  .ab-kitchen__num{
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .24em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  .ab-kitchen__title{
+    font-family: var(--font-display);
+    font-size: clamp(40px, 4.4vw, 76px);
+    line-height: .9;
+    letter-spacing: -0.04em;
+  }
+  .ab-kitchen__where{
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--text-2);
+  }
+  .ab-kitchen__line{
+    max-width: 32ch;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: clamp(17px, 1.3vw, 21px);
+    line-height: 1.38;
+    color: var(--text-2);
+  }
+  .ab-kitchen__go{
+    margin-top: 6px;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .24em;
+    text-transform: uppercase;
+    color: var(--text-2);
+  }
+  .ab-kitchen__go span{ display: inline-block; transition: transform 700ms var(--ease-fluid); }
+  .ab-kitchen:hover .ab-kitchen__go span{ transform: translateX(6px); }
+
+  /* ── V · Arc ──────────────────────────────────────────────── */
+  .ab-arc{ padding: clamp(110px, 16vh, 200px) 0; }
+  .ab-arc__list{ list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+  .ab-arc__year{
+    display: grid;
+    grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+    gap: clamp(20px, 5vw, 96px);
+    padding: clamp(26px, 4vh, 44px) 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .ab-arc__num{
+    font-family: var(--font-display);
+    font-size: clamp(56px, 7vw, 120px);
+    line-height: .8;
+    letter-spacing: -0.04em;
+    font-feature-settings: "lnum";
+    color: var(--text);
+  }
+  .ab-arc__items{ list-style: none; margin: 0; padding: 0; display: grid; gap: 18px; align-content: center; }
+  .ab-arc__label{
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(22px, 2vw, 34px);
+    line-height: 1.1;
+    letter-spacing: -0.015em;
+  }
+  .ab-arc__label a{ color: inherit; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .18em; text-decoration-color: var(--line-2); }
+  .ab-arc__org{
+    margin: 6px 0 0;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+
+  /* ── VI · Coda ────────────────────────────────────────────── */
+  .ab-coda{ padding: clamp(110px, 16vh, 200px) 0 clamp(40px, 6vh, 72px); }
+  .ab-coda__line{
+    margin: 0;
+    max-width: 16ch;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: clamp(40px, 5.6vw, 100px);
+    line-height: .98;
+    letter-spacing: -0.035em;
+    text-wrap: balance;
+  }
+  .ab-coda__ctas{ margin-top: clamp(32px, 5vh, 56px); display: flex; flex-wrap: wrap; gap: 14px; }
+
+  /* ── Small screens ────────────────────────────────────────── */
+  @media (max-width: 880px){
+    .ab-hero{ grid-template-columns: 1fr; min-height: 0; }
+    .ab-hero__media{ order: -1; height: 62svh; min-height: 360px; }
+    .ab-hero__text{ padding-top: clamp(36px, 6vh, 56px); }
+    .ab-thesis__grid, .ab-bio__grid{ grid-template-columns: 1fr; }
+    .ab-bio__sticky{ position: static; }
+    .ab-bio__rail{ order: 2; }
+    .ab-kitchens__list{ grid-template-columns: 1fr; gap: clamp(48px, 8vh, 72px); }
+    .ab-arc__year{ grid-template-columns: 1fr; gap: 14px; }
   }
 </style>

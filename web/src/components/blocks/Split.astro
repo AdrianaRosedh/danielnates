@@ -2,6 +2,7 @@
 import type { Locale, SplitBlock } from "../../lib/types";
 import { t2, tb2 } from "../../lib/i18n";
 import PortableText from "../content/PortableText.astro";
+import SmartImage from "../content/SmartImage.astro";
 
 interface Props { block: SplitBlock; locale?: Locale }
 const { block, locale: propLocale } = Astro.props as Props;
@@ -20,7 +21,7 @@ const src = block.image_url ?? null;
         <source src={block.videoUrl} />
       </video>
     ) : src ? (
-      <img src={src} alt={heading} loading="lazy" decoding="async" />
+      <SmartImage src={src} alt={heading} widths={[480, 800, 1200]} sizes="(min-width: 880px) 50vw, 100vw" />
     ) : null}
   </div>
   <div class="split__body">
@@ -42,7 +43,7 @@ const src = block.image_url ?? null;
     .split{ grid-template-columns: 1fr 1fr; gap: 32px; }
     .split--media-right .split__media{ order: 2; }
   }
-  .split__media img,
+  .split__media :global(img),
   .split__media video{
     width: 100%;
     height: auto;
