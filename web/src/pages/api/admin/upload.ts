@@ -1,25 +1,8 @@
 import type { APIRoute } from "astro";
 import { jsonOk, requireAdmin } from "../../../lib/admin-helpers";
+import { UPLOAD_MAX_BYTES, formatMegabytes, uploadExtension } from "../../../lib/uploads";
 
 export const prerender = false;
-
-/* Vercel caps a function request body at 4.5 MB — stay under it. The
- * storage bucket enforces its own size + MIME allowlist as well. */
-const MAX_BYTES = 4 * 1024 * 1024;
-
-/* Content type → stored extension. The client's file name and MIME are
- * never trusted for the stored object: no SVG/HTML (stored XSS on the
- * public bucket), extension derived from the allowlisted type. */
-const ALLOWED: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-  "image/avif": "avif",
-  "image/gif": "gif",
-  "video/mp4": "mp4",
-  "video/webm": "webm",
-  "application/pdf": "pdf",
-};
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   const auth = await requireAdmin(cookies);
@@ -37,9 +20,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
   if (!(file instanceof File)) return new Response("No file", { status: 400 });
   if (file.size === 0) return new Response("Empty file", { status: 400 });
-  if (file.size > MAX_BYTES) return new Response("Too large (max 4 MB)", { status: 413 });
+  if (file.size > UPLOAD_MAX_BYTES) {
+    return new Response(`Too large (max ${formatMegabytes(UPLOAD_MAX_BYTES)})`, { status: 413 });
+  }
 
-  const ext = ALLOWED[file.type];
+  const ext = uploadExtension(file.type);
   if (!ext) return new Response("Unsupported file type", { status: 415 });
 
   const key = `${folder}/${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;

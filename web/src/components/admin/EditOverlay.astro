@@ -612,6 +612,7 @@ const { editContext, createContext } = Astro.props as Props;
    * Astro ClientRouter swaps via a window flag + page-load rebind. */
 
   import { blocksToHtml } from "../../lib/portable";
+  import { ImagePrepError, prepareImageForUpload } from "../../lib/image-prep";
 
   declare global {
     interface Window {
@@ -1283,7 +1284,8 @@ const { editContext, createContext } = Astro.props as Props;
     window.addEventListener("keydown", onKey);
   }
 
-  /** Image-pick flow: open the hidden <input type=file>, upload via
+  /** Image-pick flow: open the hidden <input type=file>, shrink the
+   *  photo in the browser (lib/image-prep), upload via
    *  /api/admin/upload, save the URL via /api/admin/inline-edit, then
    *  swap the visible <img> in place (video-poster hosts and hosts
    *  with no <img> yet soft-reload instead). */
@@ -1300,13 +1302,15 @@ const { editContext, createContext } = Astro.props as Props;
       badge.dataset.busy = "1";
       const status = document.querySelector<HTMLElement>("[data-edit-status]");
       if (status) {
-        status.textContent = "Subiendo foto…";
+        status.textContent = "Preparando foto…";
         status.dataset.state = "saving";
       }
 
       try {
+        const photo = await prepareImageForUpload(file);
+        if (status) status.textContent = "Subiendo foto…";
         const fd = new FormData();
-        fd.append("file", file);
+        fd.append("file", photo);
         fd.append("folder", "landing");
         const upRes = await fetch("/api/admin/upload", { method: "POST", body: fd });
         if (!upRes.ok) throw new Error(await upRes.text());
@@ -1332,7 +1336,12 @@ const { editContext, createContext } = Astro.props as Props;
         }
       } catch (err) {
         if (status) {
-          status.textContent = "Error subiendo foto";
+          status.textContent =
+            err instanceof ImagePrepError
+              ? err.reason === "unsupported"
+                ? "Formato no compatible · usa JPG o PNG"
+                : "Foto demasiado grande"
+              : "Error subiendo foto";
           status.dataset.state = "error";
         }
         // eslint-disable-next-line no-console
