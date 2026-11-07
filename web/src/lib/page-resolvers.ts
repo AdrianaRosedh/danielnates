@@ -21,7 +21,7 @@ export const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,80}$/;
 /** Top-level paths owned by other routes — never project slugs. */
 const RESERVED_PROJECT_SLUGS = new Set([
   "en", "diario", "arte", "contacto", "contact", "api", "404", "admin", "sobre",
-  "prensa", "press", "dia", "day", "og.png", "proyectos", "projects",
+  "prensa", "press", "dia", "day", "og.png", "proyectos", "projects", "editar",
 ]);
 
 export const notFoundPath = (locale: Locale) => (locale === "en" ? "/en/404" : "/404");
